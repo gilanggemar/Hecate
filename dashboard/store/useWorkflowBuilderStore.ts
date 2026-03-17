@@ -11,7 +11,7 @@ import {
     addEdge,
 } from '@xyflow/react';
 
-export type WfNodeExecStatus = 'idle' | 'queued' | 'running' | 'success' | 'error' | 'waiting' | 'skipped';
+export type WfNodeExecStatus = 'idle' | 'queued' | 'running' | 'completed' | 'success' | 'error' | 'waiting' | 'skipped';
 
 export interface ExecutionLogEntry {
     nodeId: string;
@@ -433,6 +433,8 @@ export const useWorkflowBuilderStore = create<WorkflowBuilderState>((set, get) =
                         set({
                             pendingGates: [...get().pendingGates, {
                                 nodeId,
+                                workflowId: get().workflowMeta.id,
+                                runId: get().activeRunId || '',
                                 reviewData: {},
                                 requestedAt: Date.now(),
                             }],

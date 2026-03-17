@@ -23,6 +23,7 @@ export const EXEC_STATUS_COLORS: Record<WfNodeExecStatus, string> = {
     idle: 'var(--text-muted)',
     queued: 'var(--accent-base)',
     running: 'var(--accent-base)',
+    completed: 'var(--status-online)',
     success: 'var(--status-online)',
     error: 'var(--status-error)',
     waiting: 'oklch(0.80 0.18 80)',

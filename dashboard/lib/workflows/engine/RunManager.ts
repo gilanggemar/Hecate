@@ -99,6 +99,8 @@ export class RunManager {
         output: result.output,
       });
 
+      return { success: result.success, output: result.output, error: undefined };
+
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown engine error';
 
