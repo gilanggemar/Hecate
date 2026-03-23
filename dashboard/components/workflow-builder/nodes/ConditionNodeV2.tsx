@@ -13,8 +13,8 @@ export function ConditionNodeV2(props: NodeProps) {
             accent={NODE_ACCENTS.condition}
             icon={<GitBranch size={14} />}
             sourceHandles={[
-                { id: "true", label: "Yes", position: 30 },
-                { id: "false", label: "No", position: 70 },
+                { id: "true", label: "Yes", position: 35 },
+                { id: "false", label: "No", position: 65 },
             ]}
         >
             <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
@@ -27,9 +27,9 @@ export function ConditionNodeV2(props: NodeProps) {
                         {expression}
                     </div>
                 )}
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8 }}>
-                    <span style={{ color: "var(--status-online)", fontWeight: 600 }}>YES ↙</span>
-                    <span style={{ color: "var(--status-error)", fontWeight: 600 }}>↘ NO</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 8, position: "absolute", right: -28, top: "50%", transform: "translateY(-50%)" }}>
+                    <span style={{ color: "var(--status-online)", fontWeight: 600 }}>YES →</span>
+                    <span style={{ color: "var(--status-error)", fontWeight: 600 }}>NO →</span>
                 </div>
             </div>
         </BaseNodeV2>

@@ -23,6 +23,7 @@ export interface WorkflowInvokeInput {
   task: string;
   context?: Record<string, any>;
   variables?: Record<string, any>;
+  sessionKeyOverride?: string;
   priorStepOutputs?: Record<string, StepResult>;
   timeoutSec?: number;
   responseMode: "text" | "json";
@@ -73,7 +74,13 @@ export type WorkflowNodeType =
   | "formatter_step"
   | "human_approval"
   | "condition"
-  | "output";
+  | "output"
+  | "delay"
+  | "variable_set"
+  | "http_request"
+  | "loop"
+  | "note"
+  | "checkpoint";
 
 /** Represents a single node in the workflow definition. */
 export interface WorkflowNodeDefinition {
@@ -171,6 +178,32 @@ export interface OutputConfig {
   template?: string;
 }
 
+export interface DelayConfig {
+  delaySec: number; // seconds to wait
+}
+
+export interface VariableSetConfig {
+  variableName: string;
+  variableValue: string; // supports {{prev.stepId.outputText}} interpolation
+  operation?: 'set' | 'append' | 'prepend';
+}
+
+export interface HttpRequestConfig {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  url: string; // supports {{variable}} interpolation
+  headers?: Record<string, string>;
+  body?: string; // supports interpolation
+  timeoutSec?: number;
+}
+
+export interface LoopConfig {
+  loopType: 'count' | 'for_each';
+  maxIterations: number;
+  iterateOver?: string; // variable name or {{prev.stepId.outputText}}
+}
+
+export interface CheckpointConfig {}
+
 export type NodeConfigMap = {
   manual_trigger: ManualTriggerConfig;
   webhook_trigger: WebhookTriggerConfig;
@@ -180,4 +213,9 @@ export type NodeConfigMap = {
   human_approval: HumanApprovalConfig;
   condition: ConditionConfig;
   output: OutputConfig;
+  delay: DelayConfig;
+  variable_set: VariableSetConfig;
+  http_request: HttpRequestConfig;
+  loop: LoopConfig;
+  checkpoint: CheckpointConfig;
 };

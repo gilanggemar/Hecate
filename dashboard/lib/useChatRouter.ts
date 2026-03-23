@@ -1,6 +1,6 @@
 import { useSocket, useSocketStore, ChatMessage } from "@/lib/useSocket";
 import useAgentZeroStore, { AgentZeroMessage } from "@/store/useAgentZeroStore";
-import { getGateway } from "@/lib/useOpenClawGateway";
+import { getGateway } from "@/lib/openclawGateway";
 import { useConnectionStore } from "@/store/useConnectionStore";
 import { useAgentSettingsStore } from "@/store/useAgentSettingsStore";
 import { useMemo, useEffect, useCallback } from "react";
@@ -18,7 +18,7 @@ export interface IntegratedAgent {
 
 export function useChatRouter() {
     const { agents: openClawAgents, isConnected: isOpenClawConnected, chatMessages: openClawMessages } = useSocketStore();
-    const { sendChatMessage } = useSocket();
+    const { sendChatMessage, sendToolsHandshake } = useSocket();
 
     const {
         status: a0Status,
@@ -67,7 +67,7 @@ export function useChatRouter() {
     }, [openClawAgents, isOpenClawConnected, a0Status, activeProfile?.agentZeroEnabled, hiddenAgentIds]);
 
     // 2. Get messages for a specific agent
-    const getMessagesForAgent = useCallback((agentId: string): ChatMessage[] => {
+    const getMessagesForAgent = useCallback((agentId: string, options?: { sessionType?: string }): ChatMessage[] => {
         const agent = integratedAgents.find(a => a.id === agentId);
         if (agent?.provider === 'agent-zero') {
             return a0Messages.map((m: AgentZeroMessage) => ({
@@ -83,11 +83,21 @@ export function useChatRouter() {
             }));
         }
 
-        return openClawMessages.filter(m =>
-            m.agentId === agentId ||
-            (m.agentId && m.agentId.includes(agentId)) ||
-            (agentId && m.agentId && agentId.includes(m.agentId))
-        );
+        const sessionType = options?.sessionType || 'nchat';
+
+        return openClawMessages.filter(m => {
+            const matchesAgent = m.agentId === agentId ||
+                                 (m.agentId && m.agentId.includes(agentId)) ||
+                                 (agentId && m.agentId && agentId.includes(m.agentId));
+            
+            if (!matchesAgent) return false;
+            
+            if (m.sessionKey) {
+                return m.sessionKey.endsWith(`:${sessionType}`);
+            }
+            
+            return true;
+        });
     }, [integratedAgents, a0Messages, openClawMessages]);
 
     // 3. Dispatch Message — now uses gateway for OpenClaw agents
@@ -102,7 +112,7 @@ export function useChatRouter() {
             await sendA0Message(message, attachments);
         } else {
             // OpenClaw — use the gateway via the shim
-            const sk = sessionKey || `agent:${agentId}:webchat`;
+            const sk = sessionKey || `agent:${agentId}:nchat`;
             sendChatMessage(agentId, message, sk, attachments, skipStoreAdd);
         }
     }, [integratedAgents, sendA0Message, sendChatMessage]);
@@ -111,6 +121,7 @@ export function useChatRouter() {
         integratedAgents,
         getMessagesForAgent,
         dispatchMessage,
-        isOpenClawConnected
+        isOpenClawConnected,
+        sendToolsHandshake
     };
 }

@@ -102,8 +102,12 @@ export function BackgroundCropModal({ file, onClose, onApply }: BackgroundCropMo
     }, [crop, saturation, brightness, onApply, onClose]);
 
     return (
-        <Dialog open onOpenChange={() => !isApplying && onClose()}>
-            <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] flex flex-col nerv-glass-3 border-white/10 text-white">
+        <Dialog open modal={false}>
+            <DialogContent 
+                className="max-w-5xl w-[95vw] max-h-[85vh] flex flex-col nerv-glass-3 border-white/10 text-white"
+                onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => e.preventDefault()}
+            >
                 <DialogHeader className="shrink-0">
                     <DialogTitle className="text-[11px] uppercase tracking-[0.2em] font-mono text-white/70">
                         Adjust Background Preview

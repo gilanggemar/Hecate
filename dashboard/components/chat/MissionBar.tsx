@@ -284,7 +284,7 @@ export const MissionBar: React.FC<MissionBarProps> = ({
                     {showConstraintPopover && (
                         <div
                             ref={popoverRef}
-                            className="absolute top-full left-0 mt-2 z-50 rounded-md overflow-hidden shadow-md"
+                            className="absolute bottom-full left-0 mb-2 z-50 rounded-md overflow-hidden shadow-md"
                             style={{
                                 background: 'var(--popover)',
                                 border: '1px solid var(--border)',

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Info } from "lucide-react";
 import { useWorkflowBuilderStore } from "@/store/useWorkflowBuilderStore";
 import {
     NODE_ACCENTS,
@@ -9,6 +10,7 @@ import {
     EXEC_STATUS_COLORS,
     getHandleStyle,
     type WfNodeType,
+    NODE_INFO,
 } from "./nodeStyles";
 
 interface BaseNodeV2Props {
@@ -17,6 +19,7 @@ interface BaseNodeV2Props {
     icon: React.ReactNode;
     showSourceHandle?: boolean;
     showTargetHandle?: boolean;
+    targetHandleStyle?: React.CSSProperties;
     /** For condition node: named source handles */
     sourceHandles?: { id: string; label: string; position: number }[];
     children?: React.ReactNode;
@@ -28,6 +31,7 @@ export function BaseNodeV2({
     icon,
     showSourceHandle = true,
     showTargetHandle = true,
+    targetHandleStyle,
     sourceHandles,
     children,
 }: BaseNodeV2Props) {
@@ -59,6 +63,65 @@ export function BaseNodeV2({
                 position: "relative",
             }}
         >
+            {/* Info Tooltip Icon */}
+            {NODE_INFO[nodeProps.type as WfNodeType] && (
+                <div
+                    className="group"
+                    style={{
+                        position: "absolute",
+                        top: -8,
+                        left: -8,
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        background: "oklch(0.18 0.005 0)",
+                        border: `1px solid ${accent}60`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--text-muted)",
+                        cursor: "help",
+                        zIndex: 10,
+                        boxShadow: `0 2px 8px oklch(0 0 0 / 0.5)`,
+                    }}
+                >
+                    <Info size={11} />
+                    <div
+                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                        style={{
+                            position: "absolute",
+                            bottom: "100%",
+                            left: "50%",
+                            transform: "translateX(-20px)",
+                            marginBottom: 8,
+                            width: 240,
+                            padding: "10px 14px",
+                            background: "oklch(0.15 0.005 0 / 0.95)",
+                            backdropFilter: "blur(8px)",
+                            border: "1px solid oklch(1 0 0 / 0.15)",
+                            borderRadius: 8,
+                            boxShadow: "0 10px 40px oklch(0 0 0 / 0.8)",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            zIndex: 100,
+                        }}
+                    >
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)" }}>
+                            {NODE_INFO[nodeProps.type as WfNodeType].description}
+                        </div>
+                        <div style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                            {NODE_INFO[nodeProps.type as WfNodeType].tips}
+                        </div>
+                        <div style={{
+                            position: "absolute", bottom: -5, left: 16, width: 10, height: 10,
+                            background: "oklch(0.15 0.005 0)", borderRight: "1px solid oklch(1 0 0 / 0.15)",
+                            borderBottom: "1px solid oklch(1 0 0 / 0.15)", transform: "rotate(45deg)"
+                        }} />
+                    </div>
+                </div>
+            )}
+
             {/* Execution status indicator */}
             {execStatus !== "idle" && (
                 <div
@@ -154,8 +217,8 @@ export function BaseNodeV2({
             {showTargetHandle && (
                 <Handle
                     type="target"
-                    position={Position.Top}
-                    style={getHandleStyle(accent)}
+                    position={Position.Left}
+                    style={{ ...getHandleStyle(accent), ...targetHandleStyle }}
                 />
             )}
 
@@ -164,18 +227,18 @@ export function BaseNodeV2({
                     <Handle
                         key={h.id}
                         type="source"
-                        position={Position.Bottom}
+                        position={Position.Right}
                         id={h.id}
                         style={{
                             ...getHandleStyle(accent),
-                            left: `${h.position}%`,
+                            top: `${h.position}%`,
                         }}
                     />
                 ))
             ) : showSourceHandle ? (
                 <Handle
                     type="source"
-                    position={Position.Bottom}
+                    position={Position.Right}
                     style={getHandleStyle(accent)}
                 />
             ) : null}

@@ -59,6 +59,7 @@ export async function POST(
                     adapter = getAdapterForAgent(agentId, 'openclaw', {
                         baseUrl: activeConn.openclaw.wsUrl || activeConn.openclaw.httpUrl,
                         wsToken: activeConn.openclaw.token,
+                        userId: userId,
                     });
                 }
             } catch (e) {

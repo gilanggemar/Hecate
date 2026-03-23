@@ -10,7 +10,7 @@ import {
     Bot, User, Loader2, MessageSquare, Activity, Terminal as TerminalIcon,
     Wifi, WifiOff, ArrowDown, PanelLeftOpen, PanelLeftClose, ArrowUpRight,
     FileText, Image as ImageIcon, X as XIcon, Package, Check, Pencil,
-    Target, Shield, Compass
+    Target, Shield, Compass, Copy
 } from "lucide-react";
 import {
     IconPlus, IconPaperclip, IconCode, IconWorld, IconHistory,
@@ -55,6 +55,8 @@ import { QuotedReplyBanner } from "@/components/chat/QuotedReplyBanner";
 import { StrategyModeSwitcher, StrategyMode, getStrategySystemPrompt } from "@/components/chat/StrategyModeSwitcher";
 import { NextBestActionChip } from "@/components/chat/NextBestActionChip";
 import { HandoffPacketModal } from "@/components/chat/HandoffPacketModal";
+import { ProjectPanel } from "@/components/chat/ProjectPanel";
+import { useProjectStore } from "@/store/useProjectStore";
 
 /* ─── Message Content Renderer (Clean Text Only) ─── */
 const renderMessageContent = (content: string) => {
@@ -121,7 +123,7 @@ const detectModeIndicators = (content: string) => {
 
 /* ─── Page Component ─── */
 export default function ChatPage() {
-    const { integratedAgents, getMessagesForAgent, dispatchMessage, isOpenClawConnected } = useChatRouter();
+    const { integratedAgents, getMessagesForAgent, dispatchMessage, isOpenClawConnected, sendToolsHandshake } = useChatRouter();
     const { sessions, setChatMessages } = useSocketStore();
     const router = useRouter();
     const [message, setMessage] = useState("");
@@ -131,7 +133,6 @@ export default function ChatPage() {
         }
         return "";
     });
-    const [selectedSessionKey, setSelectedSessionKey] = useState<string>("");
     const [activeConversationId, setActiveConversationId] = useState<string | undefined>(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('nerv_active_conversation') || undefined;
@@ -175,17 +176,17 @@ export default function ChatPage() {
         if (activeConversationId && activeConversationId !== storeConvoId) {
             fetchMessages(activeConversationId);
             // Clear live socket messages and process tree runs so they don't bleed into the new conversation
-            const sk = selectedSessionKey || `agent:${selectedAgentId}:webchat`;
+            const sk = `agent:${selectedAgentId}:nchat`;
             setChatMessages([], sk);
             useOpenClawStore.getState().clearRunsForSession(sk);
         } else if (!activeConversationId) {
-            const sk = selectedSessionKey || `agent:${selectedAgentId}:webchat`;
+            const sk = `agent:${selectedAgentId}:nchat`;
             setChatMessages([], sk);
             useOpenClawStore.getState().clearRunsForSession(sk);
             setDbMessages([]);
             setStoreActiveConversation(null); // Clear storeConvoId so returning to this conversation triggers fetch
         }
-    }, [activeConversationId, storeConvoId, fetchMessages, setChatMessages, setDbMessages, setStoreActiveConversation, selectedSessionKey, selectedAgentId]);
+    }, [activeConversationId, storeConvoId, fetchMessages, setChatMessages, setDbMessages, setStoreActiveConversation, selectedAgentId]);
     const [displayLimit, setDisplayLimit] = useState(10);
     const [editDraft, setEditDraft] = useState("");
     
@@ -193,7 +194,22 @@ export default function ChatPage() {
     useEffect(() => {
         setDisplayLimit(10);
     }, [activeConversationId, selectedAgentId]);
-    const [showSidebar, setShowSidebar] = useState(false);
+
+    // Send Tools Handshake automatically per session
+    useEffect(() => {
+        const agent = integratedAgents.find(a => a.id === selectedAgentId);
+        if (selectedAgentId && agent && agent.provider !== 'agent-zero' && isOpenClawConnected && sendToolsHandshake) {
+            const sessionKey = `agent:${selectedAgentId}:nchat`;
+            const handshakeKey = `hs_v7_${sessionKey}`; // v7: direct gateway injection
+            if (!sessionStorage.getItem(handshakeKey)) {
+                console.warn("[DEBUG] TRIGGERING DIRECT HANDSHAKE!", sessionKey);
+                sendToolsHandshake(sessionKey, selectedAgentId);
+                sessionStorage.setItem(handshakeKey, 'true');
+            }
+        }
+    }, [selectedAgentId, integratedAgents, isOpenClawConnected, sendToolsHandshake]);
+
+    const [showSidebar, setShowSidebar] = useState(true);
     const [processSidebarWidth, setProcessSidebarWidth] = useState(350);
     const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
     const [missionConfig, setMissionConfig] = useState<MissionConfig>({
@@ -220,6 +236,27 @@ export default function ChatPage() {
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
     const [isBranching, setIsBranching] = useState(false);
+
+    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+    const handleCopyMessage = async (content: string, id: string) => {
+        // Strip out trailing XML tags when copying, to match what is displayed
+        let finalContent = content
+            .replace(/<\/?(?:final|function|tool|call|response)[^>]*>?\s*$/i, '')
+            .replace(/<\/[a-zA-Z]*>?\s*$/i, '')
+            .trim();
+        
+        finalContent = finalContent
+            .replace(/<thinking[\s>][\s\S]*?<\/thinking>/gi, '')
+            .replace(/<thinking[\s>][\s\S]*$/gi, '')
+            .replace(/<\/thinking>/gi, '')
+            .replace(/<thinking\s*$/gi, '')
+            .trim();
+
+        await navigator.clipboard.writeText(finalContent);
+        setCopiedMessageId(id);
+        setTimeout(() => setCopiedMessageId(null), 2000);
+    };
 
     const handleFilesSelected = (files: File[]) => {
         if (files.length === 0) return;
@@ -340,20 +377,6 @@ export default function ChatPage() {
         }
     }, [integratedAgents, selectedAgentId]);
 
-    // Agent sessions
-    const agentSessions = useMemo(() => {
-        if (!selectedAgentId) return [];
-        return sessions.filter((s: any) => s.agentId === selectedAgentId);
-    }, [sessions, selectedAgentId]);
-
-    // Default to webchat session
-    useEffect(() => {
-        if (agentSessions.length > 0 && !selectedSessionKey) {
-            const webchat = agentSessions.find((s: any) => s.key?.includes('webchat'));
-            setSelectedSessionKey(webchat?.key || agentSessions[0]?.key || "");
-        }
-    }, [agentSessions, selectedSessionKey]);
-
     // Filter messages
     const filteredMessages = useMemo(() => {
         if (!selectedAgentId) return [];
@@ -361,13 +384,14 @@ export default function ChatPage() {
     }, [selectedAgentId, getMessagesForAgent, integratedAgents]);
 
     // ─── Persist completed assistant messages to Supabase ───
-    // When a streaming message finishes (streaming → false), save it to DB
+    // When a streaming message finishes (streaming → false), wait briefly to ensure it has fully stabilized, then save to DB.
     const persistedMsgIds = useRef<Set<string>>(new Set());
+    const persistTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
     useEffect(() => {
         if (!activeConversationId) return;
 
         for (const msg of filteredMessages) {
-            // Only persist completed assistant messages that haven't been saved yet
             if (
                 msg.role === 'assistant' &&
                 msg.streaming === false &&
@@ -375,26 +399,43 @@ export default function ChatPage() {
                 msg.content.trim() &&
                 !persistedMsgIds.current.has(msg.id)
             ) {
-                persistedMsgIds.current.add(msg.id);
+                // If text is still changing (react hooks refiring), we clear and restart the timeout
+                if (persistTimeouts.current.has(msg.id)) {
+                    clearTimeout(persistTimeouts.current.get(msg.id)!);
+                }
 
-                // Fire-and-forget persist to Supabase
-                fetch('/api/chat/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        conversation_id: activeConversationId,
-                        role: 'assistant',
-                        content: msg.content,
-                        metadata: {
-                            agentId: msg.agentId || selectedAgentId,
-                            tool_calls: msg.tool_calls?.length || 0,
-                            source: 'streaming',
-                        },
-                    }),
-                }).catch(err => console.error('[Persist assistant msg]', err));
+                const timeoutId = setTimeout(() => {
+                    persistedMsgIds.current.add(msg.id);
+                    persistTimeouts.current.delete(msg.id);
+
+                    // Fire-and-forget persist to Supabase
+                    fetch('/api/chat/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            conversation_id: activeConversationId,
+                            role: 'assistant',
+                            content: msg.content,
+                            metadata: {
+                                agentId: msg.agentId || selectedAgentId,
+                                tool_calls: msg.tool_calls?.length || 0,
+                                source: 'streaming',
+                            },
+                        }),
+                    }).catch(err => console.error('[Persist assistant msg]', err));
+                }, 1500); // 1.5s debounce ensures no late-arriving completion chunks are missed
+
+                persistTimeouts.current.set(msg.id, timeoutId);
             }
         }
     }, [filteredMessages, activeConversationId, selectedAgentId]);
+
+    // Cleanup persist timeouts on unmount
+    useEffect(() => {
+        return () => {
+            persistTimeouts.current.forEach(t => clearTimeout(t));
+        };
+    }, []);
 
     // Build the master list by merging DB history + live socket messages
     const allConversationMessages = useMemo(() => {
@@ -411,14 +452,36 @@ export default function ChatPage() {
             if (!hydrated.timestamp && hydrated.created_at) {
                 hydrated.timestamp = new Date(hydrated.created_at).toLocaleTimeString();
             }
+            // Add a numeric sort key from created_at for reliable ordering
+            hydrated._sortTime = hydrated.created_at
+                ? new Date(hydrated.created_at).getTime()
+                : 0;
+            // Also use sequence_number if available for sub-second ordering
+            hydrated._seqNum = hydrated.sequence_number ?? 0;
             return hydrated;
         });
 
         const merged = [...hydratedDb];
         const dbIds = new Set(hydratedDb.map(m => String(m.id)));
         for (const m of filteredMessages) {
-             if (!dbIds.has(String(m.id))) merged.push(m);
+             if (!dbIds.has(String(m.id))) {
+                 // Live messages: use _sortTime if set during optimistic add, otherwise use Date.now()
+                 const liveMsg = { ...m } as any;
+                 if (!liveMsg._sortTime) {
+                     liveMsg._sortTime = Date.now();
+                 }
+                 liveMsg._seqNum = liveMsg._seqNum ?? Number.MAX_SAFE_INTEGER;
+                 merged.push(liveMsg);
+             }
         }
+
+        // Sort by _sortTime (primary), then _seqNum (tiebreaker for same-second messages)
+        merged.sort((a: any, b: any) => {
+            const timeDiff = (a._sortTime || 0) - (b._sortTime || 0);
+            if (timeDiff !== 0) return timeDiff;
+            return (a._seqNum || 0) - (b._seqNum || 0);
+        });
+
         return merged;
     }, [activeConversationId, dbMessages, filteredMessages]);
 
@@ -476,163 +539,182 @@ export default function ChatPage() {
         const isAgentOnline = activeAgent?.isOnline;
 
         if (!message.trim() || !isAgentOnline || !selectedAgentId) return;
-        const sessionKey = selectedSessionKey || `agent:${selectedAgentId}:webchat`;
+        const sessionKey = `agent:${selectedAgentId}:nchat`;
 
+        // ── Capture values BEFORE clearing UI ──
         let resolvedMessage = message;
         resolvedMessage = resolvedMessage.replace(/⟦([^⟧]+)⟧/g, (match, name) => {
             const chunk = chunks.find(c => c.name === name);
             return chunk ? chunk.content : match;
         });
 
-        // Clean user message (what the user actually typed) — for display only
         const cleanMessage = resolvedMessage.trim();
+        const capturedQuotedReply = quotedReply;
+        const capturedStrategyMode = strategyMode;
+        const capturedMissionConfig = missionConfig;
+        const capturedPendingFiles = [...pendingFiles];
+        const capturedAgentName = selectedAgentName;
+        const capturedAgentId = selectedAgentId;
+        const capturedActiveAgent = activeAgent;
+        const capturedConvoId = activeConversationId;
 
-        // Build the injected message (sent to agent in background)
+        // ── INSTANTLY clear input + UI state (no delay) ──
+        setMessage("");
+        setPendingFiles([]);
+        setEditingMessageId(null);
+        if (capturedQuotedReply) setQuotedReply(null);
+
+        // ── Build the injected message (for agent, not for display) ──
         let finalMessage = cleanMessage;
 
-        // Inject strategy mode prefix
-        const strategyPrefix = getStrategySystemPrompt(strategyMode);
+        // Inject project context (custom instructions + file contents)
+        const projectContext = useProjectStore.getState().getProjectContext();
+        if (projectContext) {
+            finalMessage = `${projectContext}${finalMessage}`;
+        }
+
+        const strategyPrefix = getStrategySystemPrompt(capturedStrategyMode);
         if (strategyPrefix) {
             finalMessage = `${strategyPrefix}\n\n${finalMessage}`;
         }
 
-        // Inject mission config (goal + constraints)
-        const missionPrefix = getMissionSystemPrompt(missionConfig);
+        const missionPrefix = getMissionSystemPrompt(capturedMissionConfig);
         if (missionPrefix) {
             finalMessage = `${missionPrefix}\n\n${finalMessage}`;
         }
 
-        // Inject quoted reply context
-        if (quotedReply) {
-            finalMessage = `> ${quotedReply.text}\n\n${finalMessage}`;
-            setQuotedReply(null);
+        if (capturedQuotedReply) {
+            finalMessage = `> ${capturedQuotedReply.text}\n\n${finalMessage}`;
         }
 
-        // Build mode indicators metadata for this message
         const modeIndicators = {
-            hasGoal: !!missionConfig.goalText,
-            hasConstraints: missionConfig.constraints.filter(c => c.locked).length > 0,
-            hasStrategy: strategyMode !== 'off',
-            strategyMode: strategyMode !== 'off' ? strategyMode : undefined,
+            hasGoal: !!capturedMissionConfig.goalText,
+            hasConstraints: capturedMissionConfig.constraints.filter(c => c.locked).length > 0,
+            hasStrategy: capturedStrategyMode !== 'off',
+            strategyMode: capturedStrategyMode !== 'off' ? capturedStrategyMode : undefined,
         };
 
-        // Process attachments: read to base64 for local display, upload to Supabase Storage for public URL
-        let attachments: any[] | undefined = undefined;
-        let publicAttachments: any[] | undefined = undefined;
-        if (pendingFiles.length > 0) {
-            // Step 1: Read files to base64 for immediate local rendering
-            const base64Attachments = await Promise.all(pendingFiles.map(async pf => {
-                return new Promise<any>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        resolve({
-                            name: pf.file.name,
-                            type: pf.file.type,
-                            size: pf.file.size,
-                            url: reader.result as string // base64 data URL for local display
-                        });
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(pf.file);
-                });
-            }));
+        // ── Build base64 previews synchronously from existing preview URLs ──
+        // For images we already have blob preview URLs from pendingFiles; for non-images we show file icons.
+        // This avoids any FileReader await before displaying the message.
+        const localAttachments: any[] = capturedPendingFiles.map(pf => ({
+            name: pf.file.name,
+            type: pf.file.type,
+            size: pf.file.size,
+            url: pf.previewUrl || undefined, // blob URL for images, undefined for non-images
+        }));
 
-            // Step 2: Upload each to Supabase Storage to get public https:// URLs
-            publicAttachments = await Promise.all(base64Attachments.map(async (att) => {
-                try {
-                    const res = await fetch('/api/chat/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: att.name, type: att.type, data: att.url }),
-                    });
-                    if (res.ok) {
-                        const { url: publicUrl } = await res.json();
-                        return { ...att, publicUrl };
-                    }
-                } catch (err) {
-                    console.error('[Upload attachment]', err);
-                }
-                return { ...att, publicUrl: null };
-            }));
-
-            // Use base64 URLs for local socket store display
-            attachments = base64Attachments;
-        }
-
-
-
-        // Auto-create conversation via unified store if none is active
-        let convoId = activeConversationId;
-        if (!convoId) {
-            try {
-                const newId = await chatStore.createConversation(
-                    selectedAgentId,
-                    cleanMessage.substring(0, 60) || `Chat with ${selectedAgentName}`
-                );
-                if (newId) {
-                    convoId = newId;
-                    setActiveConversationId(newId);
-                    setSidebarRefreshTrigger(prev => prev + 1);
-                }
-            } catch (err) {
-                console.error('Failed to auto-create conversation:', err);
-            }
-        }
-
-        // Persist user message to Supabase — store CLEAN message (no injected prefixes)
-        if (convoId) {
-            try {
-                await fetch('/api/chat/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        conversation_id: convoId,
-                        role: 'user',
-                        content: cleanMessage,
-                        metadata: {
-                            strategyMode,
-                            quotedReply: quotedReply?.text,
-                            modeIndicators,
-                            attachments: publicAttachments?.map(a => ({
-                                name: a.name,
-                                type: a.type,
-                                url: a.publicUrl || a.url, // prefer public URL, fallback to base64
-                            })),
-                        },
-                    }),
-                });
-            } catch (err) {
-                console.error('Failed to persist user message:', err);
-            }
-        }
-
-        // Manually add the CLEAN user message to the socket store for display (with mode indicators)
-        // Then dispatch the INJECTED message to the agent with skipStoreAdd=true
-        if (activeAgent?.provider !== 'agent-zero') {
+        // ── INSTANTLY add user message to the store (optimistic) ──
+        if (capturedActiveAgent?.provider !== 'agent-zero') {
             const { addChatMessage: addToStore } = useSocketStore.getState();
             addToStore({
                 id: `user-${crypto.randomUUID?.() || Date.now()}`,
                 role: 'user',
                 content: cleanMessage,
                 timestamp: new Date().toLocaleTimeString(),
-                agentId: selectedAgentId,
+                agentId: capturedAgentId,
                 sessionKey: sessionKey,
                 streaming: false,
-                attachments: attachments || publicAttachments,
+                attachments: localAttachments.length > 0 ? localAttachments : undefined,
                 modeIndicators,
+                _sortTime: Date.now(),
             } as any);
-            // Dispatch injected message to agent — skip adding to store (we already added the clean version)
-            dispatchMessage(selectedAgentId, finalMessage, sessionKey, publicAttachments || attachments, true);
+            // ── INSTANTLY dispatch to agent (don't wait for uploads or DB) ──
+            dispatchMessage(capturedAgentId, finalMessage, sessionKey, localAttachments.length > 0 ? localAttachments : undefined, true);
         } else {
-            // For Agent Zero: sendA0Message adds its own user message to the A0 store.
-            // We store mode indicators in a ref map so the renderer can look them up.
             a0ModeIndicatorsRef.current.set(finalMessage, modeIndicators);
-            dispatchMessage(selectedAgentId, finalMessage, sessionKey, publicAttachments || attachments);
+            dispatchMessage(capturedAgentId, finalMessage, sessionKey, localAttachments.length > 0 ? localAttachments : undefined);
         }
 
-        setMessage("");
-        setPendingFiles([]);
-        setEditingMessageId(null);
+        // ── BACKGROUND: file upload, conversation creation, DB persistence ──
+        // All of this runs in the background — the UI is already updated above.
+        (async () => {
+            try {
+                // 1. Read files to base64 + upload to Supabase Storage (background)
+                let publicAttachments: any[] | undefined = undefined;
+                if (capturedPendingFiles.length > 0) {
+                    const base64Attachments = await Promise.all(capturedPendingFiles.map(async pf => {
+                        return new Promise<any>((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                resolve({
+                                    name: pf.file.name,
+                                    type: pf.file.type,
+                                    size: pf.file.size,
+                                    url: reader.result as string,
+                                });
+                            };
+                            reader.onerror = reject;
+                            reader.readAsDataURL(pf.file);
+                        });
+                    }));
+
+                    publicAttachments = await Promise.all(base64Attachments.map(async (att) => {
+                        try {
+                            const res = await fetch('/api/chat/upload', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: att.name, type: att.type, data: att.url }),
+                            });
+                            if (res.ok) {
+                                const { url: publicUrl } = await res.json();
+                                return { ...att, publicUrl };
+                            }
+                        } catch (err) {
+                            console.error('[Upload attachment]', err);
+                        }
+                        return { ...att, publicUrl: null };
+                    }));
+                }
+
+                // 2. Auto-create conversation if needed (background)
+                let convoId = capturedConvoId;
+                if (!convoId) {
+                    try {
+                        const newId = await chatStore.createConversation(
+                            capturedAgentId,
+                            cleanMessage.substring(0, 60) || `Chat with ${capturedAgentName}`
+                        );
+                        if (newId) {
+                            convoId = newId;
+                            setActiveConversationId(newId);
+                            setSidebarRefreshTrigger(prev => prev + 1);
+                        }
+                    } catch (err) {
+                        console.error('Failed to auto-create conversation:', err);
+                    }
+                }
+
+                // 3. Persist user message to Supabase (background)
+                if (convoId) {
+                    try {
+                        await fetch('/api/chat/messages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                conversation_id: convoId,
+                                role: 'user',
+                                content: cleanMessage,
+                                metadata: {
+                                    strategyMode: capturedStrategyMode,
+                                    quotedReply: capturedQuotedReply?.text,
+                                    modeIndicators,
+                                    attachments: publicAttachments?.map(a => ({
+                                        name: a.name,
+                                        type: a.type,
+                                        url: a.publicUrl || a.url,
+                                    })),
+                                },
+                            }),
+                        });
+                    } catch (err) {
+                        console.error('Failed to persist user message:', err);
+                    }
+                }
+            } catch (err) {
+                console.error('[Background persist error]', err);
+            }
+        })();
     };
 
     const handleEscalate = () => {
@@ -649,7 +731,7 @@ export default function ChatPage() {
     }, [integratedAgents, selectedAgentId]);
 
     const activeAgent = integratedAgents.find(a => a.id === selectedAgentId);
-    const isGlobalOrAgentConnected = activeAgent?.provider === 'agent-zero' ? activeAgent.isOnline : isOpenClawConnected;
+    const isGlobalOrAgentConnected = activeAgent?.isOnline ?? false;
     const isAgentZero = activeAgent?.provider === 'agent-zero' || activeAgent?.provider === 'external';
 
     // Build allAgents list for sidebar
@@ -668,7 +750,7 @@ export default function ChatPage() {
     }
 
     return (
-        <div className="flex h-full gap-0">
+        <div className="flex h-full gap-0 -mx-3">
 
             {/* ═══ LEFT: Chat History Sidebar (collapsible) ═══ */}
             <div
@@ -676,7 +758,7 @@ export default function ChatPage() {
                 style={{
                     width: showSidebar ? 280 : 0,
                     opacity: showSidebar ? 1 : 0,
-                    marginLeft: showSidebar ? -20 : 0,
+                    marginLeft: showSidebar ? -8 : 0,
                     marginRight: showSidebar ? 12 : 0,
                     borderRight: showSidebar ? '1px solid var(--border)' : 'none',
                 }}
@@ -723,12 +805,6 @@ export default function ChatPage() {
                                     onClick={() => {
                                         setSelectedAgentId(agent.id);
                                         
-                                        // Auto-select the default webchat session
-                                        const webchatKey = `agent:${agent.id}:webchat`;
-                                        const hasWebchat = agentSessions.some((s: any) => s.key === webchatKey);
-                                        const newSessionKey = hasWebchat ? webchatKey : agentSessions.find((s:any) => s.agentId === agent.id)?.key || "";
-                                        setSelectedSessionKey(newSessionKey);
-                                        
                                         // Don't blank out the conversation. Instead, trigger a fresh state 
                                         // so the Sidebar and page load seamlessly.
                                         setActiveConversationId(undefined); 
@@ -749,77 +825,6 @@ export default function ChatPage() {
                                 </button>
                             );
                         })}
-
-                        {/* Session selector */}
-                        {(() => {
-                            const items = [...agentSessions];
-                            const webchatKey = `agent:${selectedAgentId}:webchat`;
-                            if (!items.some((s: any) => s.key === webchatKey)) {
-                                items.unshift({ key: webchatKey, kind: 'default', channel: 'webchat', displayName: 'webchat' } as any);
-                            }
-                            const displayKey = selectedSessionKey || webchatKey;
-                            return (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground ml-1"
-                                        >
-                                            <span>{displayKey?.split(':')?.[2] || 'session'}</span>
-                                            <IconChevronDown className="size-3" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="rounded-2xl p-1.5">
-                                        <DropdownMenuGroup className="space-y-1">
-                                            {items.map((s: any) => (
-                                                <DropdownMenuItem
-                                                    key={s.key}
-                                                    className="rounded-[calc(1rem-6px)] text-xs"
-                                                    onClick={() => setSelectedSessionKey(s.key)}
-                                                >
-                                                    {s.key?.split(':')?.[2] || s.key || 'session'}
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuGroup>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            );
-                        })()}
-                    </div>
-
-                    {/* Right side: Escalate to Summit */}
-                    <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                            onClick={handleEscalate}
-                            disabled={!selectedAgentId || filteredMessages.length === 0}
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-8 px-3 gap-1.5 rounded-full disabled:opacity-30 transition-all"
-                            style={{ color: 'var(--nerv-text-tertiary)' }}
-                            onMouseEnter={e => {
-                                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px var(--nerv-cyan-glow)';
-                                (e.currentTarget as HTMLElement).style.color = 'var(--nerv-cyan)';
-                            }}
-                            onMouseLeave={e => {
-                                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-                                (e.currentTarget as HTMLElement).style.color = 'var(--nerv-text-tertiary)';
-                            }}
-                        >
-                            <ArrowUpRight className="w-3 h-3" />
-                            Escalate to Summit
-                        </Button>
-                        <Button
-                            onClick={() => setShowHandoff(true)}
-                            disabled={!selectedAgentId || visibleMessages.length === 0}
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-8 px-3 gap-1.5 rounded-full disabled:opacity-30 transition-all"
-                            style={{ color: 'var(--nerv-text-tertiary)' }}
-                        >
-                            <Package className="w-3 h-3" />
-                            Handoff
-                        </Button>
                     </div>
                 </div>
 
@@ -844,13 +849,7 @@ export default function ChatPage() {
                             </div>
                         )}
 
-                        {/* ─── Mission Bar ─── */}
-                        <MissionBar
-                            conversationId={activeConversationId}
-                            missionConfig={missionConfig}
-                            onMissionChange={setMissionConfig}
-                            className="mx-0 mb-2"
-                        />
+                        {/* ─── Mission Bar moved to input area ─── */}
 
                         {/* Messages row: scroll + timeline scrubber */}
                         <div className="flex-1 min-h-0 flex">
@@ -865,6 +864,11 @@ export default function ChatPage() {
                                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-60 gap-3">
                                     <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--nerv-cyan)' }} />
                                     <p className="text-sm">Loading Neural Archives...</p>
+                                </div>
+                            ) : !isGlobalOrAgentConnected ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-60 gap-3">
+                                    <Activity className="w-10 h-10" />
+                                    <p className="text-sm">Agent is offline — Waiting for connection...</p>
                                 </div>
                             ) : visibleMessages.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-60 gap-3">
@@ -938,7 +942,7 @@ export default function ChatPage() {
                                                                             }
 
                                                                             // 2. Clear socket messages for this session
-                                                                            const sk = selectedSessionKey || `agent:${selectedAgentId}:webchat`;
+                                                                            const sk = `agent:${selectedAgentId}:nchat`;
                                                                             setChatMessages([], sk);
 
                                                                             // 3. Re-fetch DB messages so UI shows truncated history
@@ -947,7 +951,7 @@ export default function ChatPage() {
                                                                             }
 
                                                                             // 4. Dispatch the edited message as a new user message (will be persisted + sent to agent)
-                                                                            const sessionKey = selectedSessionKey || `agent:${selectedAgentId}:webchat`;
+                                                                            const sessionKey = `agent:${selectedAgentId}:nchat`;
 
                                                                             // Persist edited user message to DB
                                                                             if (activeConversationId) {
@@ -1036,6 +1040,9 @@ export default function ChatPage() {
                                                             </div>
                                                             {/* Hover toolbar — Edit & Branch */}
                                                             <div className="absolute -top-7 right-0 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 px-1 py-0.5 rounded-lg z-10" style={{ background: 'var(--popover)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                                                                <button onClick={() => handleCopyMessage(msg.content, msg.id)} className="p-1 rounded hover:bg-white/10 transition-colors" title="Copy message">
+                                                                    {copiedMessageId === msg.id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+                                                                </button>
                                                                 <button onClick={() => { setEditDraft(msg.content); setEditingMessageId(msg.id); }} className="p-1 rounded hover:bg-white/10 transition-colors" title="Edit message"><Pencil className="w-3 h-3" style={{ color: 'var(--nerv-warn)' }} /></button>
                                                                 <button onClick={async () => {
                                                                     if (!activeConversationId || !selectedAgentId || isBranching) return;
@@ -1135,6 +1142,57 @@ export default function ChatPage() {
                                 </button>
                             )}
 
+                            {/* ─── Mission Bar & Action Buttons ─── */}
+                            <div className="flex items-center justify-between w-full mb-2">
+                                <MissionBar
+                                    conversationId={activeConversationId}
+                                    missionConfig={missionConfig}
+                                    onMissionChange={setMissionConfig}
+                                    className="mx-0"
+                                />
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Button
+                                        onClick={handleEscalate}
+                                        disabled={!selectedAgentId || filteredMessages.length === 0}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-[11px] h-8 px-3 gap-1.5 rounded-full disabled:opacity-30 transition-all border border-transparent hover:border-border/50"
+                                        style={{ color: 'var(--nerv-text-tertiary)' }}
+                                        onMouseEnter={e => {
+                                            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px var(--nerv-cyan-glow)';
+                                            (e.currentTarget as HTMLElement).style.color = 'var(--nerv-cyan)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                                            (e.currentTarget as HTMLElement).style.color = 'var(--nerv-text-tertiary)';
+                                        }}
+                                    >
+                                        <ArrowUpRight className="w-3 h-3" />
+                                        Escalate to Summit
+                                    </Button>
+                                    <Button
+                                        onClick={() => setShowHandoff(true)}
+                                        disabled={!selectedAgentId || visibleMessages.length === 0}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-[11px] h-8 px-3 gap-1.5 rounded-full disabled:opacity-30 transition-all border border-transparent hover:border-border/50"
+                                        style={{ color: 'var(--nerv-text-tertiary)' }}
+                                    >
+                                        <Package className="w-3 h-3" />
+                                        Handoff
+                                    </Button>
+
+                                    {/* Project Selector */}
+                                    {selectedAgentId && (
+                                        <ProjectPanel
+                                            agentId={selectedAgentId}
+                                            agentName={selectedAgentName}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Quoted Reply Banner */}
                             {quotedReply && (
                                 <QuotedReplyBanner
@@ -1205,8 +1263,8 @@ export default function ChatPage() {
                                             onSend={handleSendMessage}
                                             placeholder={activeAgent?.isOnline ? "Ask anything" : "Connection offline"}
                                             disabled={!activeAgent?.isOnline || !selectedAgentId}
-                                            className="w-full bg-transparent! p-0 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder-muted-foreground resize-none border-none outline-none text-[13px] min-h-10 max-h-[25vh]"
-                                            rows={1}
+                                            className="w-full bg-transparent p-0 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder-muted-foreground resize-none border-none outline-none text-[13px] min-h-10 max-h-[25vh]"
+                                            rows={2}
                                             onInput={(e) => {
                                                 const target = e.target as HTMLTextAreaElement;
                                                 target.style.height = "auto";

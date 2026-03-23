@@ -29,6 +29,13 @@ import { HumanApprovalNode } from "./nodes/HumanApprovalNode";
 import { ConditionNodeV2 } from "./nodes/ConditionNodeV2";
 import { OutputNodeV2 } from "./nodes/OutputNodeV2";
 import { GroupNode } from "./nodes/GroupNode";
+import { DelayNode } from "./nodes/DelayNode";
+import { VariableSetNode } from "./nodes/VariableSetNode";
+import { HttpRequestNode } from "./nodes/HttpRequestNode";
+import { LoopNode } from "./nodes/LoopNode";
+import { NoteNode } from "./nodes/NoteNode";
+import { CheckpointNode } from "./nodes/CheckpointNode";
+import { ConvergenceNode } from "./nodes/ConvergenceNode";
 
 import { DataEdge } from "./edges/DataEdge";
 import { ExecutingEdge } from "./edges/ExecutingEdge";
@@ -45,6 +52,14 @@ const nodeTypes: NodeTypes = {
     condition: ConditionNodeV2,
     output: OutputNodeV2,
     group: GroupNode,
+    // New V2 nodes
+    delay: DelayNode,
+    variable_set: VariableSetNode,
+    http_request: HttpRequestNode,
+    loop: LoopNode,
+    note: NoteNode,
+    checkpoint: CheckpointNode,
+    convergence: ConvergenceNode,
     // V1 backward-compatible aliases
     trigger: ManualTriggerNode,
     agent: AgentStepNode,
@@ -78,6 +93,11 @@ function nodeColor(node: Node) {
         condition: "oklch(0.65 0.19 25)",
         output: "oklch(0.72 0.14 195)",
         group: "oklch(0.55 0.15 232)",
+        delay: "oklch(0.75 0.14 80)",
+        variable_set: "oklch(0.68 0.12 200)",
+        http_request: "oklch(0.72 0.16 160)",
+        loop: "oklch(0.70 0.15 310)",
+        note: "oklch(0.72 0.08 80)",
     };
     return m[node.type || ""] || "oklch(0.5 0 0)";
 }
@@ -117,6 +137,11 @@ export default function WorkflowCanvas() {
     const setHoveredGroupId = useWorkflowBuilderStore((s) => s.setHoveredGroupId);
     const addNodesToGroup = useWorkflowBuilderStore((s) => s.addNodesToGroup);
     const autoResizeGroup = useWorkflowBuilderStore((s) => s.autoResizeGroup);
+    
+    const copySelection = useWorkflowBuilderStore((s) => s.copySelection);
+    const cutSelection = useWorkflowBuilderStore((s) => s.cutSelection);
+    const pasteClipboard = useWorkflowBuilderStore((s) => s.pasteClipboard);
+
     const hoveredGroupIdRef = useRef<string | null>(null);
     const nodeDoubleClickedRef = useRef(false);
     const { getNodes } = useReactFlow();
@@ -153,10 +178,13 @@ export default function WorkflowCanvas() {
         return () => { if (idleTimerRef.current) clearTimeout(idleTimerRef.current); };
     }, [resetMinimapIdle]);
 
-    // ─── Edge Cutting State ──────────────────────────────────────────
+    // ─── Interaction States (Cutting & Quick Connect) ────────────────
     const [isCutting, setIsCutting] = useState(false);
     const [cutLine, setCutLine] = useState<{ x: number; y: number }[]>([]);
     const [edgesToCut, setEdgesToCut] = useState<string[]>([]);
+
+    const [isQuickConnecting, setIsQuickConnecting] = useState<string | null>(null);
+    const [quickConnectTo, setQuickConnectTo] = useState<{ x: number; y: number } | null>(null);
 
     // ─── Node Click: select only, explicitly close config panel ──────
     const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
@@ -182,31 +210,44 @@ export default function WorkflowCanvas() {
         return isValidConnection(connection, useWorkflowBuilderStore.getState().nodes);
     }, []);
 
-    // Delete key support
+    // Keyboard shortcuts (Delete, Copy, Cut, Paste)
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
-            if (e.key === "Delete" || e.key === "Backspace") {
-                const active = document.activeElement;
-                if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)) return;
-                removeSelectedNodes();
-            }
-        };
-        window.addEventListener("keydown", handler);
-        return () => window.removeEventListener("keydown", handler);
-    }, [removeSelectedNodes]);
+            const active = document.activeElement;
+            if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)) return;
 
-    // Escape key support to cancel cutting
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && isCutting) {
-                setIsCutting(false);
-                setCutLine([]);
-                setEdgesToCut([]);
+            if (e.key === "Delete" || e.key === "Backspace") {
+                removeSelectedNodes();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+                copySelection();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x") {
+                cutSelection();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+                pasteClipboard();
             }
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [isCutting]);
+    }, [removeSelectedNodes, copySelection, cutSelection, pasteClipboard]);
+
+    // Escape key support to cancel cutting or quick connect
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                if (isCutting) {
+                    setIsCutting(false);
+                    setCutLine([]);
+                    setEdgesToCut([]);
+                }
+                if (isQuickConnecting) {
+                    setIsQuickConnecting(null);
+                    setQuickConnectTo(null);
+                }
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [isCutting, isQuickConnecting]);
 
     // Double-click on empty pane = open favorites (skip if node was double-clicked)
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -219,7 +260,7 @@ export default function WorkflowCanvas() {
         setFavoritesModalOpen(true);
     }, [setFavoritesModalOpen]);
 
-    // ─── Edge Cutting Logic ──────────────────────────────────────────
+    // ─── Edge Interaction Logic (Cut & Quick Connect) ────────────────
     const handleContextMenu = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
     }, []);
@@ -227,17 +268,35 @@ export default function WorkflowCanvas() {
     const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         if (e.button === 2) { // Right click
             e.preventDefault();
-            setIsCutting(true);
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const nodeEl = elements.find(el => el.closest('.react-flow__node'))?.closest('.react-flow__node');
             const rect = e.currentTarget.getBoundingClientRect();
+            
+            if (nodeEl) {
+                const nodeId = nodeEl.getAttribute('data-id');
+                if (nodeId) {
+                    setIsQuickConnecting(nodeId);
+                    setQuickConnectTo({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    return;
+                }
+            }
+
+            setIsCutting(true);
             setCutLine([{ x: e.clientX - rect.left, y: e.clientY - rect.top }]);
             e.currentTarget.setPointerCapture(e.pointerId);
         }
     }, []);
 
     const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        if (isQuickConnecting) {
+            setQuickConnectTo({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            return;
+        }
+
         if (!isCutting) return;
         
-        const rect = e.currentTarget.getBoundingClientRect();
         setCutLine(prev => [...prev, { x: e.clientX - rect.left, y: e.clientY - rect.top }]);
 
         const elements = document.elementsFromPoint(e.clientX, e.clientY);
@@ -250,9 +309,44 @@ export default function WorkflowCanvas() {
                 }
             }
         }
-    }, [isCutting]);
+    }, [isCutting, isQuickConnecting]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        if (isQuickConnecting) {
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const targetNodeEl = elements.find(el => el.closest('.react-flow__node'))?.closest('.react-flow__node');
+            
+            if (targetNodeEl) {
+                const targetId = targetNodeEl.getAttribute('data-id');
+                if (targetId && targetId !== isQuickConnecting) {
+                    const sourceNode = useWorkflowBuilderStore.getState().nodes.find(n => n.id === isQuickConnecting);
+                    const edges = useWorkflowBuilderStore.getState().edges;
+                    
+                    let sourceHandle = null;
+                    if (sourceNode?.type === 'condition') {
+                        const hasTrue = edges.some(edge => edge.source === isQuickConnecting && edge.sourceHandle === 'condition-true');
+                        sourceHandle = hasTrue ? 'condition-false' : 'condition-true';
+                    } else if (sourceNode?.type === 'loop') {
+                        const hasLoopBody = edges.some(edge => edge.source === isQuickConnecting && edge.sourceHandle === 'loop_body');
+                        sourceHandle = hasLoopBody ? 'done' : 'loop_body';
+                    }
+
+                    const connection: Connection = {
+                        source: isQuickConnecting,
+                        sourceHandle: sourceHandle,
+                        target: targetId,
+                        targetHandle: null,
+                    };
+                    useWorkflowBuilderStore.getState().onConnect(connection);
+                }
+            }
+
+            setIsQuickConnecting(null);
+            setQuickConnectTo(null);
+            e.currentTarget.releasePointerCapture(e.pointerId);
+            return;
+        }
+
         if (isCutting) {
             if (edgesToCut.length > 0) {
                 onEdgesChange(edgesToCut.map(id => ({ type: 'remove', id })));
@@ -262,7 +356,7 @@ export default function WorkflowCanvas() {
             setEdgesToCut([]);
             e.currentTarget.releasePointerCapture(e.pointerId);
         }
-    }, [isCutting, edgesToCut, onEdgesChange]);
+    }, [isCutting, edgesToCut, onEdgesChange, isQuickConnecting]);
 
     // ─── Node drag: detect hover-over-group OR auto-resize parent group ──────
     const handleNodeDrag = useCallback((_event: React.MouseEvent, draggedNode: Node) => {
@@ -432,6 +526,41 @@ export default function WorkflowCanvas() {
                             strokeLinejoin: "round",
                         }}
                     />
+                </svg>
+            )}
+
+            {isQuickConnecting && quickConnectTo && (
+                <svg
+                    style={{
+                        position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+                        pointerEvents: "none", zIndex: 50,
+                    }}
+                >
+                    {(() => {
+                        const sourceEl = document.querySelector(`[data-id="${isQuickConnecting}"]`) as HTMLElement;
+                        if (!sourceEl) return null;
+                        
+                        const canvasEl = document.querySelector('.react-flow') as HTMLElement;
+                        const canvasRect = canvasEl.getBoundingClientRect();
+                        const sourceRect = sourceEl.getBoundingClientRect();
+                        
+                        const startX = sourceRect.left - canvasRect.left + sourceRect.width / 2;
+                        const startY = sourceRect.top - canvasRect.top + sourceRect.height / 2;
+                        
+                        return (
+                            <line
+                                x1={startX} y1={startY}
+                                x2={quickConnectTo.x} y2={quickConnectTo.y}
+                                stroke="var(--accent-base)"
+                                strokeWidth={3}
+                                strokeDasharray="6 4"
+                                style={{
+                                    filter: "drop-shadow(0 0 6px var(--accent-base))",
+                                    strokeLinecap: "round",
+                                }}
+                            />
+                        );
+                    })()}
                 </svg>
             )}
         </div>

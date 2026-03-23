@@ -101,6 +101,7 @@ interface WorkflowBuilderState {
     isDirty: boolean;
     canUndo: boolean;
     canRedo: boolean;
+    clipboard: { nodes: Node[], edges: Edge[] } | null;
 
     setNodes: (nodes: Node[]) => void;
     setEdges: (edges: Edge[]) => void;
@@ -140,6 +141,9 @@ interface WorkflowBuilderState {
     setDirty: (dirty: boolean) => void;
     hydrate: (nodes: Node[], edges: Edge[], meta: WorkflowMeta) => void;
     reset: () => void;
+    copySelection: () => void;
+    cutSelection: () => void;
+    pasteClipboard: () => void;
 }
 
 const INITIAL_META: WorkflowMeta = {
@@ -171,6 +175,7 @@ export const useWorkflowBuilderStore = create<WorkflowBuilderState>((set, get) =
     isDirty: false,
     canUndo: false,
     canRedo: false,
+    clipboard: null,
 
     setNodes: (nodes) => set({ nodes, isDirty: true }),
     setEdges: (edges) => set({ edges, isDirty: true }),
@@ -186,12 +191,20 @@ export const useWorkflowBuilderStore = create<WorkflowBuilderState>((set, get) =
             'condition-true': 'TRUE', 'condition-false': 'FALSE',
             'summit-text': 'TEXT', 'summit-exec': 'EXEC',
         };
+        const targetNode = get().nodes.find(n => n.id === connection.target);
+        const isMultiInput = targetNode?.type === 'convergence';
+        
+        let newEdges = get().edges;
+        if (!isMultiInput) {
+            newEdges = newEdges.filter(e => !(e.target === connection.target && (e.targetHandle === connection.targetHandle || (!e.targetHandle && !connection.targetHandle))));
+        }
+
         set({
             edges: addEdge({
                 ...connection,
                 type: edgeType,
                 data: { label: labelMap[handle] },
-            }, get().edges),
+            }, newEdges),
             isDirty: true,
         });
     },
@@ -263,6 +276,62 @@ export const useWorkflowBuilderStore = create<WorkflowBuilderState>((set, get) =
         nodes: get().nodes.map((n) => n.id === id ? { ...n, data: { ...n.data, ...data } } : n),
         isDirty: true,
     }),
+
+    copySelection: () => {
+        const nodes = get().nodes.filter(n => n.selected);
+        const edges = get().edges.filter(e => e.selected || (nodes.some(n => n.id === e.source) && nodes.some(n => n.id === e.target)));
+        if (nodes.length > 0) {
+            set({ clipboard: { nodes: structuredClone(nodes), edges: structuredClone(edges) } });
+        }
+    },
+
+    cutSelection: () => {
+        get().copySelection();
+        get().removeSelectedNodes();
+    },
+
+    pasteClipboard: () => {
+        const clip = get().clipboard;
+        if (!clip || clip.nodes.length === 0) return;
+
+        const idMap = new Map<string, string>();
+        const pasteOffsetX = 30;
+        const pasteOffsetY = 30;
+
+        const newNodes = clip.nodes.map(n => {
+            const newId = `${n.type}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+            idMap.set(n.id, newId);
+            return {
+                ...n,
+                id: newId,
+                position: { x: n.position.x + pasteOffsetX, y: n.position.y + pasteOffsetY },
+                selected: true,
+            };
+        });
+
+        newNodes.forEach(n => {
+            if (n.parentId && idMap.has(n.parentId)) {
+                n.parentId = idMap.get(n.parentId);
+            }
+        });
+
+        const newEdges = clip.edges.map(e => ({
+            ...e,
+            id: `reactflow__edge-${idMap.get(e.source) || e.source}${e.sourceHandle || ''}-${idMap.get(e.target) || e.target}${e.targetHandle || ''}`,
+            source: idMap.get(e.source) || e.source,
+            target: idMap.get(e.target) || e.target,
+            selected: true,
+        })).filter(e => idMap.has(e.source) && idMap.has(e.target));
+
+        const oldNodes = get().nodes.map(n => ({ ...n, selected: false }));
+        const oldEdges = get().edges.map(e => ({ ...e, selected: false }));
+
+        set({
+            nodes: [...oldNodes, ...newNodes],
+            edges: [...oldEdges, ...newEdges],
+            isDirty: true,
+        });
+    },
 
     duplicateNode: (id) => {
         const node = get().nodes.find((n) => n.id === id);

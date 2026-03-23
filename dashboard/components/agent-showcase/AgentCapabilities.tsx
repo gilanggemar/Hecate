@@ -1,166 +1,148 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { ChevronUp, Cpu, Sparkles, Server, ChevronRight } from 'lucide-react';
-import { useCapabilitiesStore } from '@/store/useCapabilitiesStore';
-import { useAgentStore } from '@/store/useAgentStore';
+import { useEffect, useMemo, useState } from 'react';
+import { Sparkles, Wrench } from 'lucide-react';
+import { useOpenClawCapabilitiesStore } from '@/stores/useOpenClawCapabilitiesStore';
 import { useRouter } from 'next/navigation';
 import type { AgentProfile } from '@/lib/agentRoster';
+import type { DynamicColors } from '@/hooks/useImageDominantColor';
 
 interface AgentCapabilitiesProps {
     agent: AgentProfile;
+    dynamicColors?: DynamicColors;
 }
 
-export function AgentCapabilities({ agent }: AgentCapabilitiesProps) {
+export function AgentCapabilities({ agent, dynamicColors }: AgentCapabilitiesProps) {
     const router = useRouter();
     const {
-        mcps, skills, assignments, fetchMcps, fetchSkills, fetchAssignmentsForAgent,
-        getToolCountForAgent, getMcpCountForAgent, getSkillCountForAgent,
-        getAssignedMcpsForAgent, getAssignedSkillsForAgent,
-    } = useCapabilitiesStore();
-    const storeAgent = useAgentStore((s) => s.agents[agent.id]);
-    const [showAllTools, setShowAllTools] = useState(false);
-    const [showAllSkills, setShowAllSkills] = useState(false);
+        globalTools, globalSkills, perAgentTools, perAgentSkills,
+        fetchAll, isLoading, setActiveTab, setSelectedAgentId
+    } = useOpenClawCapabilitiesStore();
 
-    const modelName = storeAgent?.model || 'Not configured';
+    const [telemetry, setTelemetry] = useState<{ successRate: number } | null>(null);
 
     useEffect(() => {
-        if (mcps.length === 0) fetchMcps();
-        if (skills.length === 0) fetchSkills();
-    }, [mcps.length, skills.length, fetchMcps, fetchSkills]);
+        if (globalTools.length === 0 && !isLoading) {
+            fetchAll();
+        }
+    }, [globalTools.length, isLoading, fetchAll]);
 
     useEffect(() => {
-        fetchAssignmentsForAgent(agent.id);
-    }, [agent.id, fetchAssignmentsForAgent]);
+        fetch(`/api/telemetry?agentId=${agent.id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data) setTelemetry({ successRate: data.successRate ?? 0 });
+            })
+            .catch(() => setTelemetry(null));
+    }, [agent.id]);
 
-    const totalTools = useMemo(() => getToolCountForAgent(agent.id), [agent.id, assignments, mcps]);
-    const mcpCount = useMemo(() => getMcpCountForAgent(agent.id), [agent.id, assignments]);
-    const skillCount = useMemo(() => getSkillCountForAgent(agent.id), [agent.id, assignments]);
-    const assignedMcps = useMemo(() => getAssignedMcpsForAgent(agent.id), [agent.id, assignments, mcps]);
-    const assignedSkills = useMemo(() => getAssignedSkillsForAgent(agent.id), [agent.id, assignments, skills]);
+    const tools = useMemo(() => {
+        const perAgent = perAgentTools[agent.id];
+        return perAgent?.length ? perAgent : globalTools;
+    }, [agent.id, perAgentTools, globalTools]);
 
-    const mcpNames = assignedMcps.map(m => m.name);
-    const displayMcps = showAllTools ? mcpNames : mcpNames.slice(0, 3);
-    const mcpExtraCount = mcpNames.length - 3;
+    const skills = useMemo(() => {
+        const perAgent = perAgentSkills[agent.id];
+        return perAgent?.length ? perAgent : globalSkills;
+    }, [agent.id, perAgentSkills, globalSkills]);
 
-    const skillNames = assignedSkills.map(s => s.name);
-    const displaySkills = showAllSkills ? skillNames : skillNames.slice(0, 3);
-    const skillExtraCount = skillNames.length - 3;
+    const enabledTools = tools.filter(t => t.allowed).length;
+    const enabledSkills = skills.filter(s => s.enabled).length;
+    
+    const successRate = telemetry ? telemetry.successRate.toFixed(1) : '0.0';
+
+    const handleNavigateToCapabilities = () => {
+        setActiveTab('per-agent');
+        setSelectedAgentId(agent.id);
+        router.push('/dashboard/capabilities');
+    };
+
+    const bg = dynamicColors?.containerBg || 'rgba(0,0,0,0.8)';
+    const bgHover = dynamicColors?.containerBgHover || 'rgba(17,17,17,1)';
+    const border = dynamicColors?.containerBorder || 'rgba(255,255,255,0.1)';
+    const borderHover = dynamicColors?.containerBorderHover || 'rgba(255,255,255,0.2)';
+    const shadow = dynamicColors?.containerShadow || '0 4px 12px rgba(0,0,0,0.5)';
 
     return (
-        <div className="px-5 pb-4 space-y-4">
-            {/* Section Header */}
-            <div className="text-[11px] uppercase tracking-[0.2em] font-mono text-white/50">
-                Agent Capabilities
-            </div>
-
-            {/* Model Badge */}
-            <div className="space-y-1.5">
-                <div className="text-[11px] uppercase tracking-[0.15em] font-mono text-white/40">Model</div>
-                <div
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-mono"
-                    style={{
-                        background: `${agent.colorHex}15`,
-                        border: `1px solid ${agent.colorHex}40`,
-                    }}
-                >
-                    <Cpu size={14} style={{ color: agent.colorHex }} />
-                    <span className="text-white/90">{modelName}</span>
+        <div className="flex flex-col gap-3 font-mono w-full">
+            <button 
+                onClick={handleNavigateToCapabilities}
+                className="flex items-center gap-4 border rounded-md p-3.5 transition-all duration-500 text-left w-full focus:outline-none focus:ring-1 focus:ring-white/20 active:scale-[0.99] cursor-pointer"
+                style={{ background: bg, borderColor: border, boxShadow: shadow }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.background = bgHover;
+                    e.currentTarget.style.borderColor = borderHover;
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.background = bg;
+                    e.currentTarget.style.borderColor = border;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                }}
+            >
+                <div className="w-10 flex items-center justify-center flex-shrink-0">
+                    <Wrench size={22} style={{ color: agent.colorHex }} />
                 </div>
-            </div>
-
-            {/* Capabilities Section */}
-            <div className="space-y-3">
-                <button
-                    onClick={() => router.push('/dashboard/capabilities')}
-                    className="flex items-center gap-1 text-[11px] uppercase tracking-[0.15em] font-mono text-white/40 hover:text-white/60 transition-colors pointer-events-auto"
-                >
-                    Capabilities <ChevronRight size={10} />
-                </button>
-
-                {/* MCP Tools */}
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                        <Server size={12} className="text-white/40" />
-                        <span className="text-[11px] uppercase tracking-[0.12em] font-mono text-white/40">MCP Tools</span>
-                    </div>
-                    <button
-                        onClick={() => router.push('/dashboard/capabilities')}
-                        className="text-sm font-mono text-white/70 hover:text-white/90 transition-colors pointer-events-auto"
-                    >
-                        {totalTools} tools from {mcpCount} servers
-                    </button>
-                    {mcpNames.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                            {displayMcps.map(name => (
-                                <span
-                                    key={name}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-white/60 border border-white/10 bg-white/5"
-                                    style={{ borderColor: `${agent.colorHex}30` }}
-                                >
-                                    {name}
-                                </span>
-                            ))}
-                            {!showAllTools && mcpExtraCount > 0 && (
-                                <button
-                                    onClick={() => setShowAllTools(true)}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-blue-400/80 border border-blue-400/20 bg-blue-400/5 cursor-pointer hover:bg-blue-400/10 transition-colors pointer-events-auto"
-                                >
-                                    +{mcpExtraCount} more
-                                </button>
-                            )}
-                            {showAllTools && mcpExtraCount > 0 && (
-                                <button
-                                    onClick={() => setShowAllTools(false)}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-white/40 cursor-pointer pointer-events-auto"
-                                >
-                                    <ChevronUp size={10} />
-                                </button>
-                            )}
-                        </div>
-                    )}
+                <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/40 mb-1">
+                        Tools Enabled
+                    </span>
+                    <span className="text-2xl font-black leading-none text-white tracking-wider">
+                        {enabledTools}
+                    </span>
                 </div>
+            </button>
 
-                {/* Skills */}
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                        <Sparkles size={12} className="text-violet-400/60" />
-                        <span className="text-[11px] uppercase tracking-[0.12em] font-mono text-white/40">Skills</span>
-                    </div>
-                    <button
-                        onClick={() => router.push('/dashboard/capabilities')}
-                        className="text-sm font-mono text-white/70 hover:text-white/90 transition-colors pointer-events-auto"
-                    >
-                        {skillCount} skills assigned
-                    </button>
-                    {skillNames.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                            {displaySkills.map(name => (
-                                <span
-                                    key={name}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-violet-400/70 border border-violet-400/20 bg-violet-400/5"
-                                >
-                                    {name}
-                                </span>
-                            ))}
-                            {!showAllSkills && skillExtraCount > 0 && (
-                                <button
-                                    onClick={() => setShowAllSkills(true)}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-violet-400/80 border border-violet-400/20 bg-violet-400/5 cursor-pointer hover:bg-violet-400/10 transition-colors pointer-events-auto"
-                                >
-                                    +{skillExtraCount} more
-                                </button>
-                            )}
-                            {showAllSkills && skillExtraCount > 0 && (
-                                <button
-                                    onClick={() => setShowAllSkills(false)}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-white/40 cursor-pointer pointer-events-auto"
-                                >
-                                    <ChevronUp size={10} />
-                                </button>
-                            )}
-                        </div>
-                    )}
+            <button 
+                onClick={handleNavigateToCapabilities}
+                className="flex items-center gap-4 border rounded-md p-3.5 transition-all duration-500 text-left w-full focus:outline-none focus:ring-1 focus:ring-white/20 active:scale-[0.99] cursor-pointer"
+                style={{ background: bg, borderColor: border, boxShadow: shadow }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.background = bgHover;
+                    e.currentTarget.style.borderColor = borderHover;
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.background = bg;
+                    e.currentTarget.style.borderColor = border;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                }}
+            >
+                <div className="w-10 flex items-center justify-center flex-shrink-0">
+                    <Sparkles size={22} className="text-[#A259FF]" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/40 mb-1">
+                        Skills Enabled
+                    </span>
+                    <span className="text-2xl font-black leading-none text-white tracking-wider">
+                        {enabledSkills}
+                    </span>
+                </div>
+            </button>
+
+            {/* Success Rate */}
+            <div
+                className="mt-2 border rounded-md p-4 transition-all duration-500"
+                style={{ background: bg, borderColor: border, boxShadow: shadow }}
+            >
+                <div className="flex justify-between items-center mb-2.5">
+                    <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/40">
+                        Success Rate
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-white/60">
+                        {successRate}%
+                    </span>
+                </div>
+                <div className="w-full h-[3px] bg-black rounded-full overflow-hidden border border-white/5">
+                    <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out" 
+                        style={{ 
+                            width: `${successRate}%`, 
+                            backgroundColor: agent.colorHex, 
+                            boxShadow: `0 0 10px ${agent.colorHex}80` 
+                        }} 
+                    />
                 </div>
             </div>
         </div>

@@ -173,6 +173,7 @@ async function handleV2Run(
                     nodeAdapters[node.id] = getAdapterForAgent(agentId, 'openclaw', {
                         baseUrl: activeConn.openclaw.wsUrl || activeConn.openclaw.httpUrl,
                         wsToken: activeConn.openclaw.token,
+                        userId: userId,
                     });
                 }
             }

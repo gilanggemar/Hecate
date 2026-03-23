@@ -9,6 +9,8 @@ interface HeroImage {
     id: number;
     imageData: string;
     sortOrder: number;
+    positionX: number;
+    positionY: number;
 }
 
 interface AgentHeroPortraitProps {

@@ -540,3 +540,35 @@ export class OpenClawGateway {
     }, this.config.reconnectDelayMs);
   }
 }
+
+// ── Env var fallback (always available, no async) ──
+
+const ENV_WS_URL =
+    process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL ||
+    process.env.NEXT_PUBLIC_OPENCLAW_WS_URL ||
+    "";
+const ENV_TOKEN =
+    process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_TOKEN || "";
+
+export function getGatewayUrl(): string {
+    if (ENV_WS_URL) return ENV_WS_URL;
+    if (typeof window !== "undefined") {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${window.location.host}/api/openclaw-socket`;
+    }
+    return "ws://127.0.0.1:18789";
+}
+
+// ── Singleton ──
+
+let gatewayInstance: OpenClawGateway | null = null;
+
+export function getGateway(): OpenClawGateway {
+    if (!gatewayInstance) {
+        gatewayInstance = new OpenClawGateway({
+            url: getGatewayUrl(),
+            token: ENV_TOKEN,
+        });
+    }
+    return gatewayInstance;
+}

@@ -8,9 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plug2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SummitTaskModal } from "@/components/SummitTaskModal";
 
 export default function AgentsPage() {
     const { agents: socketAgents } = useSocketStore();
+
     const { activeProfile } = useConnectionStore();
     const { hiddenAgentIds } = useAgentSettingsStore();
 
@@ -54,6 +56,9 @@ export default function AgentsPage() {
                     </span>
                 </div>
             </div>
+
+            <SummitTaskModal />
+
 
             {availableAgents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center flex-1 pb-20 border border-dashed rounded-3xl border-white/5 bg-foreground/5">

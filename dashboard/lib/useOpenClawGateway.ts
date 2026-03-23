@@ -3,42 +3,14 @@
 // React hook that wraps OpenClawGateway and pipes events into Zustand stores.
 // This is the new canonical gateway integration layer.
 
+"use client";
+
 import { useEffect, useRef, useCallback } from "react";
-import { OpenClawGateway } from "./openclawGateway";
+import { OpenClawGateway, getGateway } from "./openclawGateway";
 import { useOpenClawStore } from "@/store/useOpenClawStore";
 import { useSocketStore } from "@/lib/useSocket";
+import { useConnectionStore } from "@/store/useConnectionStore";
 
-// ── Env var fallback (always available, no async) ──
-
-const ENV_WS_URL =
-    process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL ||
-    process.env.NEXT_PUBLIC_OPENCLAW_WS_URL ||
-    "";
-const ENV_TOKEN =
-    process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_TOKEN || "";
-
-function getGatewayUrl(): string {
-    if (ENV_WS_URL) return ENV_WS_URL;
-    if (typeof window !== "undefined") {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        return `${protocol}//${window.location.host}/api/openclaw-socket`;
-    }
-    return "ws://127.0.0.1:18789";
-}
-
-// ── Singleton ──
-
-let gatewayInstance: OpenClawGateway | null = null;
-
-export function getGateway(): OpenClawGateway {
-    if (!gatewayInstance) {
-        gatewayInstance = new OpenClawGateway({
-            url: getGatewayUrl(),
-            token: ENV_TOKEN,
-        });
-    }
-    return gatewayInstance;
-}
 
 export async function loadProfileAndReconfigure(): Promise<void> {
     try {
@@ -190,7 +162,18 @@ export function reconfigureGateway(wsUrl: string, token: string): void {
     gw.reconfigure(wsUrl, token);
 }
 
-import { useConnectionStore } from "@/store/useConnectionStore";
+export async function initializeAgentSessions(agentId: string) {
+    const gw = getGateway();
+    if (!gw.isConnected) return;
+    
+    try {
+        // Just return the list of session keys, OpenClaw auto-creates sessions on chat.send
+        const res = await gw.request('sessions.list', { limit: 100 });
+        return res;
+    } catch (err) {
+        console.error('[Session Init] Error:', err);
+    }
+}
 
 export function useOpenClawGateway() {
     const gateway = useRef(getGateway());
@@ -284,11 +267,15 @@ export function useOpenClawGateway() {
             if (!gw.isConnected) {
                 throw new Error("Not connected to OpenClaw Gateway");
             }
+            
+            const key = sessionKey || "agent:default:main";
+            
             const response = await gw.request("chat.send", {
                 message,
-                sessionKey: sessionKey || "agent:default:main",
+                sessionKey: key,
                 idempotencyKey: crypto.randomUUID(),
             });
+            
             return response;
         },
         []

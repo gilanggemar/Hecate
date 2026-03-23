@@ -855,41 +855,6 @@ time,
   pointer-events: none;
 }
 
-/* --- Phase 5: War Room Atmosphere --- */
-.war-room-atmosphere {
-  position: relative;
-  overflow: hidden;
-}
-
-.war-room-atmosphere::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 600px 400px at 20% 30%,
-      oklch(0.20 0.06 290 / 0.3),
-      /* subtle violet glow top-left */
-      transparent 70%),
-    radial-gradient(ellipse 500px 300px at 80% 70%,
-      oklch(0.18 0.04 195 / 0.2),
-      /* subtle teal glow bottom-right */
-      transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-  animation: war-room-breathe 8s ease-in-out infinite;
-}
-
-@keyframes war-room-breathe {
-
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-
-  50% {
-    opacity: 0.8;
-  }
-}
 
 /* --- Phase 5: Final Polish --- */
 
@@ -1060,6 +1025,9 @@ time,
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* Top accent bar — uses agent color via CSS variable */
@@ -1152,13 +1120,15 @@ time,
   0%, 100% {
     border-color: rgba(255, 255, 255, 0.06);
     box-shadow:
-      0 4px 30px rgba(0, 0, 0, 0.3),
+      0 8px 40px rgba(0, 0, 0, 0.5),
+      0 2px 12px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
   50% {
     border-color: rgba(255, 255, 255, 0.10);
     box-shadow:
-      0 4px 30px rgba(0, 0, 0, 0.3),
+      0 8px 40px rgba(0, 0, 0, 0.5),
+      0 2px 12px rgba(0, 0, 0, 0.4),
       0 0 20px color-mix(in oklch, var(--panel-accent, var(--accent-base, #FF6D29)) 6%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
@@ -1505,3 +1475,11 @@ time,
     padding: 0 0 8px;
   }
 }
+/* --- React Flow Brand Overrides --- */
+.react-flow__controls { box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; border: 1px solid var(--accent-base) !important; border-radius: 8px !important; overflow: hidden; background: #000 !important; }
+.react-flow__controls-button { background: #000 !important; border-bottom: 1px solid rgba(255, 109, 41, 0.2) !important; fill: var(--accent-base) !important; color: var(--accent-base) !important; transition: all 0.2s ease; }
+.react-flow__controls-button svg { fill: var(--accent-base) !important; }
+.react-flow__controls-button:hover { background: rgba(255, 109, 41, 0.1) !important; fill: var(--accent-hover) !important; color: var(--accent-hover) !important; }
+.react-flow__controls-button:hover svg { fill: var(--accent-hover) !important; }
+.react-flow__controls-button:last-child { border-bottom: none !important; }
+.react-flow__attribution { display: none !important; }

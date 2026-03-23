@@ -18,7 +18,7 @@ export const NAV_GROUPS: Record<NavGroup, NavRoute[]> = {
         { id: "overview", title: "Agents", link: "/dashboard", iconName: "Home" },
         { id: "chat", title: "Chat", link: "/chat", iconName: "Package2" },
         { id: "summit", title: "The Summit", link: "/summit", iconName: "Activity" },
-        { id: "war-room", title: "The War Room", link: "/dashboard/war-room", iconName: "Target" },
+        { id: "games", title: "Games", link: "/dashboard/games", iconName: "Target" },
         { id: "constellation", title: "Constellation", link: "/dashboard/constellation", iconName: "GitBranch" },
         { id: "console", title: "Console", link: "/console", iconName: "Store" },
     ],
@@ -31,7 +31,7 @@ export const NAV_GROUPS: Record<NavGroup, NavRoute[]> = {
     INTELLIGENCE: [
         { id: "capabilities", title: "Capabilities", link: "/dashboard/capabilities", iconName: "Puzzle" },
         { id: "observability", title: "Observability", link: "/dashboard/observability", iconName: "Eye" },
-        { id: "memory", title: "Memory", link: "/dashboard/memory", iconName: "Brain" },
+        { id: "knowledge", title: "Knowledge", link: "/dashboard/knowledge", iconName: "Brain" },
         { id: "audit", title: "Audit Trail", link: "/dashboard/audit", iconName: "ClipboardList" },
     ],
     SETTINGS: [

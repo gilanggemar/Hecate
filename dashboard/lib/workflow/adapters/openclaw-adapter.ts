@@ -16,10 +16,12 @@ import crypto from "crypto";
 export class OpenClawWorkflowAdapter implements WorkflowAgentAdapter {
   private baseUrl: string;
   private wsToken: string;
+  private userId?: string;
 
-  constructor(connectionConfig: { baseUrl: string; wsToken: string }) {
+  constructor(connectionConfig: { baseUrl: string; wsToken: string; userId?: string }) {
     this.baseUrl = connectionConfig.baseUrl;
     this.wsToken = connectionConfig.wsToken;
+    this.userId = connectionConfig.userId;
   }
 
   async getCapabilities(): Promise<AgentCapabilities> {
@@ -239,9 +241,9 @@ export class OpenClawWorkflowAdapter implements WorkflowAgentAdapter {
                 params: { events: ['*'] }
               }));
 
-              // Use the requested workflow-isolated session key
+              // Use the requested workflow-isolated session key OR the provided override
               const agentNameStr = input.agentName ? input.agentName.toLowerCase() : input.agentId;
-              const sessionKey = `agent:${agentNameStr}:workflow`;
+              const sessionKey = input.sessionKeyOverride || `agent:${agentNameStr}:nworkflow`;
               const reqId = `wf-${input.stepId}-${crypto.randomUUID()}`;
 
               const chatRequest = {

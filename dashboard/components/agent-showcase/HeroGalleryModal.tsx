@@ -1,22 +1,26 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, Check, X, Loader2, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, Check, X, Loader2, ImagePlus, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HeroCropModal } from './HeroCropModal';
 import { BackgroundCropModal } from './BackgroundCropModal';
 import { useAgentBackground } from '@/hooks/useAgentBackground';
+import { VignetteTuningModal } from './VignetteTuningModal';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/components/ui/dialog';
 
 interface HeroImage {
     id: number;
     imageData: string;
     sortOrder: number;
+    positionX: number;
+    positionY: number;
 }
 
 interface HeroGalleryModalProps {
@@ -30,12 +34,18 @@ interface HeroGalleryModalProps {
     onImageDeleted: () => void;
     onClose: () => void;
     onBackgroundChanged?: () => void;
+    onTuneVignette: () => void;
 }
 
-async function uploadHeroImage(agentId: string, file: File): Promise<boolean> {
+async function uploadHeroImage(agentId: string, file: File, position?: { x: number; y: number }): Promise<boolean> {
     const formData = new FormData();
+    // ... file upload logic
     formData.append('agentId', agentId);
     formData.append('heroImage', file);
+    if (position) {
+        formData.append('positionX', String(position.x));
+        formData.append('positionY', String(position.y));
+    }
     const res = await fetch('/api/agents/hero', { method: 'POST', body: formData });
     const data = await res.json();
     return !!data.success;
@@ -62,12 +72,14 @@ export function HeroGalleryModal({
     onImageDeleted,
     onClose,
     onBackgroundChanged,
+    onTuneVignette,
 }: HeroGalleryModalProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const bgInputRef = useRef<HTMLInputElement>(null);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [isTuningVignette, setIsTuningVignette] = useState(false);
 
     // Background state
     const { backgroundUri, invalidate: invalidateBg } = useAgentBackground(agentId);
@@ -76,14 +88,19 @@ export function HeroGalleryModal({
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) setPendingFile(file);
+        if (file) {
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+            setPendingFile(file);
+        }
         if (inputRef.current) inputRef.current.value = '';
     };
 
-    const handleCropApply = async (file: File) => {
+    const handleCropApply = async (file: File, position?: { x: number; y: number }) => {
         setIsUploading(true);
         try {
-            await uploadHeroImage(agentId, file);
+            await uploadHeroImage(agentId, file, position);
             onImageAdded();
         } finally {
             setIsUploading(false);
@@ -107,6 +124,9 @@ export function HeroGalleryModal({
         if (!file) return;
         if (bgInputRef.current) bgInputRef.current.value = '';
 
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
         setPendingBgFile(file);
     };
 
@@ -146,12 +166,22 @@ export function HeroGalleryModal({
 
     return (
         <>
-            <Dialog open onOpenChange={() => !isUploading && onClose()}>
-                <DialogContent className="max-w-2xl nerv-glass-3 border-white/10 text-white">
+            <Dialog open onOpenChange={() => !isUploading && !pendingFile && !pendingBgFile && onClose()}>
+                <DialogContent 
+                    className="max-w-2xl nerv-glass-3 border-white/10 text-white"
+                    onInteractOutside={(e) => {
+                        if (pendingFile || pendingBgFile) {
+                            e.preventDefault();
+                        }
+                    }}
+                >
                     <DialogHeader>
                         <DialogTitle className="text-[11px] uppercase tracking-[0.2em] font-mono text-white/70">
                             {agentName} — Portrait Gallery
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            Portrait gallery for agent {agentName}.
+                        </DialogDescription>
                         <p className="text-xs text-white/40 mt-1">
                             Select a portrait to display, or add a new one.
                         </p>
@@ -249,12 +279,23 @@ export function HeroGalleryModal({
 
                     {/* ═══ Background Gallery Section ═══ */}
                     <div className="mt-6 pt-5 border-t border-white/10">
-                        <div className="text-[11px] uppercase tracking-[0.2em] font-mono text-white/70 mb-1">
-                            Background Gallery
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <div className="text-[11px] uppercase tracking-[0.2em] font-mono text-white/70 mb-1">
+                                    Background Gallery
+                                </div>
+                                <p className="text-xs text-white/40">
+                                    Set a custom background for this agent&apos;s showcase view.
+                                </p>
+                            </div>
+                            <button
+                                onClick={onTuneVignette}
+                                className="flex items-center gap-2 px-3 py-2 rounded-md border border-[#FF6D29]/30 text-[#FF6D29] bg-[#FF6D29]/10 hover:bg-[#FF6D29]/20 transition-colors pointer-events-auto cursor-pointer flex-shrink-0"
+                            >
+                                <SlidersHorizontal size={14} />
+                                <span className="text-[9px] font-mono tracking-widest font-bold uppercase">Tune Vignette</span>
+                            </button>
                         </div>
-                        <p className="text-xs text-white/40 mb-4">
-                            Set a custom background for this agent&apos;s showcase view.
-                        </p>
 
                         <div className="flex gap-3 items-start">
                             {/* Current background preview */}
@@ -354,6 +395,11 @@ export function HeroGalleryModal({
                     onApply={handleBgCropApply}
                 />
             )}
+
+            <VignetteTuningModal 
+                isOpen={isTuningVignette} 
+                onClose={() => setIsTuningVignette(false)} 
+            />
         </>
     );
 }

@@ -50,7 +50,7 @@ export function CommandPalette() {
         { id: "audit", label: "Audit Trail", icon: ClipboardList, action: () => navigate("/dashboard/audit"), group: "Navigate", keywords: "audit logs actions" },
         { id: "scheduler", label: "Scheduler", icon: Calendar, action: () => navigate("/dashboard/scheduler"), group: "Navigate", keywords: "cron schedule webhook" },
         { id: "workflows", label: "Workflows", icon: GitBranch, action: () => navigate("/dashboard/workflows"), group: "Navigate", keywords: "workflow pipeline" },
-        { id: "memory", label: "Memory", icon: Brain, action: () => navigate("/dashboard/memory"), group: "Navigate", keywords: "memory knowledge" },
+        { id: "knowledge", label: "Knowledge", icon: Brain, action: () => navigate("/dashboard/knowledge"), group: "Navigate", keywords: "memory knowledge" },
         { id: "notifications", label: "Notifications", icon: Bell, action: () => navigate("/dashboard/notifications"), group: "Navigate", keywords: "alerts notifications" },
         { id: "providers", label: "Providers", icon: Plug, action: () => navigate("/settings/providers"), group: "Settings", keywords: "provider api key" },
         { id: "mcp", label: "MCP Servers", icon: Plug2, action: () => navigate("/settings/mcp-servers"), group: "Settings", keywords: "mcp tools" },

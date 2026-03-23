@@ -13,6 +13,14 @@ export const NODE_ACCENTS = {
     human_approval: 'oklch(0.65 0.19 25)',
     condition: 'var(--accent-coral)',
     output: 'var(--accent-teal)',
+    // New V2 nodes
+    delay: 'oklch(0.75 0.14 80)',
+    variable_set: 'oklch(0.68 0.12 200)',
+    http_request: 'oklch(0.72 0.16 160)',
+    loop: 'oklch(0.70 0.15 310)',
+    note: 'oklch(0.72 0.08 80)',
+    checkpoint: 'oklch(0.75 0.16 350)',
+    convergence: 'oklch(0.65 0.12 180)',
     // Keep group for canvas grouping
     group: 'var(--accent-ocean)',
 } as const;
@@ -86,6 +94,8 @@ export const NODE_CATEGORIES: NodeCategoryDef[] = [
         items: [
             { type: 'agent_step', label: 'Agent Step', icon: 'Bot', description: 'Route to agent', defaultData: { label: 'Agent Step', agentId: '', task: '', responseMode: 'text', timeoutSec: 120 } },
             { type: 'formatter_step', label: 'Formatter', icon: 'Code', description: 'Template text', defaultData: { label: 'Formatter', template: '' } },
+            { type: 'http_request', label: 'HTTP Request', icon: 'Globe', description: 'Call an API', defaultData: { label: 'HTTP Request', method: 'GET', url: '' } },
+            { type: 'variable_set', label: 'Set Variable', icon: 'Wrench', description: 'Store / transform data', defaultData: { label: 'Set Variable', variableName: '', variableValue: '' } },
         ],
     },
     {
@@ -95,6 +105,9 @@ export const NODE_CATEGORIES: NodeCategoryDef[] = [
         items: [
             { type: 'condition', label: 'Condition', icon: 'GitBranch', description: 'If / else branch', defaultData: { label: 'Condition', expression: '' } },
             { type: 'human_approval', label: 'Approval', icon: 'Users', description: 'Human approval gate', defaultData: { label: 'Human Approval', instructions: '' } },
+            { type: 'delay', label: 'Delay', icon: 'Timer', description: 'Wait / pause timer', defaultData: { label: 'Delay', delaySec: 5 } },
+            { type: 'loop', label: 'Loop', icon: 'Repeat', description: 'Iterate / repeat', defaultData: { label: 'Loop', loopType: 'count', maxIterations: 3 } },
+            { type: 'convergence', label: 'Convergence', icon: 'Merge', description: 'Wait for multiple inputs', defaultData: { label: 'Convergence', mergeStrategy: 'wait_all' } },
         ],
     },
     {
@@ -110,7 +123,28 @@ export const NODE_CATEGORIES: NodeCategoryDef[] = [
         label: 'Special',
         accent: NODE_ACCENTS.group,
         items: [
+            { type: 'checkpoint', label: 'Checkpoint', icon: 'MapPin', description: 'Cycle target marker', defaultData: { label: 'Checkpoint' } },
             { type: 'group', label: 'Group', icon: 'Box', description: 'Container' },
+            { type: 'note', label: 'Note', icon: 'StickyNote', description: 'Annotation', defaultData: { label: 'Note', noteText: '' } },
         ],
     },
 ];
+
+export const NODE_INFO: Record<WfNodeType, { description: string; tips: string }> = {
+    manual_trigger: { description: "Starts the workflow manually", tips: "Connect this to your first action step. Click 'Execute' to run." },
+    webhook_trigger: { description: "Starts when an external request is received", tips: "Use the generated URL in other apps to trigger this flow." },
+    schedule_trigger: { description: "Starts on a recurring schedule", tips: "Use cron or simple intervals to automate regular tasks." },
+    agent_step: { description: "Delegates a task to an AI agent", tips: "Set clear instructions and choose the best agent for the job. Use {{prev.step_id.outputText}} to pass data." },
+    formatter_step: { description: "Formats or transforms text/JSON", tips: "Use templates to merge data from multiple previous steps." },
+    http_request: { description: "Makes an external API call", tips: "Useful for fetching data or updating external systems." },
+    variable_set: { description: "Stores data in a variable", tips: "Use variables to maintain state across complex workflows." },
+    condition: { description: "Branches flow based on logic", tips: "Connect the 'TRUE' handle to one path and 'FALSE' to another." },
+    human_approval: { description: "Pauses until a human approves", tips: "Use for critical decisions or reviewing generated content." },
+    delay: { description: "Pauses execution for a set time", tips: "Helpful to avoid rate limits when calling external APIs." },
+    loop: { description: "Repeats actions multiple times", tips: "Send flow to a Checkpoint to cycle, or use 'Done' to continue." },
+    convergence: { description: "Waits for multiple inputs before continuing", tips: "Useful to merge branches that were split by a Condition or parallel processes." },
+    output: { description: "Ends the workflow and returns a result", tips: "Every workflow should end with an Output node." },
+    checkpoint: { description: "Target marker for loops and cycles", tips: "Select this Checkpoint from a Loop or Approval node to jump here." },
+    group: { description: "Visual container for nodes", tips: "Drag nodes inside to group them. Move the group to move all children." },
+    note: { description: "Sticky note for documentation", tips: "Explain your logic to others. Doesn't affect execution." },
+};

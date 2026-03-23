@@ -71,7 +71,7 @@ const dashboardRouteGroups: RouteGroup[] = [
             { id: "overview", title: "Agents", icon: <Home className="size-3.5" />, link: "/dashboard" },
             { id: "chat", title: "Chat", icon: <Package2 className="size-3.5" />, link: "/chat" },
             { id: "summit", title: "The Summit", icon: <Activity className="size-3.5" />, link: "/summit" },
-            { id: "war-room", title: "The War Room", icon: <Target className="size-3.5" />, link: "/dashboard/war-room" },
+            { id: "games", title: "Games", icon: <Target className="size-3.5" />, link: "/dashboard/games" },
             { id: "constellation", title: "Constellation", icon: <GitBranch className="size-3.5" />, link: "/dashboard/constellation" },
             { id: "console", title: "Console", icon: <Store className="size-3.5" />, link: "/console", status: 'active' },
         ]
@@ -90,7 +90,7 @@ const dashboardRouteGroups: RouteGroup[] = [
         items: [
             { id: "capabilities", title: "Capabilities", icon: <Puzzle className="size-3.5" />, link: "/dashboard/capabilities" },
             { id: "observability", title: "Observability", icon: <Eye className="size-3.5" />, link: "/dashboard/observability" },
-            { id: "memory", title: "Memory", icon: <Brain className="size-3.5" />, link: "/dashboard/memory" },
+            { id: "knowledge", title: "Knowledge", icon: <Brain className="size-3.5" />, link: "/dashboard/knowledge" },
             { id: "audit", title: "Audit Trail", icon: <ClipboardList className="size-3.5" />, link: "/dashboard/audit" },
         ]
     }

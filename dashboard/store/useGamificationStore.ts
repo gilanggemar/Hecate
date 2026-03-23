@@ -73,13 +73,27 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
     fetchAll: async () => {
         try {
-            // Parallel fetches for speed
+            const fetchJson = async (url: string, init?: RequestInit) => {
+                const res = await fetch(url, init);
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch ${url}: ${res.statusText}`);
+                }
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return res.json();
+                }
+                throw new Error(`Expected JSON from ${url}, but got ${contentType}`);
+            };
+
             const [xpRes, missionsRes, achRes, streakRes] = await Promise.all([
-                fetch('/api/gamification/xp').then(r => r.json()),
-                fetch('/api/gamification/missions').then(r => r.json()),
-                fetch('/api/gamification/achievements').then(r => r.json()),
-                fetch('/api/gamification/streak/check', { method: 'POST' }).then(r => r.json()) // Check streak daily init
-            ]);
+                fetchJson('/api/gamification/xp'),
+                fetchJson('/api/gamification/missions'),
+                fetchJson('/api/gamification/achievements'),
+                fetchJson('/api/gamification/streak/check', { method: 'POST' }).catch(() => ({})) // Don't fail everything if streak check fails
+            ].map(p => p.catch(e => {
+                console.error(e);
+                return {};
+            })));
 
             const xpMap: Record<string, AgentXPData> = {};
             if (xpRes.agents) {
@@ -119,10 +133,12 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
     refreshMissions: async () => {
         try {
-            const res = await fetch('/api/gamification/missions').then(r => r.json());
+            const res = await fetch('/api/gamification/missions');
+            if (!res.ok) return;
+            const data = await res.json();
             set({
-                dailyMissions: res.missions || [],
-                allMissionsCompleted: res.allCompleted || false,
+                dailyMissions: data.missions || [],
+                allMissionsCompleted: data.allCompleted || false,
             });
         } catch (e) {
             console.error(e);

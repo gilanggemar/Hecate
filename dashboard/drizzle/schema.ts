@@ -65,23 +65,30 @@ export const taskLogs = pgTable('task_logs', {
     timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow(),
 });
 
-export const summits = pgTable('summits', {
+export const summitSessions = pgTable('summit_sessions', {
     id: text('id').primaryKey(),
-    topic: text('topic').notNull(),
+    userId: text('user_id'),
+    title: text('title').notNull(),
+    topic: text('topic'),
     status: text('status').notNull().default('ACTIVE'),
-    consensusPlan: text('consensus_plan'),
-    participatingAgents: jsonb('participating_agents').default([]),
+    participants: jsonb('participants').default([]),
+    config: jsonb('config').default({}),
+    messageCount: integer('message_count').default(0),
+    deliberationRound: integer('deliberation_round').default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 export const summitMessages = pgTable('summit_messages', {
     id: text('id').primaryKey(),
-    summitId: text('summit_id').notNull().references(() => summits.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull().references(() => summitSessions.id, { onDelete: 'cascade' }),
     agentId: text('agent_id').references(() => agents.id, { onDelete: 'set null' }),
+    role: text('role').notNull(),
     content: text('content').notNull(),
     roundNumber: integer('round_number').default(1),
-    sentiment: text('sentiment'),
+    modeIndicators: jsonb('mode_indicators'),
+    attachments: jsonb('attachments'),
+    toolCalls: jsonb('tool_calls'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -189,6 +196,19 @@ export const workflows = pgTable('workflows', {
     steps: jsonb('steps').notNull().default([]),
     schedule: jsonb('schedule'),
     status: text('status').notNull().default('draft'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+// ─── 7. Constellation System ──────────────────────────────────────────────────
+
+export const constellations = pgTable('constellations', {
+    id: text('id').primaryKey(),
+    userId: text('user_id'),
+    name: text('name').notNull(),
+    description: text('description'),
+    nodes: jsonb('nodes').notNull().default([]),
+    edges: jsonb('edges').notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -318,9 +338,9 @@ export const apiKeys = pgTable('api_keys', {
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
-// ─── 10. War Room ────────────────────────────────────────────────────────────
+// ─── 10. Games ────────────────────────────────────────────────────────────
 
-export const warRoomSessions = pgTable('war_room_sessions', {
+export const gamesSessions = pgTable('games_sessions', {
     id: text('id').primaryKey(),
     topic: text('topic').notNull(),
     status: text('status').notNull().default('ACTIVE'),
@@ -332,9 +352,9 @@ export const warRoomSessions = pgTable('war_room_sessions', {
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
-export const warRoomEvents = pgTable('war_room_events', {
+export const gamesEvents = pgTable('games_events', {
     id: text('id').primaryKey(),
-    sessionId: text('session_id').notNull().references(() => warRoomSessions.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull().references(() => gamesSessions.id, { onDelete: 'cascade' }),
     type: text('type').notNull(),
     agentId: text('agent_id').references(() => agents.id, { onDelete: 'set null' }),
     content: text('content'),
@@ -442,49 +462,4 @@ export const operationsStreak = pgTable('operations_streak', {
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
-// ─── 14. Capabilities System ─────────────────────────────────────────────────
 
-export const capabilityMcps = pgTable('capability_mcps', {
-    id: text('id').primaryKey(),
-    name: text('name').notNull(),
-    description: text('description'),
-    serverUrl: text('server_url').notNull(),
-    transport: text('transport').notNull().default('sse'),
-    status: text('status').notNull().default('active'),
-    authType: text('auth_type').default('none'),
-    encryptedCredentials: text('encrypted_credentials'),
-    tools: jsonb('tools').default([]),
-    icon: text('icon'),
-    category: text('category').default('general'),
-    configJson: jsonb('config_json').default({}),
-    lastHealthCheck: timestamp('last_health_check', { withTimezone: true }),
-    lastHealthStatus: text('last_health_status'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const capabilitySkills = pgTable('capability_skills', {
-    id: text('id').primaryKey(),
-    name: text('name').notNull(),
-    description: text('description'),
-    content: text('content').notNull(),
-    version: text('version').default('1.0.0'),
-    status: text('status').notNull().default('active'),
-    category: text('category').default('general'),
-    icon: text('icon'),
-    tags: jsonb('tags').default([]),
-    configJson: jsonb('config_json').default({}),
-    author: text('author').default('user'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const agentCapabilityAssignments = pgTable('agent_capability_assignments', {
-    id: text('id').primaryKey(),
-    agentId: text('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
-    capabilityType: text('capability_type').notNull(),
-    capabilityId: text('capability_id').notNull(),
-    isEnabled: boolean('is_enabled').notNull().default(true),
-    configOverrides: jsonb('config_overrides').default({}),
-    assignedAt: timestamp('assigned_at', { withTimezone: true }).defaultNow().notNull(),
-});

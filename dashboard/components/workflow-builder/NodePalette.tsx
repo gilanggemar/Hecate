@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useReactFlow } from "@xyflow/react";
 import { Search, X, Star } from "lucide-react";
 import {
-    Zap, Bot, MessageSquare, Wrench, GitBranch, Code, Flag, Timer, Users, Clock, Globe, Radio, Box,
+    Zap, Bot, MessageSquare, Wrench, GitBranch, Code, Flag, Timer, Users, Clock, Globe, Radio, Box, Repeat, StickyNote,
 } from "lucide-react";
 import { useWorkflowBuilderStore } from "@/store/useWorkflowBuilderStore";
 import { NODE_CATEGORIES, type NodePaletteItem } from "./nodes/nodeStyles";
@@ -15,7 +15,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
     Wrench: <Wrench size={16} />, GitBranch: <GitBranch size={16} />, Code: <Code size={16} />,
     Flag: <Flag size={16} />, Timer: <Timer size={16} />, Users: <Users size={16} />,
     Clock: <Clock size={16} />, Globe: <Globe size={16} />, Radio: <Radio size={16} />,
-    Box: <Box size={16} />,
+    Box: <Box size={16} />, Repeat: <Repeat size={16} />, StickyNote: <StickyNote size={16} />,
 };
 
 export default function NodePalette() {

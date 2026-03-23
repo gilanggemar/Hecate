@@ -1,5 +1,5 @@
 // ─── Toolkit Executor ────────────────────────────────────────────────────────
-// Tool selection and dispatch. Uses existing capability system.
+// Tool selection and dispatch. Uses OpenClaw Gateway tools catalog.
 
 import type { Node } from '@xyflow/react';
 import type { MissionContext } from '../MissionContext';
@@ -15,23 +15,37 @@ export class ToolkitExecutor implements NodeExecutor {
 
   async execute(node: Node, context: MissionContext): Promise<NodeExecutionResult> {
     const data = node.data as ToolkitData;
-    const { broadcaster, supabase } = this.deps;
+    const { broadcaster } = this.deps;
 
     broadcaster.send('node:status', { nodeId: node.id, status: 'running' });
 
     try {
-      // Load available tools from capability system
-      const { data: mcpTools } = await supabase
-        .from('capability_mcps')
-        .select('name, description, tools, status')
-        .eq('status', 'active');
+      // Try to load tools from OpenClaw Gateway via the gateway's tools catalog.
+      // If the gateway is not available (e.g., offline workflow), return an empty toolkit.
+      let allTools: Array<{ name: string; description?: string; tools?: any }> = [];
 
-      const availableToolNames = (mcpTools ?? []).map(t => t.name);
+      try {
+        const { getGateway } = await import('@/lib/openclawGateway');
+        const gw = getGateway();
+        if (gw.isConnected) {
+          const catalog = await gw.request('tools.catalog', { agentId: 'default' });
+          const tools = catalog?.tools || (Array.isArray(catalog) ? catalog : []);
+          allTools = (Array.isArray(tools) ? tools : []).map((t: any) => ({
+            name: t.name || t.tool || '',
+            description: t.description || t.desc || undefined,
+            tools: t.tools || undefined,
+          }));
+        }
+      } catch {
+        // Gateway not available — workflow runs offline
+      }
+
+      const availableToolNames = allTools.map(t => t.name);
 
       // Filter to only the tools specified in the node config
       const selectedTools = data.availableTools?.length
-        ? (mcpTools ?? []).filter(t => data.availableTools.includes(t.name))
-        : mcpTools ?? [];
+        ? allTools.filter(t => data.availableTools.includes(t.name))
+        : allTools;
 
       context.set(`toolkit_${node.id}`, {
         tools: selectedTools.map(t => ({

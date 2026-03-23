@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useCommandCenter } from '@/hooks/useCommandCenter';
 import { useAgentBackground } from '@/hooks/useAgentBackground';
+import { useAgentDynamicColors } from '@/hooks/useImageDominantColor';
 import { AgentShowcase } from '@/components/command-center/AgentShowcase';
 import { AgentCarousel } from '@/components/command-center/AgentCarousel';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -26,6 +28,16 @@ export default function OverviewPage() {
 
     const agentId = activeAgent?.id || '';
     const { backgroundUri, invalidate: invalidateBg } = useAgentBackground(agentId);
+    const dynamicColors = useAgentDynamicColors(activeAgent?.colorHex);
+
+    // Hero image state (managed by AgentShowcase, rendered here as a full-screen layer)
+    const [heroUri, setHeroUri] = useState<string | null>(null);
+    const [heroPosition, setHeroPosition] = useState<{ x: number; y: number }>({ x: 50, y: 100 });
+
+    const handleHeroChanged = useCallback((uri: string | null, position: { x: number; y: number }) => {
+        setHeroUri(uri);
+        setHeroPosition(position);
+    }, []);
 
     if (!isMounted) {
         return <div className="w-screen h-screen bg-black" />;
@@ -57,8 +69,33 @@ export default function OverviewPage() {
             {/* Layer 1: Ambient Atmosphere Glow */}
             <AtmosphereLayer colorHex={activeAgent?.colorHex || '#FF6B00'} />
 
-            {/* Layer 2: Main Content — full height, carousel overlays */}
-            <div className="absolute inset-0 z-10 pointer-events-none">
+            {/* Layer 2: Full-Screen Hero Image (above BG, behind cards) */}
+            <AnimatePresence mode="wait">
+                {heroUri && (
+                    <motion.div
+                        key={heroUri}
+                        className="absolute inset-0 z-[5] pointer-events-none"
+                        initial={{ opacity: 0, scale: 1.03 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <img
+                            src={heroUri}
+                            alt=""
+                            className="absolute inset-0 w-full h-full"
+                            style={{
+                                objectFit: 'contain',
+                                objectPosition: `${heroPosition.x}% ${heroPosition.y}%`,
+                            }}
+                            draggable={false}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Layer 3: Main Content — full height, overlay on hero */}
+            <div className="absolute inset-0 z-10 pointer-events-none group">
 
                 {activeAgent ? (
                     <>
@@ -71,8 +108,10 @@ export default function OverviewPage() {
                             rank={activeAgentXp.rank}
                             currentStreak={currentStreak}
                             onBackgroundChanged={invalidateBg}
+                            onHeroChanged={handleHeroChanged}
                             availableAgents={availableAgents}
                             onSelectAgent={setActiveAgentId}
+                            dynamicColors={dynamicColors}
                         />
                     </>
                 ) : (

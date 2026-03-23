@@ -13,6 +13,10 @@ import type {
   HumanApprovalConfig,
   ConditionConfig,
   OutputConfig,
+  DelayConfig,
+  VariableSetConfig,
+  HttpRequestConfig,
+  LoopConfig,
 } from "../types";
 import { createNotification } from "@/lib/notifications/engine";
 
@@ -413,6 +417,183 @@ export async function executeOutput(
       nodeType: "output",
       status: "failed",
       error: e.message,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+    };
+  }
+}
+
+// ─── DELAY ───────────────────────────────────────────────────
+
+export async function executeDelay(
+  node: WorkflowNodeDefinition,
+  ctx: StepContext
+): Promise<StepResult> {
+  const config = node.config as DelayConfig;
+  const delaySec = config.delaySec || 5;
+  const startedAt = new Date().toISOString();
+
+  await new Promise((resolve) => setTimeout(resolve, delaySec * 1000));
+
+  return {
+    stepId: node.id,
+    nodeType: "delay",
+    status: "completed",
+    outputText: `Waited ${delaySec} seconds`,
+    startedAt,
+    completedAt: new Date().toISOString(),
+    durationMs: delaySec * 1000,
+  };
+}
+
+// ─── VARIABLE SET ────────────────────────────────────────────
+
+export async function executeVariableSet(
+  node: WorkflowNodeDefinition,
+  ctx: StepContext
+): Promise<StepResult> {
+  const config = node.config as VariableSetConfig;
+  const startedAt = new Date().toISOString();
+
+  try {
+    const name = config.variableName || "";
+    let value = interpolate(config.variableValue || "", ctx);
+
+    if (name) {
+      const operation = config.operation || "set";
+      if (operation === "append") {
+        ctx.variables[name] = (ctx.variables[name] || "") + value;
+      } else if (operation === "prepend") {
+        ctx.variables[name] = value + (ctx.variables[name] || "");
+      } else {
+        ctx.variables[name] = value;
+      }
+    }
+
+    return {
+      stepId: node.id,
+      nodeType: "variable_set",
+      status: "completed",
+      outputText: `Set ${name} = ${ctx.variables[name] || value}`,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+    };
+  } catch (e: any) {
+    return {
+      stepId: node.id,
+      nodeType: "variable_set",
+      status: "failed",
+      error: e.message,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+    };
+  }
+}
+
+// ─── HTTP REQUEST ────────────────────────────────────────────
+
+export async function executeHttpRequest(
+  node: WorkflowNodeDefinition,
+  ctx: StepContext
+): Promise<StepResult> {
+  const config = node.config as HttpRequestConfig;
+  const startedAt = new Date().toISOString();
+  const startMs = Date.now();
+
+  try {
+    const url = interpolate(config.url || "", ctx);
+    if (!url) throw new Error("No URL configured for HTTP request");
+
+    const method = (config.method || "GET").toUpperCase();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (config.headers) {
+      for (const [k, v] of Object.entries(config.headers)) {
+        headers[k] = interpolate(v, ctx);
+      }
+    }
+
+    const fetchOptions: RequestInit = { method, headers };
+    if (config.body && method !== "GET") {
+      fetchOptions.body = interpolate(config.body, ctx);
+    }
+
+    const controller = new AbortController();
+    const timeout = (config.timeoutSec || 30) * 1000;
+    const timer = setTimeout(() => controller.abort(), timeout);
+    fetchOptions.signal = controller.signal;
+
+    const res = await fetch(url, fetchOptions);
+    clearTimeout(timer);
+
+    const responseText = await res.text();
+    let outputJson: any = undefined;
+    try { outputJson = JSON.parse(responseText); } catch {}
+
+    return {
+      stepId: node.id,
+      nodeType: "http_request",
+      status: res.ok ? "completed" : "failed",
+      outputText: responseText,
+      outputJson,
+      error: res.ok ? undefined : `HTTP ${res.status}: ${res.statusText}`,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startMs,
+    };
+  } catch (e: any) {
+    return {
+      stepId: node.id,
+      nodeType: "http_request",
+      status: "failed",
+      error: e.name === "AbortError" ? "Request timed out" : (e.message || "HTTP request failed"),
+      startedAt,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startMs,
+    };
+  }
+}
+
+// ─── LOOP ────────────────────────────────────────────────────
+
+export async function executeLoop(
+  node: WorkflowNodeDefinition,
+  ctx: StepContext
+): Promise<StepResult & { branch: "loop_body" | "done" }> {
+  const config = node.config as LoopConfig;
+  const startedAt = new Date().toISOString();
+
+  // Track loop iteration count in variables
+  const iterKey = `_loop_${node.id}_iteration`;
+  const currentIter = (ctx.variables[iterKey] || 0) as number;
+  const maxIter = config.maxIterations || 3;
+
+  if (currentIter < maxIter) {
+    ctx.variables[iterKey] = currentIter + 1;
+    ctx.variables[`_loop_${node.id}_index`] = currentIter;
+
+    return {
+      stepId: node.id,
+      nodeType: "loop",
+      status: "completed",
+      outputText: `Iteration ${currentIter + 1} of ${maxIter}`,
+      branch: "loop_body",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+    };
+  } else {
+    // Reset counter for potential re-runs
+    ctx.variables[iterKey] = 0;
+
+    return {
+      stepId: node.id,
+      nodeType: "loop",
+      status: "completed",
+      outputText: `Loop completed after ${maxIter} iterations`,
+      branch: "done",
       startedAt,
       completedAt: new Date().toISOString(),
       durationMs: 0,

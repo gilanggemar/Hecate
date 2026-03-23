@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 
 interface HeroImage {
     id: number;
     imageData: string;
     sortOrder: number;
+    positionX: number;
+    positionY: number;
 }
 
 interface HeroGalleryState {
@@ -46,9 +48,14 @@ export function useAgentHeroGallery(agentId: string) {
         fetchImages();
     }, [agentId, fetchImages]);
 
-    const activeImage = state.images.length > 0
-        ? state.images[Math.min(state.activeIndex, state.images.length - 1)]?.imageData || null
+    const activeImageObj = state.images.length > 0
+        ? state.images[Math.min(state.activeIndex, state.images.length - 1)]
         : null;
+    const activeImage = activeImageObj?.imageData || null;
+
+    const posX = activeImageObj?.positionX ?? 50;
+    const posY = activeImageObj?.positionY ?? 100;
+    const activePosition = useMemo(() => ({ x: posX, y: posY }), [posX, posY]);
 
     const setActiveIndex = useCallback(async (index: number) => {
         const clamped = Math.max(0, Math.min(index, state.images.length - 1));
@@ -85,6 +92,7 @@ export function useAgentHeroGallery(agentId: string) {
         images: state.images,
         activeIndex: state.activeIndex,
         activeImage,
+        activePosition,
         imageCount: state.images.length,
         isLoading,
         next,

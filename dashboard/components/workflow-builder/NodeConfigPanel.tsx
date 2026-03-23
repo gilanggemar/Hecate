@@ -234,10 +234,17 @@ export default function NodeConfigPanel() {
                         {(type === "agent_step" || type === "agent") && <AgentStepConfig data={data} update={update} agents={availableAgents} />}
                         {type === "formatter_step" && <FormatterConfig data={data} update={update} incomingNodes={incomingNodes} />}
                         {type === "condition" && <ConditionConfigForm data={data} update={update} incomingNodes={incomingNodes} />}
-                        {type === "human_approval" && <HumanApprovalConfigForm data={data} update={update} />}
-                        {type === "output" && <OutputConfigForm data={data} update={update} />}
+                        {type === "human_approval" && <HumanApprovalConfigForm data={data} update={update} nodes={nodes} />}
+                        {type === "output" && <OutputConfigForm data={data} update={update} nodes={nodes} />}
                         {type === "schedule_trigger" && <ScheduleConfig data={data} update={update} />}
                         {type === "webhook_trigger" && <WebhookConfig data={data} update={update} />}
+                        {type === "delay" && <DelayConfigForm data={data} update={update} />}
+                        {type === "variable_set" && <VariableSetConfigForm data={data} update={update} incomingNodes={incomingNodes} />}
+                        {type === "http_request" && <HttpRequestConfigForm data={data} update={update} incomingNodes={incomingNodes} />}
+                        {type === "loop" && <LoopConfigForm data={data} update={update} nodes={nodes} />}
+                        {type === "note" && <NoteConfigForm data={data} update={update} />}
+                        {type === "checkpoint" && <CheckpointConfigForm data={data} update={update} />}
+                        {type === "convergence" && <ConvergenceConfigForm data={data} update={update} />}
                     </div>
 
                     {/* RIGHT PANE: Current Node Output */}
@@ -535,24 +542,48 @@ function ConditionConfigForm({ data, update, incomingNodes }: { data: any; updat
     );
 }
 
-function HumanApprovalConfigForm({ data, update }: { data: any; update: (k: string, v: any) => void }) {
+function HumanApprovalConfigForm({ data, update, nodes }: { data: any; update: (k: string, v: any) => void; nodes: RFNode[] }) {
+    const checkpoints = nodes.filter(n => n.type === 'checkpoint');
     return (
-        <FormField label="Instructions">
-            <textarea
-                value={data.instructions || ""}
-                onChange={(e) => update("instructions", e.target.value)}
-                placeholder="What should the reviewer check?"
-                style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
-            />
-        </FormField>
+        <>
+            <FormField label="Instructions">
+                <textarea
+                    value={data.instructions || ""}
+                    onChange={(e) => update("instructions", e.target.value)}
+                    placeholder="What should the reviewer check?"
+                    style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
+                />
+            </FormField>
+            {checkpoints.length > 0 && (
+                <FormField label="Cycle Checkpoint">
+                    <select
+                        value={data.checkpointId || ""}
+                        onChange={(e) => update("checkpointId", e.target.value)}
+                        style={inputStyle}
+                    >
+                        <option value="">(None)</option>
+                        {checkpoints.map(cp => (
+                            <option key={cp.id} value={cp.id}>{(cp.data as any).label || 'Checkpoint'}</option>
+                        ))}
+                    </select>
+                </FormField>
+            )}
+        </>
     );
 }
 
-function OutputConfigForm({ data, update }: { data: any; update: (k: string, v: any) => void }) {
+function OutputConfigForm({ data, update, nodes }: { data: any; update: (k: string, v: any) => void; nodes: RFNode[] }) {
+    const checkpoints = nodes.filter(n => n.type === 'checkpoint');
+    const hasCheckpoint = !!data.checkpointId;
     return (
         <>
             <FormField label="Output Mode">
-                <select value={data.outputMode || "return"} onChange={(e) => update("outputMode", e.target.value)} style={inputStyle}>
+                <select 
+                    value={data.outputMode || "return"} 
+                    onChange={(e) => update("outputMode", e.target.value)} 
+                    style={hasCheckpoint ? { ...inputStyle, opacity: 0.5, cursor: "not-allowed" } : inputStyle}
+                    disabled={hasCheckpoint}
+                >
                     <option value="return">Return result</option>
                     <option value="notification">Send to notification</option>
                     <option value="webhook">Send to webhook</option>
@@ -566,8 +597,33 @@ function OutputConfigForm({ data, update }: { data: any; update: (k: string, v: 
                         value={data.webhookUrl || ""}
                         onChange={(e) => update("webhookUrl", e.target.value)}
                         placeholder="https://..."
-                        style={inputStyle}
+                        style={hasCheckpoint ? { ...inputStyle, opacity: 0.5, cursor: "not-allowed" } : inputStyle}
+                        disabled={hasCheckpoint}
                     />
+                </FormField>
+            )}
+
+            {checkpoints.length > 0 ? (
+                <FormField label="Cycle Checkpoint">
+                    <select
+                        value={data.checkpointId || ""}
+                        onChange={(e) => update("checkpointId", e.target.value)}
+                        style={inputStyle}
+                    >
+                        <option value="">(None)</option>
+                        {checkpoints.map(cp => (
+                            <option key={cp.id} value={cp.id}>{(cp.data as any).label || 'Checkpoint'}</option>
+                        ))}
+                    </select>
+                </FormField>
+            ) : (
+                <FormField label="Cycle Checkpoint">
+                    <select disabled style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }}>
+                        <option value="">(Select Checkpoint)</option>
+                    </select>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.2 }}>
+                        Add a Checkpoint node to the canvas to select it.
+                    </div>
                 </FormField>
             )}
             
@@ -758,3 +814,312 @@ const inputStyle: React.CSSProperties = {
     transition: "border-color 200ms",
     fontFamily: "inherit",
 };
+
+// ─── Preset Selector ─────────────────────────────────────────
+
+type Preset = {
+    label: string;
+    description: string;
+    values: Record<string, any>;
+};
+
+function PresetSelector({ presets, onApply }: { presets: Preset[]; onApply: (values: Record<string, any>) => void }) {
+    return (
+        <div style={{ marginBottom: 12 }}>
+            <div style={{
+                fontSize: 9, fontWeight: 600, textTransform: "uppercase",
+                letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: 5,
+            }}>
+                Quick Presets
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {presets.map((p) => (
+                    <button
+                        key={p.label}
+                        onClick={() => onApply(p.values)}
+                        title={p.description}
+                        style={{
+                            padding: "4px 10px",
+                            fontSize: 10,
+                            fontWeight: 500,
+                            color: "var(--text-secondary)",
+                            background: "oklch(1 0 0 / 0.05)",
+                            border: "1px solid oklch(1 0 0 / 0.08)",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            transition: "all 150ms ease",
+                            whiteSpace: "nowrap",
+                        }}
+                        onMouseEnter={(e) => {
+                            (e.target as HTMLElement).style.background = "oklch(1 0 0 / 0.10)";
+                            (e.target as HTMLElement).style.borderColor = "oklch(1 0 0 / 0.18)";
+                            (e.target as HTMLElement).style.color = "var(--text-primary)";
+                        }}
+                        onMouseLeave={(e) => {
+                            (e.target as HTMLElement).style.background = "oklch(1 0 0 / 0.05)";
+                            (e.target as HTMLElement).style.borderColor = "oklch(1 0 0 / 0.08)";
+                            (e.target as HTMLElement).style.color = "var(--text-secondary)";
+                        }}
+                    >
+                        {p.label}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ─── Preset Data ─────────────────────────────────────────────
+
+const DELAY_PRESETS: Preset[] = [
+    { label: "⚡ Quick (2s)", description: "Short 2-second pause", values: { delaySec: 2 } },
+    { label: "⏱ Short (5s)", description: "5-second pause between steps", values: { delaySec: 5 } },
+    { label: "⏳ Medium (15s)", description: "15-second break for rate-limiting", values: { delaySec: 15 } },
+    { label: "🕐 Half min (30s)", description: "30-second wait", values: { delaySec: 30 } },
+    { label: "⏰ 1 minute", description: "Wait 1 full minute", values: { delaySec: 60 } },
+    { label: "🕔 5 minutes", description: "Wait 5 minutes for external processing", values: { delaySec: 300 } },
+];
+
+const VARIABLE_SET_PRESETS: Preset[] = [
+    { label: "📦 Store output", description: "Save the previous step's text output to a variable", values: { variableName: "result", variableValue: "{{prev.step_1.outputText}}", operation: "set" } },
+    { label: "🔢 Set counter", description: "Initialize a numeric counter variable", values: { variableName: "counter", variableValue: "0", operation: "set" } },
+    { label: "📝 Build summary", description: "Append outputs to build a running summary", values: { variableName: "summary", variableValue: "{{prev.step_1.outputText}}\n", operation: "append" } },
+    { label: "🏷 Set status", description: "Store a status flag for conditional branching", values: { variableName: "status", variableValue: "ready", operation: "set" } },
+    { label: "📋 Set prompt", description: "Store a prompt template for a following agent step", values: { variableName: "prompt", variableValue: "Summarize the following:\n{{prev.step_1.outputText}}", operation: "set" } },
+];
+
+const HTTP_REQUEST_PRESETS: Preset[] = [
+    { label: "🔍 GET API", description: "Fetch data from a JSON API endpoint", values: { method: "GET", url: "https://api.example.com/data", body: "", headers: { "Accept": "application/json" }, timeoutSec: 30 } },
+    { label: "📤 POST JSON", description: "Send JSON data to an API endpoint", values: { method: "POST", url: "https://api.example.com/submit", body: '{\n  "data": "{{prev.step_1.outputText}}"\n}', headers: { "Content-Type": "application/json" }, timeoutSec: 30 } },
+    { label: "💬 Slack message", description: "Post a message to a Slack channel via webhook", values: { method: "POST", url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL", body: '{\n  "text": "{{prev.step_1.outputText}}"\n}', headers: { "Content-Type": "application/json" }, timeoutSec: 15 } },
+    { label: "🎮 Discord message", description: "Send a message to a Discord channel via webhook", values: { method: "POST", url: "https://discord.com/api/webhooks/YOUR/WEBHOOK", body: '{\n  "content": "{{prev.step_1.outputText}}"\n}', headers: { "Content-Type": "application/json" }, timeoutSec: 15 } },
+    { label: "📧 Email (webhook)", description: "Trigger an email via a webhook service", values: { method: "POST", url: "https://api.emailservice.com/send", body: '{\n  "to": "user@example.com",\n  "subject": "Workflow Output",\n  "body": "{{prev.step_1.outputText}}"\n}', headers: { "Content-Type": "application/json", "Authorization": "Bearer YOUR_API_KEY" }, timeoutSec: 30 } },
+    { label: "🔗 Custom webhook", description: "Send workflow data to a custom webhook endpoint", values: { method: "POST", url: "https://your-server.com/webhook", body: '{\n  "event": "workflow_completed",\n  "output": "{{prev.step_1.outputText}}"\n}', headers: { "Content-Type": "application/json" }, timeoutSec: 30 } },
+];
+
+const LOOP_PRESETS: Preset[] = [
+    { label: "🔁 Retry 3x", description: "Retry a step up to 3 times", values: { loopType: "count", maxIterations: 3 } },
+    { label: "🔄 Repeat 5x", description: "Repeat a sequence 5 times", values: { loopType: "count", maxIterations: 5 } },
+    { label: "🔟 Batch (10x)", description: "Process in batches of 10", values: { loopType: "count", maxIterations: 10 } },
+    { label: "📋 For each item", description: "Iterate over each item from a previous step's output", values: { loopType: "for_each", maxIterations: 20, iterateOver: "{{prev.step_1.outputText}}" } },
+];
+
+const NOTE_PRESETS: Preset[] = [
+    { label: "📌 TODO", description: "Mark something that needs to be done", values: { noteText: "TODO: " } },
+    { label: "⚠️ Warning", description: "Add a caution/warning note", values: { noteText: "⚠️ WARNING: This step requires careful configuration. Make sure to..." } },
+    { label: "📖 Documentation", description: "Document what this section does", values: { noteText: "📖 This section of the workflow handles...\n\nInput: \nOutput: \nNotes: " } },
+    { label: "💡 Tip", description: "Add a helpful tip for collaborators", values: { noteText: "💡 TIP: " } },
+];
+
+// ─── New Node Config Forms ───────────────────────────────────
+
+function DelayConfigForm({ data, update }: { data: any; update: (k: string, v: any) => void }) {
+    const applyPreset = (values: Record<string, any>) => {
+        for (const [k, v] of Object.entries(values)) update(k, v);
+    };
+    return (
+        <>
+            <PresetSelector presets={DELAY_PRESETS} onApply={applyPreset} />
+            <FormField label="Delay (seconds)">
+                <input
+                    type="number"
+                    min="1"
+                    max="3600"
+                    value={data.delaySec || 5}
+                    onChange={(e) => update("delaySec", Math.max(1, parseInt(e.target.value) || 1))}
+                    style={inputStyle}
+                />
+            </FormField>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 0" }}>
+                ≈ {(data.delaySec || 5) >= 60 ? `${Math.round((data.delaySec || 5) / 60)} minute(s)` : `${data.delaySec || 5} second(s)`}
+            </div>
+        </>
+    );
+}
+
+function VariableSetConfigForm({ data, update, incomingNodes }: { data: any; update: (k: string, v: any) => void; incomingNodes: RFNode[] }) {
+    const applyPreset = (values: Record<string, any>) => {
+        for (const [k, v] of Object.entries(values)) update(k, v);
+    };
+    return (
+        <>
+            <PresetSelector presets={VARIABLE_SET_PRESETS} onApply={applyPreset} />
+            <FormField label="Variable Name">
+                <input
+                    type="text"
+                    value={data.variableName || ""}
+                    onChange={(e) => update("variableName", e.target.value)}
+                    placeholder="e.g. result, summary, counter"
+                    style={{ ...inputStyle, fontFamily: "monospace" }}
+                />
+            </FormField>
+            <FormField label="Value">
+                <textarea
+                    value={data.variableValue || ""}
+                    onChange={(e) => update("variableValue", e.target.value)}
+                    placeholder={"Static text or {{prev.step_id.outputText}}"}
+                    style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
+                />
+            </FormField>
+            <FormField label="Operation">
+                <select value={data.operation || "set"} onChange={(e) => update("operation", e.target.value)} style={inputStyle}>
+                    <option value="set">Set (replace)</option>
+                    <option value="append">Append</option>
+                    <option value="prepend">Prepend</option>
+                </select>
+            </FormField>
+        </>
+    );
+}
+
+function HttpRequestConfigForm({ data, update, incomingNodes }: { data: any; update: (k: string, v: any) => void; incomingNodes: RFNode[] }) {
+    const applyPreset = (values: Record<string, any>) => {
+        for (const [k, v] of Object.entries(values)) update(k, v);
+    };
+    return (
+        <>
+            <PresetSelector presets={HTTP_REQUEST_PRESETS} onApply={applyPreset} />
+            <FormField label="HTTP Method">
+                <select value={data.method || "GET"} onChange={(e) => update("method", e.target.value)} style={inputStyle}>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </FormField>
+            <FormField label="URL">
+                <input
+                    type="text"
+                    value={data.url || ""}
+                    onChange={(e) => update("url", e.target.value)}
+                    placeholder="https://api.example.com/endpoint"
+                    style={{ ...inputStyle, fontFamily: "monospace" }}
+                />
+            </FormField>
+            {data.method !== "GET" && (
+                <FormField label="Request Body">
+                    <textarea
+                        value={data.body || ""}
+                        onChange={(e) => update("body", e.target.value)}
+                        placeholder={'{ "key": "{{prev.step_id.outputText}}" }'}
+                        style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "monospace" }}
+                    />
+                </FormField>
+            )}
+            <AdvancedSettings>
+                <FormField label="Headers (JSON)">
+                    <textarea
+                        value={typeof data.headers === "object" ? JSON.stringify(data.headers, null, 2) : data.headers || ""}
+                        onChange={(e) => {
+                            try { update("headers", JSON.parse(e.target.value)); } catch { update("headers", e.target.value); }
+                        }}
+                        placeholder={'{ "Authorization": "Bearer ..." }'}
+                        style={{ ...inputStyle, minHeight: 60, resize: "vertical", fontFamily: "monospace" }}
+                    />
+                </FormField>
+                <FormField label="Timeout (seconds)">
+                    <input
+                        type="number"
+                        value={data.timeoutSec || 30}
+                        onChange={(e) => update("timeoutSec", parseInt(e.target.value) || 30)}
+                        style={inputStyle}
+                    />
+                </FormField>
+            </AdvancedSettings>
+        </>
+    );
+}
+
+function LoopConfigForm({ data, update, nodes }: { data: any; update: (k: string, v: any) => void; nodes: RFNode[] }) {
+    const applyPreset = (values: Record<string, any>) => {
+        for (const [k, v] of Object.entries(values)) update(k, v);
+    };
+    const checkpoints = nodes.filter(n => n.type === 'checkpoint');
+    return (
+        <>
+            <PresetSelector presets={LOOP_PRESETS} onApply={applyPreset} />
+            <FormField label="Loop Type">
+                <select value={data.loopType || "count"} onChange={(e) => update("loopType", e.target.value)} style={inputStyle}>
+                    <option value="count">Repeat N times</option>
+                    <option value="for_each">For each item</option>
+                </select>
+            </FormField>
+            <FormField label={data.loopType === "for_each" ? "Max Iterations" : "Repeat Count"}>
+                <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={data.maxIterations || 3}
+                    onChange={(e) => update("maxIterations", Math.max(1, parseInt(e.target.value) || 1))}
+                    style={inputStyle}
+                />
+            </FormField>
+            {data.loopType === "for_each" && (
+                <FormField label="Iterate Over">
+                    <input
+                        type="text"
+                        value={data.iterateOver || ""}
+                        onChange={(e) => update("iterateOver", e.target.value)}
+                        placeholder="{{prev.step_id.outputText}}"
+                        style={{ ...inputStyle, fontFamily: "monospace" }}
+                    />
+                </FormField>
+            )}
+            {checkpoints.length > 0 && (
+                <FormField label="Cycle Checkpoint">
+                    <select
+                        value={data.checkpointId || ""}
+                        onChange={(e) => update("checkpointId", e.target.value)}
+                        style={inputStyle}
+                    >
+                        <option value="">(None)</option>
+                        {checkpoints.map(cp => (
+                            <option key={cp.id} value={cp.id}>{(cp.data as any).label || 'Checkpoint'}</option>
+                        ))}
+                    </select>
+                </FormField>
+            )}
+        </>
+    );
+}
+
+function NoteConfigForm({ data, update }: { data: any; update: (k: string, v: any) => void }) {
+    const applyPreset = (values: Record<string, any>) => {
+        for (const [k, v] of Object.entries(values)) update(k, v);
+    };
+    return (
+        <>
+            <PresetSelector presets={NOTE_PRESETS} onApply={applyPreset} />
+            <FormField label="Note">
+                <textarea
+                    value={data.noteText || ""}
+                    onChange={(e) => update("noteText", e.target.value)}
+                    placeholder="Add annotations, documentation, or comments..."
+                    style={{ ...inputStyle, minHeight: 100, resize: "vertical" }}
+                />
+            </FormField>
+        </>
+    );
+}
+
+function CheckpointConfigForm({ data, update }: { data: any; update: (k: string, v: any) => void }) {
+    return (
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5, padding: "8px 0" }}>
+            Checkpoints act as destinations for cycle arcs from a Loop or Human Approval node. Give this checkpoint a descriptive node name so you can easily select it from other nodes.
+        </div>
+    );
+}
+
+function ConvergenceConfigForm({ data, update }: { data: any; update: (k: string, v: any) => void }) {
+    return (
+        <>
+            <FormField label="Merge Strategy">
+                <select value={data.mergeStrategy || "wait_all"} onChange={(e) => update("mergeStrategy", e.target.value)} style={inputStyle}>
+                    <option value="wait_all">Wait for all incoming paths</option>
+                    <option value="first_arrives">Trigger on first arrived path</option>
+                </select>
+            </FormField>
+        </>
+    );
+}

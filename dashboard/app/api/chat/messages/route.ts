@@ -36,6 +36,7 @@ export async function GET(request: Request) {
             .select('*')
             .eq('conversation_id', conversationId)
             .eq('branch_id', branchId)
+            .order('sequence_number', { ascending: true })
             .order('created_at', { ascending: true });
 
         if (error) throw new Error(error.message);
@@ -88,6 +89,21 @@ export async function POST(request: Request) {
         // Rough token estimate (1 token ≈ 4 chars)
         const tokenCount = Math.ceil((content || '').length / 4);
 
+        // Compute next sequence_number for this conversation
+        let nextSeq = 1;
+        try {
+            const { data: maxRow } = await db
+                .from('conversation_messages')
+                .select('sequence_number')
+                .eq('conversation_id', conversation_id)
+                .order('sequence_number', { ascending: false })
+                .limit(1)
+                .single();
+            if (maxRow?.sequence_number) {
+                nextSeq = maxRow.sequence_number + 1;
+            }
+        } catch { /* first message — use 1 */ }
+
         // Insert the message
         const { data: message, error: msgErr } = await db
             .from('conversation_messages')
@@ -99,6 +115,7 @@ export async function POST(request: Request) {
                 token_count: tokenCount,
                 metadata,
                 branch_id,
+                sequence_number: nextSeq,
             })
             .select()
             .single();

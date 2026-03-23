@@ -1,7 +1,10 @@
+"use client";
+
 import { useEffect, useRef, useCallback } from 'react';
 import { create } from 'zustand';
 import { useTaskStore } from './useTaskStore';
-import { getGateway } from './useOpenClawGateway';
+import { getGateway } from './openclawGateway';
+import { initializeAgentSessions } from './useOpenClawGateway';
 import { useOpenClawStore } from '@/store/useOpenClawStore';
 import { parseOpenClawToolCalls } from './openclawToolParser';
 import { getAgentProfile } from './agentRoster';
@@ -67,6 +70,7 @@ export interface SummitMessage {
     streaming?: boolean;
     roundNumber?: number;
     tool_calls?: any[];
+    runId?: string;
 }
 
 export interface SessionInfo {
@@ -135,7 +139,8 @@ export const useSocketStore = create<SocketStore>((set) => ({
     setSessions: (sessions) => set({ sessions }),
     addChatMessage: (msg) => set((state) => {
         if (state.chatMessages.some(m => m.id === msg.id)) return state;
-        return { chatMessages: [...state.chatMessages, msg] };
+        const finalMsg = (msg as any)._sortTime ? msg : { ...msg, _sortTime: Date.now() };
+        return { chatMessages: [...state.chatMessages, finalMsg] };
     }),
     updateChatMessage: (id, update) => set((state) => ({
         chatMessages: state.chatMessages.map(m =>
@@ -370,6 +375,9 @@ export function useSocket() {
                 const agents = parseAgentsFromHealth(payload);
                 if (agents.length > 0) {
                     setAgents(agents);
+                    agents.forEach(agent => {
+                        initializeAgentSessions(agent.id).catch(console.error);
+                    });
                 }
                 addLog(`💓 Health: ${agents.length} configured agents`);
             }
@@ -421,12 +429,13 @@ export function useSocket() {
                 }
 
                 if (routeToSummit) {
-                    const existing = useSocketStore.getState().summitMessages.find(m => m.id === `reply-${runId}`);
+                    const existing = useSocketStore.getState().summitMessages.find(m => m.runId === runId);
                     if (existing) {
-                        updateSummitMessage(`reply-${runId}`, { content: `⚠️ Error: ${errorMessage}`, streaming: false });
+                        updateSummitMessage(existing.id, { content: `⚠️ Error: ${errorMessage}`, streaming: false });
                     } else {
                         addSummitMessage({
-                            id: `error-${runId || Date.now()}`,
+                            id: crypto.randomUUID(),
+                            runId,
                             role: 'assistant',
                             content: `⚠️ ${errorMessage}`,
                             timestamp: new Date().toLocaleTimeString(),
@@ -454,7 +463,7 @@ export function useSocket() {
             if (p.type === 'tool_call' || p.type === 'tool_response' || p.type === 'task.progress' || p.event === 'task.progress') {
                 const toolRunId = p.runId || p.requestId;
                 const existingMsg = routeToSummit
-                    ? useSocketStore.getState().summitMessages.find(m => m.id === `reply-${runId}`)
+                    ? useSocketStore.getState().summitMessages.find(m => m.runId === runId)
                     : useSocketStore.getState().chatMessages.find(m => m.id === `reply-${runId}`);
 
                 let existingToolCalls = [...(existingMsg?.tool_calls || [])];
@@ -604,19 +613,20 @@ export function useSocket() {
             const finalSessionKey = p.sessionKey || (startId && runIdToSessionKey.current?.get(startId)) || `agent:${finalAgentId}:main`;
 
             if (routeToSummit && runId && contentChunk) {
-                const existing = useSocketStore.getState().summitMessages.find(m => m.id === `reply-${runId}`);
+                const existing = useSocketStore.getState().summitMessages.find(m => m.runId === runId);
                 if (existing) {
                     const newToolCalls = (p.tool_calls && p.tool_calls.length > 0) ? p.tool_calls : (existing.tool_calls || []);
                     if (isSnapshot) {
                         if (contentChunk.length >= existing.content.length) {
-                            updateSummitMessage(`reply-${runId}`, { content: contentChunk, tool_calls: newToolCalls });
+                            updateSummitMessage(existing.id, { content: contentChunk, tool_calls: newToolCalls });
                         }
                     } else {
-                        updateSummitMessage(`reply-${runId}`, { content: existing.content + contentChunk, tool_calls: newToolCalls });
+                        updateSummitMessage(existing.id, { content: existing.content + contentChunk, tool_calls: newToolCalls });
                     }
                 } else {
                     addSummitMessage({
-                        id: `reply-${runId}`,
+                        id: crypto.randomUUID(),
+                        runId,
                         role: 'assistant',
                         content: contentChunk,
                         timestamp: new Date().toLocaleTimeString(),
@@ -687,7 +697,8 @@ export function useSocket() {
                 runIdToInputText.current.delete(runId);
 
                 if (routeToSummit) {
-                    updateSummitMessage(`reply-${runId}`, { streaming: false });
+                    const existing = useSocketStore.getState().summitMessages.find(m => m.runId === runId);
+                    if (existing) updateSummitMessage(existing.id, { streaming: false });
                 } else {
                     // Re-parse accumulated content at completion time
                     // This catches tool markup spread across multiple streaming deltas
@@ -753,7 +764,8 @@ export function useSocket() {
                 runIdToInputText.current.delete(lifecycleRunId);
 
                 if (summitRunIds.has(lifecycleRunId)) {
-                    updateSummitMessage(`reply-${lifecycleRunId}`, { streaming: false });
+                    const existing = useSocketStore.getState().summitMessages.find(m => m.runId === lifecycleRunId);
+                    if (existing) updateSummitMessage(existing.id, { streaming: false });
                 } else {
                     // Re-parse at lifecycle end too (backup for 'done' event)
                     const completedMsg = useSocketStore.getState().chatMessages.find(m => m.id === `reply-${lifecycleRunId}`);
@@ -793,7 +805,7 @@ export function useSocket() {
                         const routeToSummit = summitRunIds.has(runId);
                         const storeState = useSocketStore.getState();
                         const msgs = routeToSummit ? storeState.summitMessages : storeState.chatMessages;
-                        const existingMsg = msgs.find(m => m.id === `reply-${runId}`);
+                        const existingMsg = msgs.find(m => routeToSummit ? (m as any).runId === runId : m.id === `reply-${runId}`);
 
                         if (existingMsg) {
                             const existingToolIds = new Set((existingMsg.tool_calls || []).map(tc => tc.id));
@@ -811,7 +823,7 @@ export function useSocket() {
                             if (newTools.length > 0) {
                                 const mergedTools = [...(existingMsg.tool_calls || []), ...newTools];
                                 if (routeToSummit) {
-                                    updateSummitMessage(`reply-${runId}`, { tool_calls: mergedTools });
+                                    updateSummitMessage(existingMsg.id, { tool_calls: mergedTools });
                                 } else {
                                     updateChatMessage(`reply-${runId}`, { tool_calls: mergedTools });
                                 }
@@ -862,7 +874,7 @@ export function useSocket() {
                     const routeToSummit = summitRunIds.has(runId);
                     const storeState = useSocketStore.getState();
                     const msgs = routeToSummit ? storeState.summitMessages : storeState.chatMessages;
-                    const existingMsg = msgs.find(m => m.id === `reply-${runId}`);
+                    const existingMsg = msgs.find(m => routeToSummit ? (m as any).runId === runId : m.id === `reply-${runId}`);
 
                     if (existingMsg) {
                         const tcs = [...(existingMsg.tool_calls || [])];
@@ -873,7 +885,7 @@ export function useSocket() {
                             tcs.push(newToolCall);
                         }
                         if (routeToSummit) {
-                            updateSummitMessage(`reply-${runId}`, { tool_calls: tcs });
+                            updateSummitMessage(existingMsg.id, { tool_calls: tcs });
                         } else {
                             updateChatMessage(`reply-${runId}`, { tool_calls: tcs });
                         }
@@ -881,7 +893,8 @@ export function useSocket() {
                         const mapAgentId = runIdToAgent.current.get(runId) || 'ivy';
                         const sessionKey = p.sessionKey || `agent:${mapAgentId}:main`;
                         const newMsg = {
-                            id: `reply-${runId}`,
+                            id: routeToSummit ? crypto.randomUUID() : `reply-${runId}`,
+                            runId: routeToSummit ? runId : undefined,
                             role: 'assistant' as const,
                             content: '',
                             timestamp: new Date().toLocaleTimeString(),
@@ -1082,14 +1095,14 @@ export function useSocket() {
         const currentSessions = useSocketStore.getState().sessions;
 
         for (const agentId of agentIds) {
-            let sessionKey = `agent:${agentId}:main`;
-            const webchatSession = currentSessions.find(s => s.agentId === agentId && s.key?.includes('webchat'));
-            if (webchatSession) {
-                sessionKey = webchatSession.key;
-            } else {
-                const anySession = currentSessions.find(s => s.agentId === agentId);
-                if (anySession) sessionKey = anySession.key;
+            let sessionKey = `agent:${agentId}:nsummit`;
+
+            const handshakeKey = `hs_v3_${sessionKey}`;
+            if (!sessionStorage.getItem(handshakeKey)) {
+                sendToolsHandshake(sessionKey, agentId);
+                sessionStorage.setItem(handshakeKey, 'true');
             }
+
             const idempotencyKey = uid();
             const reqId = `chat-${idempotencyKey}`;
 
@@ -1142,6 +1155,11 @@ export function useSocket() {
         }
     }, [addLog]);
 
+    const sendToolsHandshake = useCallback(async (_sessionKey: string, _agentId: string) => {
+        // Composio injection removed — capabilities are managed via OpenClaw Gateway
+        console.log('[Handshake] Tools handshake is now managed by OpenClaw capabilities system');
+    }, []);
+
     const sendEmergencyShutdown = useCallback(() => {
         const gw = getGateway();
         if (gw.isConnected) {
@@ -1155,5 +1173,5 @@ export function useSocket() {
         }
     }, [addLog]);
 
-    return { sendCommand, sendChatMessage, sendSummitMessage, fetchHistory, sendConfigUpdate, sendEmergencyShutdown };
+    return { sendCommand, sendChatMessage, sendSummitMessage, fetchHistory, sendConfigUpdate, sendEmergencyShutdown, sendToolsHandshake };
 }

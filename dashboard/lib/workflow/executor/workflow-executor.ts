@@ -21,6 +21,10 @@ import {
   executeHumanApproval,
   executeCondition,
   executeOutput,
+  executeDelay,
+  executeVariableSet,
+  executeHttpRequest,
+  executeLoop,
 } from "./step-executors";
 
 export interface WorkflowExecutorOptions {
@@ -167,8 +171,8 @@ export async function* executeWorkflowV2(
     // Route to next nodes
     const nextEdges = outgoing.get(node.id) || [];
 
-    if (node.type === "condition") {
-      // Condition node — route based on branch
+    if (node.type === "condition" || node.type === "loop") {
+      // Condition/Loop node — route based on branch
       const branch = (result as any).branch || "false";
       for (const edge of nextEdges) {
         const handle = edge.sourceHandle || "true";
@@ -219,6 +223,26 @@ export async function executeNode(
       return executeCondition(node, ctx);
     case "output":
       return executeOutput(node, ctx);
+    case "delay":
+      return executeDelay(node, ctx);
+    case "variable_set":
+      return executeVariableSet(node, ctx);
+    case "http_request":
+      return executeHttpRequest(node, ctx);
+    case "loop":
+      return executeLoop(node, ctx);
+    case "note":
+    case "checkpoint":
+      // Note and Checkpoint nodes are non-executable, just pass through
+      return {
+        stepId: node.id,
+        nodeType: node.type,
+        status: "completed",
+        outputText: "",
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 0,
+      };
     default:
       return {
         stepId: node.id,
@@ -353,7 +377,7 @@ export async function* resumeWorkflowV2(
     yield { type: "step:completed", stepId: node.id, result, timestamp: new Date().toISOString() };
 
     const childEdges = outgoing.get(node.id) || [];
-    if (node.type === "condition") {
+    if (node.type === "condition" || node.type === "loop") {
       const branch = (result as any).branch || "false";
       for (const edge of childEdges) {
         if ((edge.sourceHandle || "true") === branch) queue.push(edge.targetNodeId);
@@ -523,7 +547,7 @@ export async function* retryWorkflowV2(
     yield { type: "step:completed", stepId: node.id, result, timestamp: new Date().toISOString() };
 
     const childEdges = outgoing.get(node.id) || [];
-    if (node.type === "condition") {
+    if (node.type === "condition" || node.type === "loop") {
       const branch = (result as any).branch || "false";
       for (const edge of childEdges) {
         if ((edge.sourceHandle || "true") === branch) queue.push(edge.targetNodeId);

@@ -3,6 +3,10 @@ import { db } from '@/lib/db';
 import { uploadImage, deleteImage, isStorageUrl, extractStoragePath } from '@/lib/supabaseStorage';
 import { getAuthUserId } from '@/lib/auth';
 
+// Allow large hero image uploads (up to 50MB)
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 // GET all hero images for an agent
 export async function GET(request: Request) {
     const userId = await getAuthUserId();
@@ -14,7 +18,7 @@ export async function GET(request: Request) {
 
     try {
         const { data: images } = await db.from('hero_images')
-            .select('id, image_data, sort_order')
+            .select('id, image_data, sort_order, position_x, position_y')
             .eq('user_id', userId)
             .eq('agent_id', agentId)
             .order('sort_order', { ascending: true });
@@ -23,7 +27,13 @@ export async function GET(request: Request) {
         const activeIndex = agent?.active_hero_index ?? 0;
 
         return NextResponse.json({
-            images: (images || []).map((img: any) => ({ id: img.id, imageData: img.image_data, sortOrder: img.sort_order })),
+            images: (images || []).map((img: any) => ({
+                id: img.id,
+                imageData: img.image_data,
+                sortOrder: img.sort_order,
+                positionX: img.position_x ?? 50,
+                positionY: img.position_y ?? 100,
+            })),
             activeIndex,
         });
     } catch (e: any) {
@@ -44,6 +54,10 @@ export async function POST(request: Request) {
 
         if (!agentId) return NextResponse.json({ error: 'Missing agentId' }, { status: 400 });
         if (!heroFile) return NextResponse.json({ error: 'Missing heroImage file' }, { status: 400 });
+
+        // Parse position data
+        const positionX = parseFloat(formData.get('positionX') as string) || 50;
+        const positionY = parseFloat(formData.get('positionY') as string) || 100;
 
         // Convert file to base64 data URI, then upload to Supabase Storage
         const buffer = Buffer.from(await heroFile.arrayBuffer());
@@ -68,12 +82,14 @@ export async function POST(request: Request) {
             .order('sort_order', { ascending: true });
         const nextSort = existing && existing.length > 0 ? existing[existing.length - 1].sort_order + 1 : 0;
 
-        // Insert new hero image with URL instead of base64
+        // Insert new hero image with URL and position
         const { data: result, error } = await db.from('hero_images').insert({
             user_id: userId,
             agent_id: agentId,
             image_data: imageUrl,
             sort_order: nextSort,
+            position_x: positionX,
+            position_y: positionY,
         }).select().single();
 
         if (error) throw new Error(error.message);
@@ -81,7 +97,16 @@ export async function POST(request: Request) {
         // Update the agent's hero_image column + set active to new image
         await db.from('agents').update({ hero_image: imageUrl, active_hero_index: nextSort }).eq('user_id', userId).eq('id', agentId);
 
-        return NextResponse.json({ success: true, image: { id: result.id, imageData: imageUrl, sortOrder: nextSort } });
+        return NextResponse.json({
+            success: true,
+            image: {
+                id: result.id,
+                imageData: imageUrl,
+                sortOrder: nextSort,
+                positionX,
+                positionY,
+            },
+        });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
