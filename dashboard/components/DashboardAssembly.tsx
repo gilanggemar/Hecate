@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { Settings } from 'lucide-react'
 
 /**
  * DashboardAssembly — Animated loading screen shown after sign-in.
@@ -15,11 +16,19 @@ import { useEffect, useState } from 'react'
  * 6. Status text cycles through phases
  */
 
-const PHASES = [
+const ASSEMBLY_PHASES = [
     'Authenticating session...',
     'Assembling command center...',
     'Wiring agent channels...',
     'Loading dashboard...',
+]
+
+const CYCLING_MESSAGES = [
+    'Summoning agents...',
+    'Conjuring dashboard...',
+    'Debugging reality...',
+    'Untangling thoughts...',
+    'Calibrating sarcasm...',
 ]
 
 // Spark effect at connection points
@@ -128,6 +137,7 @@ function WorkerCursor() {
 export function DashboardAssembly() {
     const [phase, setPhase] = useState(0)
     const [showSparks, setShowSparks] = useState(false)
+    const [cyclingIndex, setCyclingIndex] = useState(0)
 
     useEffect(() => {
         const timers = [
@@ -137,6 +147,14 @@ export function DashboardAssembly() {
             setTimeout(() => setShowSparks(true), 2600),
         ]
         return () => timers.forEach(clearTimeout)
+    }, [])
+
+    // Cycling messages that fade in/out continuously
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCyclingIndex((prev) => (prev + 1) % CYCLING_MESSAGES.length)
+        }, 2200)
+        return () => clearInterval(interval)
     }, [])
 
     // Skeleton piece shared styles
@@ -172,31 +190,16 @@ export function DashboardAssembly() {
                     initial={{ opacity: 0, scale: 0.92 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                >
-                    {/* Frame scan line */}
-                    <motion.div
-                        className="absolute left-0 right-0 h-[1px]"
-                        style={{
-                            background: 'linear-gradient(90deg, transparent 0%, rgba(255,109,41,0.3) 50%, transparent 100%)',
-                        }}
-                        initial={{ top: 0 }}
-                        animate={{ top: '100%' }}
-                        transition={{
-                            duration: 2.5,
-                            repeat: Infinity,
-                            ease: 'linear',
-                        }}
-                    />
-                </motion.div>
+                />
 
                 {/* ═══ TOP RAIL ═══ */}
                 <motion.div
-                    className="absolute flex items-center gap-2 px-3"
+                    className="absolute flex items-center justify-center"
                     style={{
                         top: 12,
-                        left: 'calc(50% - 80px)',
+                        left: 14,
+                        right: 14,
                         height: 28,
-                        width: 160,
                         borderRadius: 14,
                         background: skeletonBg,
                         border: skeletonBorder,
@@ -205,21 +208,23 @@ export function DashboardAssembly() {
                     animate={phase >= 0 ? { y: 0, opacity: 1 } : {}}
                     transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
                 >
-                    {/* Mini nav dots */}
-                    {[0, 1, 2, 3, 4].map((i) => (
-                        <motion.div
-                            key={i}
-                            className="rounded-full"
-                            style={{
-                                width: 8,
-                                height: 8,
-                                background: i === 0 ? 'rgba(255,109,41,0.5)' : 'rgba(255,255,255,0.1)',
-                            }}
-                            initial={{ scale: 0 }}
-                            animate={phase >= 0 ? { scale: 1 } : {}}
-                            transition={{ delay: 0.4 + i * 0.08, duration: 0.3, type: 'spring' }}
-                        />
-                    ))}
+                    {/* Mini nav dots — centered with even spacing */}
+                    <div className="flex items-center gap-3">
+                        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                            <motion.div
+                                key={i}
+                                className="rounded-full"
+                                style={{
+                                    width: 8,
+                                    height: 8,
+                                    background: i === 0 ? 'rgba(255,109,41,0.5)' : 'rgba(255,255,255,0.1)',
+                                }}
+                                initial={{ scale: 0 }}
+                                animate={phase >= 0 ? { scale: 1 } : {}}
+                                transition={{ delay: 0.4 + i * 0.06, duration: 0.3, type: 'spring' }}
+                            />
+                        ))}
+                    </div>
                 </motion.div>
 
                 {/* ═══ AVATAR NOTCH (top-right) ═══ */}
@@ -394,8 +399,8 @@ export function DashboardAssembly() {
                     className="absolute flex items-center justify-center gap-2"
                     style={{
                         bottom: 14,
-                        left: 'calc(50% - 65px)',
-                        width: 130,
+                        left: 14,
+                        right: 14,
                         height: 32,
                         borderRadius: 16,
                         background: skeletonBg,
@@ -458,24 +463,40 @@ export function DashboardAssembly() {
 
             {/* ═══ STATUS TEXT ═══ */}
             <div className="mt-10 flex flex-col items-center gap-3">
-                {/* Animated phase text */}
+                {/* Spinning gear icon */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 360 }}
+                    transition={{
+                        opacity: { duration: 0.4 },
+                        scale: { duration: 0.4 },
+                        rotate: { duration: 3, repeat: Infinity, ease: 'linear' },
+                    }}
+                >
+                    <Settings
+                        size={20}
+                        style={{ color: 'rgba(255,109,41,0.5)' }}
+                    />
+                </motion.div>
+
+                {/* Animated cycling text */}
                 <div className="h-5 relative">
                     <AnimatePresence mode="wait">
                         <motion.p
-                            key={phase}
+                            key={cyclingIndex}
                             className="text-sm font-medium tracking-wide"
                             style={{ color: 'rgba(245, 240, 235, 0.5)' }}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.4 }}
                         >
-                            {PHASES[Math.min(phase, PHASES.length - 1)]}
+                            {CYCLING_MESSAGES[cyclingIndex]}
                         </motion.p>
                     </AnimatePresence>
                 </div>
 
-                {/* Progress bar */}
+                {/* Progress bar — much slower fill */}
                 <div
                     className="overflow-hidden rounded-full"
                     style={{
@@ -489,24 +510,17 @@ export function DashboardAssembly() {
                         style={{
                             background: 'linear-gradient(90deg, #FF6D29, #FFBA08)',
                         }}
-                        initial={{ width: '5%' }}
+                        initial={{ width: '2%' }}
                         animate={{
-                            width: phase >= 3 ? '92%' : phase >= 2 ? '65%' : phase >= 1 ? '35%' : '12%',
+                            width: ['2%', '15%', '28%', '40%', '52%', '60%'],
                         }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{
+                            duration: 18,
+                            ease: 'easeOut',
+                            times: [0, 0.15, 0.35, 0.55, 0.75, 1],
+                        }}
                     />
                 </div>
-
-                {/* Brand watermark */}
-                <motion.p
-                    className="text-[10px] font-semibold tracking-[0.15em] uppercase mt-2"
-                    style={{ color: 'rgba(255,109,41,0.25)' }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8, duration: 0.6 }}
-                >
-                    NERV.OS
-                </motion.p>
             </div>
         </motion.div>
     )

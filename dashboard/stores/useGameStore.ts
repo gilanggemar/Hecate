@@ -13,6 +13,8 @@ import { GameSessionManager } from "@/lib/games/game-session-manager";
 import { createDefaultRegistry } from "@/lib/games/adapters";
 import { TicTacToeState } from "@/lib/games/adapters/tic-tac-toe";
 import { requestAgentMove } from "@/lib/games/agent-gateway-bridge";
+import { getAiMove } from "@/lib/games/agents/simple-agent";
+import { useGameXPStore, getTTTXPReward } from "@/stores/useGameXPStore";
 
 // Create singleton instances
 const registry = createDefaultRegistry();
@@ -41,7 +43,11 @@ export interface GameStoreState {
   // Agent commentary
   agentCommentary: string | null;
   showCommentary: boolean;
-  lastMoveSource: "agent" | "fallback" | null;
+  lastMoveSource: "agent" | "fallback" | "computer" | null;
+
+  // AI control
+  useRealAgents: boolean;
+  setUseRealAgents: (v: boolean) => void;
 
   // Actions
   setView: (view: GameView) => void;
@@ -92,6 +98,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   agentCommentary: null,
   showCommentary: false,
   lastMoveSource: null,
+
+  useRealAgents: true,
+  setUseRealAgents: (v) => set({ useRealAgents: v }),
 
   setView: (view) => set({ view }),
 
@@ -169,56 +178,109 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       agentCommentary: null,
     });
 
-    // If game is still active and it's the agent's turn, request move from REAL agent
+    // If game ended after human move, award XP
+    if (newSession.phase === "completed" && newSession.result) {
+      _handleTTTGameEnd(newSession, state.humanPlayerId, state.selectedAgentId, state.selectedAgentName, state.useRealAgents);
+    }
+
+    // If game is still active and it's the agent's turn, request move
     if (newSession.phase === "active" && newSession.activePlayerId === state.agentPlayerId) {
       set({ isAgentThinking: true });
 
       const agentId = state.selectedAgentId ?? "ai-bot";
       const agentName = state.selectedAgentName ?? "Agent";
 
-      // Request move from the real OpenClaw agent (with minimax fallback)
-      requestAgentMove(
-        newSession.state as TicTacToeState,
-        state.agentPlayerId,
-        agentId,
-        agentName,
-        newSession.gameType
-      ).then((moveResult) => {
-        const current = get();
-        if (!current.currentSession || current.currentSession.phase !== "active") {
+      if (!state.useRealAgents) {
+        // Computer player — local minimax
+        setTimeout(() => {
+          const current = get();
+          if (!current.currentSession || current.currentSession.phase !== "active") {
+            set({ isAgentThinking: false });
+            return;
+          }
+
+          const computerMove = getAiMove(current.currentSession.state as TicTacToeState, current.agentPlayerId);
+          const aiResult = sessionManager.processAction(
+            current.currentSession.sessionId,
+            current.agentPlayerId,
+            computerMove
+          );
+
+          if (aiResult.success && aiResult.newState) {
+            const aiPayload = computerMove.payload as { row: number; col: number };
+            const aiSession = aiResult.newState as GameState<TicTacToeState>;
+            const aiWl = aiSession.phase === "completed"
+              ? findWinningLine((aiSession.state as TicTacToeState).board)
+              : null;
+
+            set({
+              currentSession: aiSession,
+              lastMoveCell: { row: aiPayload.row, col: aiPayload.col },
+              winningLine: aiWl,
+              isAgentThinking: false,
+              lastMoveSource: "computer",
+              agentCommentary: null,
+              showCommentary: false,
+            });
+
+            // If game ended after computer move, award XP
+            if (aiSession.phase === "completed" && aiSession.result) {
+              _handleTTTGameEnd(aiSession, current.humanPlayerId, current.selectedAgentId, current.selectedAgentName, false);
+            }
+          } else {
+            set({ isAgentThinking: false });
+          }
+        }, 400 + Math.random() * 600);
+      } else {
+        // Real agent — OpenClaw gateway
+        requestAgentMove(
+          newSession.state as TicTacToeState,
+          state.agentPlayerId,
+          agentId,
+          agentName,
+          newSession.gameType
+        ).then((moveResult) => {
+          const current = get();
+          if (!current.currentSession || current.currentSession.phase !== "active") {
+            set({ isAgentThinking: false });
+            return;
+          }
+
+          const aiResult = sessionManager.processAction(
+            current.currentSession.sessionId,
+            current.agentPlayerId,
+            moveResult.action
+          );
+
+          if (aiResult.success && aiResult.newState) {
+            const aiPayload = moveResult.action.payload as { row: number; col: number };
+            const aiSession = aiResult.newState as GameState<TicTacToeState>;
+            const aiWl = aiSession.phase === "completed"
+              ? findWinningLine((aiSession.state as TicTacToeState).board)
+              : null;
+
+            set({
+              currentSession: aiSession,
+              lastMoveCell: { row: aiPayload.row, col: aiPayload.col },
+              winningLine: aiWl,
+              isAgentThinking: false,
+              lastMoveSource: moveResult.source,
+              agentCommentary: moveResult.commentary,
+              showCommentary: !!moveResult.commentary,
+            });
+
+            // If game ended after agent move, award XP
+            if (aiSession.phase === "completed" && aiSession.result) {
+              _handleTTTGameEnd(aiSession, current.humanPlayerId, current.selectedAgentId, current.selectedAgentName, true);
+            }
+          } else {
+            set({ isAgentThinking: false });
+          }
+        }).catch((err) => {
+          console.error("[GameStore] Agent move failed:", err);
           set({ isAgentThinking: false });
-          return;
-        }
-
-        const aiResult = sessionManager.processAction(
-          current.currentSession.sessionId,
-          current.agentPlayerId,
-          moveResult.action
-        );
-
-        if (aiResult.success && aiResult.newState) {
-          const aiPayload = moveResult.action.payload as { row: number; col: number };
-          const aiSession = aiResult.newState as GameState<TicTacToeState>;
-          const aiWl = aiSession.phase === "completed"
-            ? findWinningLine((aiSession.state as TicTacToeState).board)
-            : null;
-
-          set({
-            currentSession: aiSession,
-            lastMoveCell: { row: aiPayload.row, col: aiPayload.col },
-            winningLine: aiWl,
-            isAgentThinking: false,
-            lastMoveSource: moveResult.source,
-            agentCommentary: moveResult.commentary,
-            showCommentary: !!moveResult.commentary,
-          });
-        } else {
-          set({ isAgentThinking: false });
-        }
-      }).catch((err) => {
-        console.error("[GameStore] Agent move failed:", err);
-        set({ isAgentThinking: false });
-      });
+        });
+      }
     }
   },
 
@@ -277,3 +339,36 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     });
   },
 }));
+
+// --- XP Award Helper ---
+
+function _handleTTTGameEnd(
+  session: GameState<TicTacToeState>,
+  humanPlayerId: string,
+  agentId: string | null,
+  agentName: string | null,
+  wasRealAgent: boolean,
+) {
+  const result = session.result;
+  if (!result) return;
+
+  const humanWon = result.winnerId === humanPlayerId;
+  const isDraw = result.outcome === "draw";
+  const xpStore = useGameXPStore.getState();
+
+  const award = getTTTXPReward(humanWon, isDraw, wasRealAgent);
+
+  if (humanWon || isDraw) {
+    // Human won or draw — show modal so user can assign XP to any agent
+    xpStore.awardGameXP(award);
+  } else {
+    // Agent won — auto-award XP to the winning agent
+    award.winnerAgentId = agentId ?? undefined;
+    award.winnerAgentName = agentName ?? undefined;
+    if (agentId) {
+      xpStore.autoAwardAgentXP(agentId, award.amount, award.reason);
+    }
+    // Still show the notification that agent earned XP
+    xpStore.awardGameXP(award);
+  }
+}

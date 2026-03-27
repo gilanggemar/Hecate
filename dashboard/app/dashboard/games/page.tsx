@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Gamepad2, Trophy, Swords, BrainCircuit, Play, Lock, Zap, ArrowLeft, Check } from "lucide-react";
+import { Gamepad2, Trophy, Swords, BrainCircuit, Play, Lock, Zap, ArrowLeft, Check, Wifi, WifiOff, Star, TrendingUp } from "lucide-react";
 import { useGameStore } from "@/stores/useGameStore";
 import { GameArenaPanel } from "@/components/games/GameArenaPanel";
 import { AgentSelectScreen } from "@/components/games/AgentSelectScreen";
@@ -11,14 +11,18 @@ import { NeuroverseBoardPanel } from "@/components/games/NeuroverseBoardPanel";
 import { useAvailableAgents } from "@/hooks/useAvailableAgents";
 import { getAgentProfile } from "@/lib/agentRoster";
 import { NETRUNNERS as NETRUNNERS_LIST, PINS, PinType } from "@/lib/games/adapters/neuroverse-data";
+import { GameXPAwardModal } from "@/components/games/GameXPAwardModal";
+import { useGameXPStore } from "@/stores/useGameXPStore";
+import { XP_REWARDS } from "@/lib/gamification/xpRules";
 
 const DEFAULT_PINS: PinType[] = ["drone", "skull", "bolt", "shield"];
 
 export default function GamesPage() {
-    const { view, setView, selectAgent, createGame, startGame } = useGameStore();
+    const { view, setView, selectAgent, createGame, startGame, useRealAgents, setUseRealAgents } = useGameStore();
     const neuroverseStore = useNeuroverseStore();
     const availableAgents = useAvailableAgents();
     const [selectedNvAgents, setSelectedNvAgents] = useState<Set<string>>(new Set());
+    const gameXPStore = useGameXPStore();
 
     // Game config state
     const [nvStartingCred, setNvStartingCred] = useState(500);
@@ -27,6 +31,24 @@ export default function GamesPage() {
     const [nvSalary, setNvSalary] = useState(200);
     const [nvNetrunners, setNvNetrunners] = useState<Record<string, string>>({});
     const [nvPins, setNvPins] = useState<Record<string, PinType>>({ "player-1": "drone", "player-2": "skull", "player-3": "bolt", "player-4": "shield" });
+
+    // Leaderboard data
+    const [leaderboard, setLeaderboard] = useState<{ agent_id: string; total_xp: number; level: number; rank: string }[]>([]);
+    const [lbLoading, setLbLoading] = useState(true);
+
+    // Fetch leaderboard on mount
+    useEffect(() => {
+        fetch("/api/gamification/xp")
+            .then(r => r.json())
+            .then(data => {
+                if (data.agents && Array.isArray(data.agents)) {
+                    const sorted = [...data.agents].sort((a: any, b: any) => (b.total_xp || 0) - (a.total_xp || 0));
+                    setLeaderboard(sorted.slice(0, 3));
+                }
+            })
+            .catch(() => {})
+            .finally(() => setLbLoading(false));
+    }, [gameXPStore.totalXPEarned]); // Refetch when XP changes
 
     // Handle Tic-Tac-Toe card click: go to agent select
     const handleTicTacToeClick = () => {
@@ -98,10 +120,41 @@ export default function GamesPage() {
     if (view === "agent-select") {
         return (
             <div className="flex flex-col h-full bg-transparent text-white p-4 md:p-6 lg:p-8 w-full">
+                {/* AI Toggle for TicTacToe */}
+                <div className="mb-4 flex items-center justify-end">
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#111] border border-[#222]">
+                        <div className="flex items-center gap-2">
+                            {useRealAgents ? <Wifi className="w-3.5 h-3.5 text-[#f97316]" /> : <WifiOff className="w-3.5 h-3.5 text-[#555]" />}
+                            <span className="text-xs font-bold text-[#999] uppercase tracking-widest">
+                                {useRealAgents ? "Real Agent" : "Computer"}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => setUseRealAgents(!useRealAgents)}
+                            style={{
+                                width: 40, height: 22, borderRadius: 11, padding: 2,
+                                background: useRealAgents
+                                    ? "linear-gradient(135deg, #f97316, #ef4444)"
+                                    : "rgba(100,116,139,0.3)",
+                                border: "none", cursor: "pointer", transition: "background 0.3s",
+                                display: "flex", alignItems: "center",
+                            }}
+                        >
+                            <div style={{
+                                width: 18, height: 18, borderRadius: 9,
+                                background: "#fff",
+                                transform: useRealAgents ? "translateX(18px)" : "translateX(0)",
+                                transition: "transform 0.2s ease",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                            }} />
+                        </button>
+                    </div>
+                </div>
                 <AgentSelectScreen
                     onSelect={handleAgentSelected}
                     onBack={handleBackToLobby}
                 />
+                <GameXPAwardModal />
             </div>
         );
     }
@@ -111,6 +164,7 @@ export default function GamesPage() {
         return (
             <div className="flex flex-col h-full bg-transparent text-white p-4 md:p-6 lg:p-8 w-full">
                 <GameArenaPanel />
+                <GameXPAwardModal />
             </div>
         );
     }
@@ -123,20 +177,50 @@ export default function GamesPage() {
 
         return (
             <div className="flex flex-col h-full bg-transparent text-white p-4 md:p-6 lg:p-8 w-full overflow-y-auto">
-                <div className="flex items-center gap-4 mb-6">
-                    <button
-                        onClick={() => neuroverseStore.setView("lobby")}
-                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-widest bg-transparent border border-[#333] text-[#888] hover:text-white hover:border-[#555] transition-all"
-                    >
-                        <ArrowLeft className="w-3.5 h-3.5" /> Back
-                    </button>
-                    <div>
-                        <h2 className="text-2xl font-black uppercase tracking-tight">
-                            Game <span className="text-cyan-400">Configuration</span>
-                        </h2>
-                        <p className="text-sm text-[#666] font-medium mt-0.5">
-                            Select opponents and customize game rules
-                        </p>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => neuroverseStore.setView("lobby")}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-widest bg-transparent border border-[#333] text-[#888] hover:text-white hover:border-[#555] transition-all"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" /> Back
+                        </button>
+                        <div>
+                            <h2 className="text-2xl font-black uppercase tracking-tight">
+                                Game <span className="text-cyan-400">Configuration</span>
+                            </h2>
+                            <p className="text-sm text-[#666] font-medium mt-0.5">
+                                Select opponents and customize game rules
+                            </p>
+                        </div>
+                    </div>
+                    {/* AI Toggle — top right, same as TTT */}
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#111] border border-[#222]">
+                        <div className="flex items-center gap-2">
+                            {neuroverseStore.useRealAgents ? <Wifi className="w-3.5 h-3.5 text-cyan-400" /> : <WifiOff className="w-3.5 h-3.5 text-[#555]" />}
+                            <span className="text-xs font-bold text-[#999] uppercase tracking-widest">
+                                {neuroverseStore.useRealAgents ? "Real Agent" : "Computer"}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => neuroverseStore.setUseRealAgents(!neuroverseStore.useRealAgents)}
+                            style={{
+                                width: 40, height: 22, borderRadius: 11, padding: 2,
+                                background: neuroverseStore.useRealAgents
+                                    ? "linear-gradient(135deg, #06b6d4, #8b5cf6)"
+                                    : "rgba(100,116,139,0.3)",
+                                border: "none", cursor: "pointer", transition: "background 0.3s",
+                                display: "flex", alignItems: "center",
+                            }}
+                        >
+                            <div style={{
+                                width: 18, height: 18, borderRadius: 9,
+                                background: "#fff",
+                                transform: neuroverseStore.useRealAgents ? "translateX(18px)" : "translateX(0)",
+                                transition: "transform 0.2s ease",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                            }} />
+                        </button>
                     </div>
                 </div>
 
@@ -285,34 +369,6 @@ export default function GamesPage() {
                                 </div>
                             </div>
 
-                            {/* AI Agent Toggle */}
-                            <div className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <label className="text-xs font-bold text-[#999] uppercase tracking-widest">AI Agent Control</label>
-                                        <p className="text-[10px] text-[#555] mt-0.5">{neuroverseStore.useRealAgents ? "Real AI agents make decisions" : "Computer heuristic plays as agents"}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => neuroverseStore.setUseRealAgents(!neuroverseStore.useRealAgents)}
-                                        style={{
-                                            width: 44, height: 24, borderRadius: 12, padding: 2,
-                                            background: neuroverseStore.useRealAgents
-                                                ? "linear-gradient(135deg, #06b6d4, #8b5cf6)"
-                                                : "rgba(100,116,139,0.3)",
-                                            border: "none", cursor: "pointer", transition: "background 0.3s",
-                                            display: "flex", alignItems: "center",
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: 20, height: 20, borderRadius: 10,
-                                            background: "#fff",
-                                            transform: neuroverseStore.useRealAgents ? "translateX(20px)" : "translateX(0)",
-                                            transition: "transform 0.2s ease",
-                                            boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                                        }} />
-                                    </button>
-                                </div>
-                            </div>
                         </div>
 
                         {/* Netrunner Assignment + Pin Selection */}
@@ -400,6 +456,7 @@ export default function GamesPage() {
                         </button>
                     </motion.div>
                 )}
+                <GameXPAwardModal />
             </div>
         );
     }
@@ -409,9 +466,17 @@ export default function GamesPage() {
         return (
             <div className="h-full w-full" style={{ overflow: "hidden" }}>
                 <NeuroverseBoardPanel />
+                <GameXPAwardModal />
             </div>
         );
     }
+
+    // Helper for leaderboard display
+    const getAgentDisplayName = (agentId: string) => {
+        const profile = getAgentProfile(agentId);
+        const liveAgent = availableAgents.find((a: any) => (a.accountId || a.id) === agentId);
+        return liveAgent?.name || profile?.name || agentId;
+    };
 
     // Render: Lobby (original bento layout)
     return (
@@ -419,7 +484,7 @@ export default function GamesPage() {
             {/* Bento Box Layout Grid - Full Screen */}
             <div className="grid grid-cols-1 md:grid-cols-12 md:grid-rows-[1.2fr_1fr] gap-4 md:gap-6 flex-1 min-h-0">
                 
-                {/* 1. Large Hero / Explanation Card */}
+                {/* 1. Large Hero / Games Arena Card */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -454,14 +519,41 @@ export default function GamesPage() {
                                 </ul>
                             </div>
                         </div>
-                        <div className="mt-auto pt-6 flex items-center justify-between">
-                            <span className="font-mono text-sm text-[#555] uppercase tracking-widest bg-black/50 px-3 py-1 border border-[#222]">Awaiting deployment command...</span>
-                            <Gamepad2 className="w-8 h-8 text-[#f97316]/50" />
+
+                        {/* XP Stats Bar */}
+                        <div className="mt-auto pt-6 flex items-center justify-between gap-4 flex-wrap">
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                    <Gamepad2 className="w-4 h-4 text-[#555]" />
+                                    <span className="font-mono text-sm text-[#888]">
+                                        <span className="text-white font-black">{gameXPStore.totalGamesPlayed}</span> games
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-[#f97316]" />
+                                    <span className="font-mono text-sm text-[#888]">
+                                        <span className="text-[#f97316] font-black">{gameXPStore.totalXPEarned}</span> XP earned
+                                    </span>
+                                </div>
+                            </div>
+                            {/* XP Reward Rates */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 px-2 py-1 bg-black/50 border border-[#222]">
+                                    <Swords className="w-3 h-3 text-[#f97316]" />
+                                    <span className="text-[10px] font-mono text-[#666]">TTT</span>
+                                    <span className="text-[10px] font-mono text-[#f97316]">+{XP_REWARDS.ttt_win_vs_real_agent}</span>
+                                </div>
+                                <div className="flex items-center gap-1 px-2 py-1 bg-black/50 border border-[#222]">
+                                    <Zap className="w-3 h-3 text-cyan-400" />
+                                    <span className="text-[10px] font-mono text-[#666]">NV</span>
+                                    <span className="text-[10px] font-mono text-cyan-400">+{XP_REWARDS.nv_win_vs_real_agents}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </motion.div>
 
-                {/* 2. Top Right Stats/Status Card */}
+                {/* 2. Global Leaderboard — DYNAMIC */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -475,27 +567,45 @@ export default function GamesPage() {
                         </h3>
                         
                         <div className="space-y-6 flex-1 flex flex-col justify-center pb-4">
-                            <div className="flex items-center justify-between pb-4 border-b border-[#222] group/item cursor-default">
-                                <div className="flex items-center gap-4">
-                                    <span className="font-mono text-2xl font-black text-[#333] group-hover/item:text-[#f97316] transition-colors">01</span>
-                                    <span className="font-bold text-white tracking-widest text-lg">ALICE-9</span>
+                            {lbLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <div className="w-5 h-5 border-2 border-[#333] border-t-[#f97316] rounded-full animate-spin" />
                                 </div>
-                                <span className="text-[#f97316] font-mono font-bold text-lg">4,200 <span className="text-xs text-[#555]">XP</span></span>
-                            </div>
-                            <div className="flex items-center justify-between pb-4 border-b border-[#222] group/item cursor-default">
-                                <div className="flex items-center gap-4">
-                                    <span className="font-mono text-2xl font-black text-[#333] group-hover/item:text-white transition-colors">02</span>
-                                    <span className="font-bold text-[#ccc] tracking-widest text-lg">BOB-EX</span>
-                                </div>
-                                <span className="text-[#ccc] font-mono font-bold text-lg">3,850 <span className="text-xs text-[#555]">XP</span></span>
-                            </div>
-                            <div className="flex items-center justify-between group/item cursor-default">
-                                <div className="flex items-center gap-4">
-                                    <span className="font-mono text-2xl font-black text-[#333] group-hover/item:text-white transition-colors">03</span>
-                                    <span className="font-bold text-[#888] tracking-widest text-lg">CHARLIE Z</span>
-                                </div>
-                                <span className="text-[#888] font-mono font-bold text-lg">2,100 <span className="text-xs text-[#555]">XP</span></span>
-                            </div>
+                            ) : leaderboard.length === 0 ? (
+                                <>
+                                    <div className="text-center py-6">
+                                        <TrendingUp className="w-10 h-10 text-[#333] mx-auto mb-3" />
+                                        <p className="text-sm text-[#555] font-bold uppercase tracking-widest">No agents ranked yet</p>
+                                        <p className="text-xs text-[#444] mt-1">Play games to earn XP and rank your agents</p>
+                                    </div>
+                                </>
+                            ) : (
+                                leaderboard.map((entry, idx) => {
+                                    const name = getAgentDisplayName(entry.agent_id);
+                                    const colors = ["#f97316", "#ccc", "#888"];
+                                    const textColors = ["text-[#f97316]", "text-[#ccc]", "text-[#888]"];
+                                    return (
+                                        <div key={entry.agent_id} className={`flex items-center justify-between ${idx < 2 ? "pb-4 border-b border-[#222]" : ""} group/item cursor-default`}>
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-mono text-2xl font-black text-[#333] group-hover/item:text-[#f97316] transition-colors">
+                                                    {String(idx + 1).padStart(2, "0")}
+                                                </span>
+                                                <div>
+                                                    <span className={`font-bold tracking-widest text-lg ${textColors[idx] || "text-[#888]"}`}>
+                                                        {name.toUpperCase()}
+                                                    </span>
+                                                    <span className="block text-[10px] font-mono text-[#444] uppercase tracking-widest">
+                                                        Lv.{entry.level || 1} · {entry.rank || "INITIATE"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className={`font-mono font-bold text-lg ${textColors[idx] || "text-[#888]"}`}>
+                                                {(entry.total_xp || 0).toLocaleString()} <span className="text-xs text-[#555]">XP</span>
+                                            </span>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 </motion.div>
@@ -514,7 +624,11 @@ export default function GamesPage() {
                     </div>
                     <div className="flex-1 flex flex-col justify-end">
                         <h3 className="text-4xl font-black uppercase tracking-tighter mb-4">Tic-Tac-Toe</h3>
-                        <p className="opacity-80 font-bold text-lg leading-snug mb-8">Classic 1v1 grid combat. Outsmart the agent in pure logic.</p>
+                        <p className="opacity-80 font-bold text-lg leading-snug mb-4">Classic 1v1 grid combat. Outsmart the agent in pure logic.</p>
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-xs font-black bg-black/20 px-2 py-1">Win +{XP_REWARDS.ttt_win_vs_real_agent}xp</span>
+                            <span className="text-xs font-bold bg-black/10 px-2 py-1 opacity-70">CPU +{XP_REWARDS.ttt_win_vs_computer}xp</span>
+                        </div>
                         <div className="flex items-center gap-2 font-black uppercase tracking-widest text-sm bg-black text-[#f97316] w-fit px-5 py-4 group-hover:bg-white group-hover:text-black transition-colors shadow-xl">
                             <Play className="w-4 h-4" /> Initialize Match
                         </div>
@@ -564,7 +678,11 @@ export default function GamesPage() {
                             <h3 className="text-4xl font-black uppercase tracking-tighter mb-2">
                                 <span className="bg-gradient-to-r from-cyan-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">Neuroverse</span>
                             </h3>
-                            <p className="text-[#8892a4] font-bold text-base leading-snug mb-8">Cyberpunk Monopoly. Own the grid. Hack the system. Rule the night.</p>
+                            <p className="text-[#8892a4] font-bold text-base leading-snug mb-4">Cyberpunk Monopoly. Own the grid. Hack the system. Rule the night.</p>
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className="text-xs font-black bg-cyan-500/20 text-cyan-300 px-2 py-1">Win +{XP_REWARDS.nv_win_vs_real_agents}xp</span>
+                                <span className="text-xs font-bold bg-cyan-500/10 text-cyan-400/60 px-2 py-1">CPU +{XP_REWARDS.nv_win_vs_computer}xp</span>
+                            </div>
                             <div className="flex items-center gap-2 font-black uppercase tracking-widest text-sm text-black bg-gradient-to-r from-cyan-400 to-violet-500 w-fit px-5 py-4 group-hover:from-cyan-300 group-hover:to-violet-400 transition-colors shadow-xl shadow-cyan-500/20">
                                 <Play className="w-4 h-4" /> Deploy Agents
                             </div>
@@ -573,6 +691,7 @@ export default function GamesPage() {
                 </motion.div>
 
             </div>
+            <GameXPAwardModal />
         </div>
     );
 }

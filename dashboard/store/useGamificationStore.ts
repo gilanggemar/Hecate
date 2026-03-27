@@ -97,8 +97,15 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
             const xpMap: Record<string, AgentXPData> = {};
             if (xpRes.agents) {
-                xpRes.agents.forEach((a: AgentXPData) => {
-                    xpMap[a.agentId] = a;
+                xpRes.agents.forEach((a: any) => {
+                    const id = a.agent_id || a.agentId || '';
+                    xpMap[id] = {
+                        agentId: id,
+                        totalXp: a.total_xp ?? a.totalXp ?? 0,
+                        level: a.level ?? 1,
+                        xpToNextLevel: a.xp_to_next_level ?? a.xpToNextLevel ?? 100,
+                        rank: a.rank ?? 'INITIATE',
+                    };
                 });
             }
 

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Swords, Star, Crown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,23 @@ export const AgentMastery = memo(({
     failedTasks = 0,
     className
 }: AgentMasteryProps) => {
+    // Fetch real XP from gamification API
+    const [dbXP, setDbXP] = useState(0);
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/gamification/xp')
+            .then(r => r.json())
+            .then(data => {
+                if (cancelled) return;
+                if (data.agents && Array.isArray(data.agents)) {
+                    const match = data.agents.find((a: any) => a.agent_id === agentId);
+                    if (match) setDbXP(match.total_xp || 0);
+                }
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [agentId]);
+
     const baseXP = completedTasks * 10;
 
     let multiplier = 1.0;
@@ -41,7 +58,8 @@ export const AgentMastery = memo(({
         }
     }
 
-    const finalXP = Math.floor(baseXP * multiplier);
+    // Combine task-based XP with game/gamification DB XP
+    const finalXP = Math.floor(baseXP * multiplier) + dbXP;
 
     let currentTierIndex = 0;
     for (let i = TIERS.length - 1; i >= 0; i--) {
@@ -150,6 +168,7 @@ export const AgentMastery = memo(({
                 <TooltipContent side="top" align="center" className="flex flex-col gap-1 p-2">
                     <p className="font-semibold">{agentName} — {currentTier.name} Level {level}</p>
                     <p className="text-sm opacity-80">{completedTasks} tasks completed</p>
+                    {dbXP > 0 && <p className="text-sm text-[var(--accent-base)]">+{dbXP.toLocaleString()} XP from Games</p>}
                     {multiplier === 1.2 && <p className="text-sm text-[var(--accent-lime)]">Precision Bonus: 1.2x XP</p>}
                     {multiplier === 0.9 && <p className="text-sm text-[var(--accent-coral)]">Reliability Penalty: 0.9x XP</p>}
                     <p className="text-sm opacity-60">

@@ -153,6 +153,74 @@ function parseAgentsFromHealthPayload(payload: any): any[] {
     return agents.filter((a) => a.configured);
 }
 
+/** Parse health payload into agent list (used by ready event handler) */
+function parseHealthToAgents(payload: any): any[] {
+    const agents: any[] = [];
+
+    if (payload?.agents && Array.isArray(payload.agents)) {
+        for (const agent of payload.agents) {
+            const rawId = agent.agentId || agent.id || agent.name;
+            if (!rawId) continue;
+            agents.push({
+                id: rawId,
+                name: agent.name || (rawId.charAt(0).toUpperCase() + rawId.slice(1)),
+                status: "idle",
+                channel: "webchat",
+                accountId: rawId,
+                configured: true,
+                running: true,
+                connected: true,
+                linked: true,
+                probeOk: true,
+            });
+        }
+    }
+
+    if (payload?.channels) {
+        for (const [channelName, channelData] of Object.entries(payload.channels) as any[]) {
+            if (channelData?.accounts) {
+                for (const [accountId, accountData] of Object.entries(channelData.accounts) as any[]) {
+                    const botName = accountData?.probe?.bot?.name;
+                    const generatedId = channelName === "slack" ? accountId : `${channelName}:${accountId}`;
+                    const existing = agents.find((a) => a.id === generatedId);
+                    if (existing) {
+                        existing.status = accountData?.lastError ? "error" : accountData?.running ? "idle" : "offline";
+                        existing.channel = channelName;
+                        if (botName) existing.name = botName;
+                    } else {
+                        agents.push({
+                            id: generatedId,
+                            name: botName || (accountId !== "default" ? accountId : channelName),
+                            status: accountData?.lastError ? "error" : accountData?.running ? "idle" : "offline",
+                            channel: channelName,
+                            accountId,
+                            running: accountData?.running ?? false,
+                            connected: accountData?.connected ?? false,
+                            configured: accountData?.configured ?? false,
+                            linked: accountData?.linked ?? false,
+                            probeOk: accountData?.probe?.ok ?? false,
+                            botName,
+                        });
+                    }
+                }
+            } else if (channelData?.configured) {
+                agents.push({
+                    id: channelName,
+                    name: channelName,
+                    status: channelData?.running ? "idle" : "offline",
+                    channel: channelName,
+                    accountId: "default",
+                    running: channelData?.running ?? false,
+                    connected: channelData?.connected ?? false,
+                    configured: channelData?.configured ?? false,
+                    linked: channelData?.linked ?? false,
+                });
+            }
+        }
+    }
+
+    return agents.filter((a) => a.configured && a.id);
+}
 /**
  * Reconfigure the gateway with explicit URL/token.
  * Called from profile switching in the settings UI.
@@ -240,6 +308,54 @@ export function useOpenClawGateway() {
         unsubs.push(
             gw.on("tick", (payload) => {
                 useOpenClawStore.getState().setLastPing(Date.now());
+            })
+        );
+
+        // ── Ready (handshake complete) — populate agents immediately ──
+        // This listener is registered in the SAME component that initiates
+        // the connection (via loadProfileAndReconfigure below), so it is
+        // GUARANTEED to be in place before the handshake completes.
+        unsubs.push(
+            gw.on("ready", (payload) => {
+                console.log("[OpenClaw Connection] Ready — fetching agents for store");
+
+                // 1) Fetch agents.list (uses 'id' field, not 'agentId')
+                gw.request("agents.list", {}).then((res) => {
+                    const rawAgents: any[] = res?.agents ?? [];
+                    if (rawAgents.length > 0) {
+                        const agents = rawAgents.map((a: any) => {
+                            const rawId = a.agentId || a.id || a.name;
+                            return {
+                                id: rawId,
+                                name: a.name || (rawId.charAt(0).toUpperCase() + rawId.slice(1)),
+                                status: "idle",
+                                channel: "webchat",
+                                accountId: rawId,
+                                configured: true,
+                                running: true,
+                                connected: true,
+                                linked: true,
+                                probeOk: true,
+                            };
+                        }).filter((a: any) => a.id);
+                        if (agents.length > 0) {
+                            console.log(`[OpenClaw Connection] ✅ Populated ${agents.length} agent(s) from agents.list`);
+                            useSocketStore.getState().setAgents(agents);
+                        }
+                    }
+                }).catch((err) => {
+                    console.warn("[OpenClaw Connection] agents.list failed:", err);
+                });
+
+                // 2) Also fetch health for richer agent status
+                gw.request("health", {}).then((healthRes) => {
+                    if (healthRes) {
+                        const agents = parseHealthToAgents(healthRes);
+                        if (agents.length > 0) {
+                            useSocketStore.getState().setAgents(agents);
+                        }
+                    }
+                }).catch(() => {});
             })
         );
 

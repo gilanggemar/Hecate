@@ -15,3 +15,28 @@ ws_*.json
 *test*.js
 fetch_health.js
 wipe.ts
+
+# Diagnostic / utility scripts (not part of the app)
+check_*.js
+diag_*.js
+diagnose_*.js
+docker_*.js
+download_*.js
+find_config.js
+fix_*.js
+port_check.js
+read_openclaw.js
+restart_docker.js
+upload_*.js
+verify_ports.js
+add_auth_to_routes.mjs
+add_userid_to_queries.mjs
+create_dev_user.mjs
+insert_workflow.mjs
+update_profile.mjs
+update_workflow.mjs
+
+# Misc data files
+remote_openclaw.json
+docker_openclaw.json
+chat_lines.txt

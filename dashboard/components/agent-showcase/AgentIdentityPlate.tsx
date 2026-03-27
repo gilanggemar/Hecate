@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import type { AgentProfile } from '@/lib/agentRoster';
 import { useAgentZeroStore } from '@/store/useAgentZeroStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
 import { Outfit } from 'next/font/google';
 
 import { AgentIconSelector } from './AgentIconSelector';
@@ -45,13 +46,22 @@ function RarityStars({ level }: { level: number }) {
     );
 }
 
-export function AgentIdentityPlate({ agent, level, currentXp, xpToNext, rank, currentStreak, avatarUri }: AgentIdentityPlateProps) {
+export function AgentIdentityPlate({ agent, level: propLevel, currentXp: propXp, xpToNext: propXpToNext, rank: propRank, currentStreak, avatarUri }: AgentIdentityPlateProps) {
     const isZero = agent.id === 'agent-zero';
     const zeroState = useAgentZeroStore(s => s.status);
     const statusLabel = isZero ? zeroState : 'standby';
     const statusDotColor = statusLabel === 'online' ? '#4ade80' : statusLabel === 'standby' ? '#60a5fa' : '#f59e0b';
+
+    // Read XP directly from the gamification store (single source of truth)
+    const agentXP = useGamificationStore(s => s.agentXP);
+    const storeXp = agentXP[agent.id] || agentXP[(agent as any).accountId] || agentXP[agent.name?.toLowerCase()] || null;
     
-    const xpPercent = xpToNext > 0 ? Math.min(100, (currentXp / (currentXp + xpToNext)) * 100) : 0;
+    // Use store data if available, otherwise fall back to props
+    const level = storeXp?.level ?? propLevel;
+    const currentXp = storeXp?.totalXp ?? propXp;
+    const xpToNext = storeXp?.xpToNextLevel ?? propXpToNext;
+    
+    const xpPercent = xpToNext > 0 ? Math.min(100, (currentXp / xpToNext) * 100) : 0;
 
     const [isHovered, setIsHovered] = useState(false);
 
@@ -109,18 +119,22 @@ export function AgentIdentityPlate({ agent, level, currentXp, xpToNext, rank, cu
                     </div>
                     
                     {/* XP Progress Line */}
-                    <div className="w-full max-w-[140px] h-[4px] rounded-full bg-black/40 overflow-hidden relative border border-white/5 shadow-inner">
+                    <div className="w-full max-w-[200px] h-[5px] rounded-full bg-white/10 overflow-hidden relative border border-white/5 shadow-inner">
                         <motion.div 
                             className="h-full rounded-full" 
                             style={{ 
-                                background: `linear-gradient(90deg, ${agent.colorHex}, ${agent.colorHex}dd)`,
-                                boxShadow: `0 0 10px ${agent.colorHex}`
+                                background: `linear-gradient(90deg, #FF6D29, #FF8C42)`,
+                                boxShadow: `0 0 10px rgba(255,109,41,0.6)`
                             }} 
                             initial={{ width: 0 }}
                             animate={{ width: `${xpPercent}%` }}
                             transition={{ duration: 1, ease: "easeOut" }}
                         />
                     </div>
+                    {/* XP Text */}
+                    <span className="text-[10px] font-mono text-white/40 tracking-wider -mt-1">
+                        {currentXp} / {xpToNext} XP
+                    </span>
                 </div>
             </div>
         </div>

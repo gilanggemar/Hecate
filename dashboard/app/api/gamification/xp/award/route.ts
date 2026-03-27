@@ -12,7 +12,7 @@ export async function POST(req: Request) {
         if (!amount || !reason) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
-        await awardXP(agentId, amount, reason, sourceId);
+        await awardXP(agentId, userId, amount, reason, sourceId);
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error awarding XP:', error);

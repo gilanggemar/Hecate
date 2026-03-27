@@ -19,6 +19,14 @@ export interface OpenClawSkill {
     eligible: boolean;
     missingRequirements?: string[];
     inherited?: boolean;
+    source?: 'github' | 'skill.sh' | 'manual' | 'inherited';
+    sourceUrl?: string;
+    tags?: string[];
+}
+
+export interface SkillGroup {
+    id: string;
+    name: string;
 }
 
 export interface OpenClawAgent {

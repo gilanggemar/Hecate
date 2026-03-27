@@ -345,14 +345,38 @@ export function useSocket() {
                 console.error('[sessions.list error]', err);
             });
 
-            // Fetch agents
+            // Fetch agents and populate store immediately
             gw.request('agents.list', {}).then((res) => {
-                if (res?.agents) {
+                if (res?.agents && Array.isArray(res.agents)) {
                     addLog(`📄 Agents List: ${res.agents.length} items found`);
                     console.log('[AGENTS LIST]', JSON.stringify(res, null, 2));
+                    // Populate agents into the store right away so UI renders immediately
+                    const agentsFromList = parseAgentsFromHealth({ agents: res.agents });
+                    if (agentsFromList.length > 0) {
+                        setAgents(agentsFromList);
+                        agentsFromList.forEach(agent => {
+                            initializeAgentSessions(agent.id).catch(console.error);
+                        });
+                    }
                 }
             }).catch((err) => {
                 console.error('[agents.list error]', err);
+            });
+
+            // Also request full health immediately to get detailed agent status
+            gw.request('health', {}).then((healthRes) => {
+                if (healthRes) {
+                    const agents = parseAgentsFromHealth(healthRes);
+                    if (agents.length > 0) {
+                        setAgents(agents);
+                        agents.forEach(agent => {
+                            initializeAgentSessions(agent.id).catch(console.error);
+                        });
+                        addLog(`💓 Initial health: ${agents.length} configured agents`);
+                    }
+                }
+            }).catch((err) => {
+                console.warn('[Initial health request error]', err);
             });
         });
 
@@ -932,6 +956,54 @@ export function useSocket() {
 
         // Connection initialization is now handled strictly by useOpenClawGateway 
         // watching the active profiles. We do not call gw.connect() here anymore.
+
+        // ── Race condition guard ──────────────────────────────────────────
+        // If the gateway already completed handshake BEFORE we registered
+        // our 'ready' listener above, we missed the event. Check now and
+        // manually trigger the same agent-fetch logic.
+        if (gw.isConnected) {
+            console.log('[useSocket] Gateway already connected — fetching agents immediately');
+            setConnected(true);
+
+            gw.request('agents.list', {}).then((res) => {
+                if (res?.agents && Array.isArray(res.agents)) {
+                    const agentsFromList = parseAgentsFromHealth({ agents: res.agents });
+                    if (agentsFromList.length > 0) {
+                        setAgents(agentsFromList);
+                        agentsFromList.forEach(agent => {
+                            initializeAgentSessions(agent.id).catch(console.error);
+                        });
+                        addLog(`📄 Agents: ${agentsFromList.length} loaded (catch-up)`);
+                    }
+                }
+            }).catch(() => {});
+
+            gw.request('health', {}).then((healthRes) => {
+                if (healthRes) {
+                    const agents = parseAgentsFromHealth(healthRes);
+                    if (agents.length > 0) {
+                        setAgents(agents);
+                        agents.forEach(agent => {
+                            initializeAgentSessions(agent.id).catch(console.error);
+                        });
+                    }
+                }
+            }).catch(() => {});
+
+            gw.request('sessions.list', { limit: 50 }).then((res) => {
+                const rows: any[] = res?.sessions ?? res ?? [];
+                const parsed: SessionInfo[] = (Array.isArray(rows) ? rows : []).map((r: any) => ({
+                    key: r.key ?? '',
+                    kind: r.kind ?? 'other',
+                    channel: r.channel ?? 'unknown',
+                    displayName: r.displayName ?? r.key,
+                    sessionId: r.sessionId ?? '',
+                    agentId: agentIdFromSessionKey(r.key ?? ''),
+                    updatedAt: r.updatedAt ?? 0,
+                }));
+                setSessions(parsed);
+            }).catch(() => {});
+        }
 
     }, [addLog, setAgents, setConnected, updatePing, setGatewayInfo, setSessions,
         addChatMessage, updateChatMessage, addSummitMessage, updateSummitMessage, setChatMessages]);

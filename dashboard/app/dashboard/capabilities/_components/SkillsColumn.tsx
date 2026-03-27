@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Sparkles } from 'lucide-react';
+import { Search, Sparkles, Maximize2 } from 'lucide-react';
 import { SkillItem } from './SkillItem';
 import type { OpenClawSkill } from '@/lib/openclaw/capabilities';
 
@@ -9,9 +9,10 @@ interface SkillsColumnProps {
     skills: OpenClawSkill[];
     togglingItems: Set<string>;
     onToggle: (skillKey: string, enabled: boolean) => void;
+    onExpand?: () => void;
 }
 
-export function SkillsColumn({ skills, togglingItems, onToggle }: SkillsColumnProps) {
+export function SkillsColumn({ skills, togglingItems, onToggle, onExpand }: SkillsColumnProps) {
     const [search, setSearch] = useState('');
 
     const filtered = useMemo(() => {
@@ -43,6 +44,15 @@ export function SkillsColumn({ skills, togglingItems, onToggle }: SkillsColumnPr
                         {eligibleCount} eligible
                     </span>
                 </div>
+                {onExpand && (
+                    <button
+                        onClick={onExpand}
+                        className="p-1.5 rounded-lg text-white/25 hover:text-white/60 hover:bg-white/5 transition-all"
+                        title="Expand Skills Manager"
+                    >
+                        <Maximize2 className="size-3.5" />
+                    </button>
+                )}
             </div>
 
             {/* Search */}

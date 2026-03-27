@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useOpenClawCapabilitiesStore } from '@/stores/useOpenClawCapabilitiesStore';
 import { useOpenClawModelStore } from '@/stores/useOpenClawModelStore';
 import { useOpenClawStore } from '@/store/useOpenClawStore';
@@ -14,9 +14,11 @@ import { ToolsColumn } from './ToolsColumn';
 import { SkillsColumn } from './SkillsColumn';
 import { CoreFilesPanel } from './CoreFilesPanel';
 import { FooterNotice } from './FooterNotice';
+import { SkillsManagerModal } from './SkillsManagerModal';
 
 export function CapabilitiesClient() {
     const isConnected = useOpenClawStore((s) => s.isConnected);
+    const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
 
     const {
         activeTab,
@@ -247,6 +249,7 @@ export function CapabilitiesClient() {
                                             skills={displaySkills}
                                             togglingItems={togglingItems}
                                             onToggle={handleSkillToggle}
+                                            onExpand={() => setIsSkillsModalOpen(true)}
                                         />
                                     </div>
 
@@ -258,6 +261,17 @@ export function CapabilitiesClient() {
                     </AnimatePresence>
                 ) : null}
             </ConnectionGuard>
+
+            {/* Skills Manager Modal */}
+            <SkillsManagerModal
+                isOpen={isSkillsModalOpen}
+                onClose={() => setIsSkillsModalOpen(false)}
+                skills={displaySkills}
+                togglingItems={togglingItems}
+                onToggle={handleSkillToggle}
+                activeTab={activeTab}
+                selectedAgentId={selectedAgentId}
+            />
         </div>
     );
 }

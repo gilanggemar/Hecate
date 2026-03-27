@@ -39,7 +39,6 @@ export default function LoginPage() {
             // Show the assembly animation while dashboard compiles
             setNavigating(true)
             router.push('/dashboard')
-            router.refresh()
         }
     }
 

@@ -42,10 +42,28 @@ export function useCommandCenter() {
 
     const activeAgent = availableAgents.find((a: any) => a.id === activeAgentId) || null;
 
-    // Provide default XP values if agent is found but no XP data exists yet
-    const activeAgentXp = activeAgent && agentXP[activeAgent.id]
-        ? agentXP[activeAgent.id]
-        : { level: 1, totalXp: 0, xpToNextLevel: 100, rank: 'INITIATE' };
+    // Look up XP — try every possible ID field since socket agents and DB may use different identifiers
+    const activeAgentXp = (() => {
+        const fallback = { level: 1, totalXp: 0, xpToNextLevel: 100, rank: 'INITIATE' };
+        if (!activeAgent) return fallback;
+        const agent = activeAgent as any;
+        
+        // All possible IDs this agent could be stored under
+        const candidateIds = [
+            agent.id,
+            agent.accountId,
+            agent.name?.toLowerCase(),
+            agent.botName?.toLowerCase(),
+        ].filter(Boolean);
+
+
+        for (const id of candidateIds) {
+            if (agentXP[id]) {
+                return agentXP[id];
+            }
+        }
+        return fallback;
+    })();
 
     return {
         isMounted,

@@ -16,6 +16,7 @@ import {
     type OpenClawTool,
     type OpenClawSkill,
     type OpenClawAgent,
+    type SkillGroup,
 } from '@/lib/openclaw/capabilities';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -99,6 +100,9 @@ interface OpenClawCapabilitiesState {
     perAgentTools: Record<string, OpenClawTool[]>;
     perAgentSkills: Record<string, OpenClawSkill[]>;
 
+    // Skill management
+    skillGroups: SkillGroup[];
+
     // Raw config cache (for patching)
     rawConfig: any | null;
     draftConfig: any | null;
@@ -138,6 +142,15 @@ interface OpenClawCapabilitiesState {
     togglePerAgentTool: (agentId: string, toolName: string, allowed: boolean) => void;
     togglePerAgentSkill: (agentId: string, skillKey: string, enabled: boolean) => void;
 
+    // Skill management actions
+    installSkill: (skill: { key: string; name: string; description?: string; source: 'github' | 'skill.sh' | 'manual'; sourceUrl?: string; content?: string; compatibilityNote?: string }) => void;
+    deleteSkill: (skillKey: string) => void;
+    renameSkill: (skillKey: string, newName: string) => void;
+    setSkillTags: (skillKey: string, tags: string[]) => void;
+    createSkillGroup: (name: string) => void;
+    renameSkillGroup: (groupId: string, name: string) => void;
+    deleteSkillGroup: (groupId: string) => void;
+
     // Core Files Actions
     fetchWorkspaceFiles: (agentId: string) => Promise<void>;
     selectFile: (agentId: string, fileName: string) => Promise<void>;
@@ -157,6 +170,8 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
     globalSkills: [],
     perAgentTools: {},
     perAgentSkills: {},
+
+    skillGroups: [],
 
     rawConfig: null,
     draftConfig: null,
@@ -272,18 +287,41 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
                 }
             }
 
+            // Parse skill groups from config
+            const skillGroups: SkillGroup[] = (config?.plugins?.skillGroups ?? config?.skills?.skillGroups ?? []).map((g: any) => ({
+                id: g.id || crypto.randomUUID(),
+                name: g.name || 'Unnamed Group',
+            }));
+
+            // Enrich skills with source/tags from config entries
+            const enrichSkills = (skills: OpenClawSkill[]): OpenClawSkill[] => {
+                const entries = config?.plugins?.entries ?? config?.skills?.entries ?? {};
+                return skills.map(s => {
+                    const entry = entries[s.key];
+                    return {
+                        ...s,
+                        source: entry?.source ?? 'inherited',
+                        sourceUrl: entry?.sourceUrl ?? undefined,
+                        tags: entry?.tags ?? [],
+                    };
+                });
+            };
+
             set({
                 agents,
                 globalTools,
-                globalSkills,
+                globalSkills: enrichSkills(globalSkills),
                 perAgentTools,
-                perAgentSkills,
+                perAgentSkills: Object.fromEntries(
+                    Object.entries(perAgentSkills).map(([k, v]) => [k, enrichSkills(v)])
+                ),
                 rawConfig: config,
                 draftConfig: JSON.parse(JSON.stringify(config)),
                 configHash: hash,
                 hasUnsavedChanges: false,
                 catalogToolsCache: catalogTools,
                 skillStatusesCache: skillStatuses,
+                skillGroups,
                 isLoading: false,
                 error: null,
             });
@@ -609,5 +647,156 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
             isFileDirty: false,
             fileError: null,
         });
+    },
+
+    // ─── Skill Management Actions ───────────────────────────────────────
+
+    installSkill: (skill) => {
+        const { draftConfig, skillStatusesCache, _rederiveLocalState } = get() as any;
+        if (!draftConfig) return;
+
+        if (!draftConfig.plugins) draftConfig.plugins = {};
+        if (!draftConfig.plugins.entries) draftConfig.plugins.entries = {};
+
+        // Add the skill entry to draft config
+        draftConfig.plugins.entries[skill.key] = {
+            enabled: true,
+            source: skill.source,
+            sourceUrl: skill.sourceUrl || undefined,
+            name: skill.name,
+            description: skill.description || undefined,
+            tags: [],
+            ...(skill.content ? { content: skill.content } : {}),
+            ...(skill.compatibilityNote ? { compatibilityNote: skill.compatibilityNote } : {}),
+        };
+
+        // Also add to skillStatusesCache so _rederiveLocalState picks it up
+        const alreadyInCache = skillStatusesCache.some((s: any) => s.key === skill.key);
+        if (!alreadyInCache) {
+            set({
+                skillStatusesCache: [
+                    ...skillStatusesCache,
+                    {
+                        key: skill.key,
+                        name: skill.name,
+                        description: skill.description,
+                        eligible: true,
+                    },
+                ],
+            });
+        }
+
+        set({ draftConfig });
+        _rederiveLocalState();
+    },
+
+    deleteSkill: (skillKey) => {
+        const { draftConfig, skillStatusesCache, _rederiveLocalState } = get() as any;
+        if (!draftConfig) return;
+
+        // Remove from plugins.entries
+        if (draftConfig.plugins?.entries?.[skillKey]) {
+            delete draftConfig.plugins.entries[skillKey];
+        }
+
+        // Remove from cache
+        set({
+            draftConfig,
+            skillStatusesCache: skillStatusesCache.filter((s: any) => s.key !== skillKey),
+        });
+        _rederiveLocalState();
+    },
+
+    renameSkill: (skillKey, newName) => {
+        const { draftConfig, skillStatusesCache, _rederiveLocalState } = get() as any;
+        if (!draftConfig) return;
+
+        if (draftConfig.plugins?.entries?.[skillKey]) {
+            draftConfig.plugins.entries[skillKey].name = newName;
+        }
+
+        // Also update the cache
+        const updatedCache = skillStatusesCache.map((s: any) =>
+            s.key === skillKey ? { ...s, name: newName } : s
+        );
+
+        set({ draftConfig, skillStatusesCache: updatedCache });
+        _rederiveLocalState();
+    },
+
+    setSkillTags: (skillKey, tags) => {
+        const { draftConfig, _rederiveLocalState } = get() as any;
+        if (!draftConfig) return;
+
+        if (!draftConfig.plugins) draftConfig.plugins = {};
+        if (!draftConfig.plugins.entries) draftConfig.plugins.entries = {};
+        if (!draftConfig.plugins.entries[skillKey]) draftConfig.plugins.entries[skillKey] = {};
+
+        draftConfig.plugins.entries[skillKey].tags = tags;
+
+        set({ draftConfig });
+        _rederiveLocalState();
+    },
+
+    createSkillGroup: (name) => {
+        const { draftConfig, skillGroups } = get();
+        if (!draftConfig) return;
+
+        const newGroup: SkillGroup = {
+            id: crypto.randomUUID(),
+            name,
+        };
+
+        if (!draftConfig.plugins) draftConfig.plugins = {};
+        if (!draftConfig.plugins.skillGroups) draftConfig.plugins.skillGroups = [];
+        draftConfig.plugins.skillGroups.push({ id: newGroup.id, name: newGroup.name });
+
+        set({
+            draftConfig,
+            skillGroups: [...skillGroups, newGroup],
+            hasUnsavedChanges: true,
+        });
+    },
+
+    renameSkillGroup: (groupId, name) => {
+        const { draftConfig, skillGroups } = get();
+        if (!draftConfig) return;
+
+        if (draftConfig.plugins?.skillGroups) {
+            const g = draftConfig.plugins.skillGroups.find((g: any) => g.id === groupId);
+            if (g) g.name = name;
+        }
+
+        set({
+            draftConfig,
+            skillGroups: skillGroups.map(g => g.id === groupId ? { ...g, name } : g),
+            hasUnsavedChanges: true,
+        });
+    },
+
+    deleteSkillGroup: (groupId) => {
+        const { draftConfig, skillGroups, _rederiveLocalState } = get() as any;
+        if (!draftConfig) return;
+
+        if (draftConfig.plugins?.skillGroups) {
+            draftConfig.plugins.skillGroups = draftConfig.plugins.skillGroups.filter(
+                (g: any) => g.id !== groupId
+            );
+        }
+
+        // Remove this group from all skill tags
+        if (draftConfig.plugins?.entries) {
+            for (const entry of Object.values(draftConfig.plugins.entries) as any[]) {
+                if (entry.tags && Array.isArray(entry.tags)) {
+                    entry.tags = entry.tags.filter((t: string) => t !== groupId);
+                }
+            }
+        }
+
+        set({
+            draftConfig,
+            skillGroups: skillGroups.filter((g: SkillGroup) => g.id !== groupId),
+        });
+        _rederiveLocalState();
     },
 }));

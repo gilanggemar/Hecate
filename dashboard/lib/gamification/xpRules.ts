@@ -28,4 +28,20 @@ export const XP_REWARDS = {
     mission_completed_medium: 50,
     mission_completed_hard: 100,
     all_missions_completed: 75,    // Bonus for clearing all daily missions
+
+    // ── Game XP Rewards ──
+
+    // Tic-Tac-Toe
+    ttt_win_vs_real_agent: 50,     // Human wins vs real AI agent
+    ttt_win_vs_computer: 25,       // Human wins vs computer engine
+    ttt_loss_real_agent: 30,       // Agent wins (real agent controlling)
+    ttt_loss_computer: 10,         // Agent wins (computer engine)
+    ttt_draw: 10,                  // Draw — small consolation
+
+    // Neuroverse
+    nv_win_vs_real_agents: 100,    // Human wins vs real agents
+    nv_win_vs_computer: 50,        // Human wins vs computer heuristic
+    nv_agent_win_real: 60,         // Agent wins (real agent controlling)
+    nv_agent_win_computer: 20,     // Agent wins (computer heuristic)
+    nv_participation: 15,          // Per agent, just for completing a game
 } as const;

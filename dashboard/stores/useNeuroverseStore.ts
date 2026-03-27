@@ -10,6 +10,8 @@ import { requestNeuroverseMove, getRandomValidAction, NeuroverseAgentResult, cle
 import { computeOptimalMove } from "@/lib/games/neuroverse-computer-player";
 import { GameAction, GameResult } from "@/lib/games/types";
 import { BOARD, NETRUNNERS, NetrunnerId, PinType } from "@/lib/games/adapters/neuroverse-data";
+import { useGameXPStore, getNVXPReward } from "@/stores/useGameXPStore";
+import { XP_REWARDS } from "@/lib/gamification/xpRules";
 
 // --- Types ---
 
@@ -302,6 +304,7 @@ export const useNeuroverseStore = create<NeuroverseStore>((set, get) => ({
         text: humanizeLog(result.reason, agentSlots, humanPlayerId),
         type: "victory",
       });
+      _handleNVGameEnd(result, humanPlayerId, agentSlots, get().useRealAgents);
       return;
     }
 
@@ -441,6 +444,7 @@ export const useNeuroverseStore = create<NeuroverseStore>((set, get) => ({
             text: humanizeLog(gameResult.reason, agentSlots, humanPlayerId),
             type: "victory",
           });
+          _handleNVGameEnd(gameResult, humanPlayerId, agentSlots, get().useRealAgents);
           return;
         }
 
@@ -594,3 +598,48 @@ export const useNeuroverseStore = create<NeuroverseStore>((set, get) => ({
     });
   },
 }));
+
+// --- NV XP Award Helper ---
+
+function _handleNVGameEnd(
+  result: GameResult,
+  humanPlayerId: string,
+  agentSlots: AgentSlot[],
+  wasRealAgent: boolean,
+) {
+  const xpStore = useGameXPStore.getState();
+  const humanWon = result.winnerId === humanPlayerId;
+
+  // Find winning agent if applicable
+  let winnerSlot: AgentSlot | undefined;
+  if (!humanWon && result.winnerId) {
+    winnerSlot = agentSlots.find(s => s.playerId === result.winnerId);
+  }
+
+  const award = getNVXPReward(
+    humanWon,
+    wasRealAgent,
+    winnerSlot?.agentId,
+    winnerSlot?.agentName,
+  );
+
+  if (humanWon) {
+    // Human won — show modal for XP assignment
+    xpStore.awardGameXP(award);
+  } else if (winnerSlot) {
+    // Agent won — auto-award
+    xpStore.autoAwardAgentXP(winnerSlot.agentId, award.amount, award.reason);
+    xpStore.awardGameXP(award);
+  }
+
+  // Participation XP for all agents
+  for (const slot of agentSlots) {
+    if (slot.agentId !== winnerSlot?.agentId) {
+      xpStore.autoAwardAgentXP(
+        slot.agentId,
+        XP_REWARDS.nv_participation,
+        `Neuroverse participation (${wasRealAgent ? "real" : "computer"})`,
+      );
+    }
+  }
+}
