@@ -19,14 +19,21 @@ interface PendingModelChange {
     agentId: string;
     modelRef: string;
     isDefault: boolean; // true = change agents.defaults.model.primary
+    isHeartbeat?: boolean; // true = change heartbeat model instead of primary
 }
 
 interface OpenClawModelState {
     // The resolved active model for each agent (agentId → model string)
     activeModels: Record<string, string>;
 
+    // Heartbeat models per agent
+    activeHeartbeatModels: Record<string, string>;
+
     // The default model (agents.defaults.model.primary)
     defaultModel: string | null;
+
+    // The default heartbeat model
+    defaultHeartbeatModel: string | null;
 
     // The default fallbacks (agents.defaults.model.fallbacks)
     defaultFallbacks: string[];
@@ -48,9 +55,14 @@ interface OpenClawModelState {
     pendingModelChange: PendingModelChange | null;
     hasUnsavedModelChange: boolean;
 
+    // Heartbeat buffer
+    pendingHeartbeatModelChange: PendingModelChange | null;
+    hasUnsavedHeartbeatChange: boolean;
+
     // Actions
     fetchModels: () => Promise<void>;
     bufferModelChange: (agentId: string, modelRef: string, isDefault: boolean) => void;
+    bufferHeartbeatModelChange: (agentId: string, modelRef: string, isDefault: boolean) => void;
     applyModelChange: () => Promise<void>;
     discardModelChange: () => void;
 }
@@ -109,11 +121,24 @@ function resolveActiveModels(config: any, defaultModel: string | null): Record<s
     return activeModels;
 }
 
+function resolveActiveHeartbeatModels(config: any, defaultHeartbeat: string | null): Record<string, string> {
+    const agentsList = config?.agents?.list ?? [];
+    const models: Record<string, string> = {};
+    for (const agent of agentsList) {
+        const id = agent.id || agent.agentId;
+        if (!id) continue;
+        models[id] = agent.model?.heartbeat ?? defaultHeartbeat ?? '';
+    }
+    return models;
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
     activeModels: {},
+    activeHeartbeatModels: {},
     defaultModel: null,
+    defaultHeartbeatModel: null,
     defaultFallbacks: [],
     modelCatalog: [],
     configHash: null,
@@ -122,6 +147,8 @@ export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
     modelError: null,
     pendingModelChange: null,
     hasUnsavedModelChange: false,
+    pendingHeartbeatModelChange: null,
+    hasUnsavedHeartbeatChange: false,
 
     // ─── fetchModels ────────────────────────────────────────────────────
 
@@ -143,6 +170,7 @@ export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
             const { config, hash } = parseConfigRaw(configRes);
 
             const defaultModel = config?.agents?.defaults?.model?.primary ?? null;
+            const defaultHeartbeatModel = config?.agents?.defaults?.model?.heartbeat ?? null;
             const defaultFallbacks = config?.agents?.defaults?.model?.fallbacks ?? [];
 
             // Build catalog from config
@@ -193,10 +221,13 @@ export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
             }
 
             const activeModels = resolveActiveModels(config, defaultModel);
+            const activeHeartbeatModels = resolveActiveHeartbeatModels(config, defaultHeartbeatModel);
 
             set({
                 activeModels,
+                activeHeartbeatModels,
                 defaultModel,
+                defaultHeartbeatModel,
                 defaultFallbacks,
                 modelCatalog: catalog,
                 configHash: hash,
@@ -222,11 +253,18 @@ export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
         });
     },
 
+    bufferHeartbeatModelChange: (agentId, modelRef, isDefault) => {
+        set({
+            pendingHeartbeatModelChange: { agentId, modelRef, isDefault, isHeartbeat: true },
+            hasUnsavedHeartbeatChange: true,
+        });
+    },
+
     // ─── Apply the buffered model change ────────────────────────────────
 
     applyModelChange: async () => {
-        const { pendingModelChange, rawConfig, configHash } = get();
-        if (!pendingModelChange) return;
+        const { pendingModelChange, pendingHeartbeatModelChange, rawConfig, configHash } = get();
+        if (!pendingModelChange && !pendingHeartbeatModelChange) return;
 
         const gw = getGateway();
         if (!gw.isConnected) return;
@@ -237,39 +275,11 @@ export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
             const { config: freshConfig, hash: freshHash } = parseConfigRaw(freshRes);
             const baseHash = freshHash || configHash;
 
-            let patchPayload: any;
+            if (pendingModelChange) {
+                let patchPayload: any;
 
-            if (pendingModelChange.isDefault) {
-                // Change default model
-                patchPayload = {
-                    agents: {
-                        defaults: {
-                            model: {
-                                primary: pendingModelChange.modelRef,
-                            },
-                        },
-                    },
-                };
-            } else {
-                // Change per-agent model — must send full agents.list
-                const agentsList = [...(freshConfig?.agents?.list ?? rawConfig?.agents?.list ?? [])];
-                const agentIndex = agentsList.findIndex(
-                    (a: any) => (a.id || a.agentId) === pendingModelChange.agentId
-                );
-
-                if (agentIndex >= 0) {
-                    agentsList[agentIndex] = {
-                        ...agentsList[agentIndex],
-                        model: {
-                            primary: pendingModelChange.modelRef,
-                            ...(agentsList[agentIndex].model?.fallbacks
-                                ? { fallbacks: agentsList[agentIndex].model.fallbacks }
-                                : {}),
-                        },
-                    };
-                    patchPayload = { agents: { list: agentsList } };
-                } else {
-                    // Agent not in list — fall back to default model change
+                if (pendingModelChange.isDefault) {
+                    // Change default model
                     patchPayload = {
                         agents: {
                             defaults: {
@@ -279,16 +289,87 @@ export const useOpenClawModelStore = create<OpenClawModelState>((set, get) => ({
                             },
                         },
                     };
+                } else {
+                    // Change per-agent model — must send full agents.list
+                    const agentsList = [...(freshConfig?.agents?.list ?? rawConfig?.agents?.list ?? [])];
+                    const agentIndex = agentsList.findIndex(
+                        (a: any) => (a.id || a.agentId) === pendingModelChange.agentId
+                    );
+
+                    if (agentIndex >= 0) {
+                        agentsList[agentIndex] = {
+                            ...agentsList[agentIndex],
+                            model: {
+                                primary: pendingModelChange.modelRef,
+                                ...(agentsList[agentIndex].model?.fallbacks
+                                    ? { fallbacks: agentsList[agentIndex].model.fallbacks }
+                                    : {}),
+                            },
+                        };
+                        patchPayload = { agents: { list: agentsList } };
+                    } else {
+                        // Agent not in list — fall back to default model change
+                        patchPayload = {
+                            agents: {
+                                defaults: {
+                                    model: {
+                                        primary: pendingModelChange.modelRef,
+                                    },
+                                },
+                            },
+                        };
+                    }
                 }
+
+                await gw.request('config.patch', {
+                    raw: JSON.stringify(patchPayload),
+                    baseHash: baseHash,
+                });
+
+                // Clear primary buffer and re-fetch
+                set({ pendingModelChange: null, hasUnsavedModelChange: false });
             }
 
-            await gw.request('config.patch', {
-                raw: JSON.stringify(patchPayload),
-                baseHash: baseHash,
-            });
+            // Apply heartbeat change if pending
+            if (pendingHeartbeatModelChange) {
+                const hbFreshRes = await gw.request('config.get', {}).catch(() => null);
+                const { config: hbConfig, hash: hbHash } = parseConfigRaw(hbFreshRes);
+                const hbBaseHash = hbHash || configHash;
 
-            // Clear buffer and re-fetch
-            set({ pendingModelChange: null, hasUnsavedModelChange: false });
+                let hbPatchPayload: any;
+                if (pendingHeartbeatModelChange.isDefault) {
+                    hbPatchPayload = {
+                        agents: { defaults: { model: { heartbeat: pendingHeartbeatModelChange.modelRef } } },
+                    };
+                } else {
+                    const hbAgentsList = [...(hbConfig?.agents?.list ?? rawConfig?.agents?.list ?? [])];
+                    const hbIdx = hbAgentsList.findIndex(
+                        (a: any) => (a.id || a.agentId) === pendingHeartbeatModelChange.agentId
+                    );
+                    if (hbIdx >= 0) {
+                        hbAgentsList[hbIdx] = {
+                            ...hbAgentsList[hbIdx],
+                            model: {
+                                ...hbAgentsList[hbIdx].model,
+                                heartbeat: pendingHeartbeatModelChange.modelRef,
+                            },
+                        };
+                        hbPatchPayload = { agents: { list: hbAgentsList } };
+                    } else {
+                        hbPatchPayload = {
+                            agents: { defaults: { model: { heartbeat: pendingHeartbeatModelChange.modelRef } } },
+                        };
+                    }
+                }
+
+                await gw.request('config.patch', {
+                    raw: JSON.stringify(hbPatchPayload),
+                    baseHash: hbBaseHash,
+                });
+
+                set({ pendingHeartbeatModelChange: null, hasUnsavedHeartbeatChange: false });
+            }
+
             await get().fetchModels();
         } catch (err: any) {
             console.error('[ModelStore] applyModelChange failed:', err);

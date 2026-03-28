@@ -155,11 +155,11 @@ export function AgentShowcase({ agentProfile, level, currentXp, xpToNext, rank, 
                             />
                         </motion.div>
 
-                        <motion.div variants={lightVariants} transition={lightTransition(0.05)} className="mt-10">
+                        <motion.div variants={lightVariants} transition={lightTransition(0.05)} className="mt-5">
                             <AgentModelSelector agentId={agentProfile.id} colorHex={agentProfile.colorHex} />
                         </motion.div>
 
-                        <motion.div variants={lightVariants} transition={lightTransition(0.1)} className="mt-8 flex-1 min-h-0 p-4 rounded-xl border transition-colors duration-500" style={{ background: dynamicColors?.containerBg || 'rgba(0,0,0,0.6)', borderColor: dynamicColors?.containerBorder || 'rgba(255,255,255,0.05)', boxShadow: dynamicColors?.containerShadow || '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        <motion.div variants={lightVariants} transition={lightTransition(0.1)} className="mt-5 flex-1 min-h-0 p-4 rounded-xl border transition-colors duration-500" style={{ background: dynamicColors?.containerBg || 'rgba(0,0,0,0.6)', borderColor: dynamicColors?.containerBorder || 'rgba(255,255,255,0.05)', boxShadow: dynamicColors?.containerShadow || '0 8px 32px rgba(0,0,0,0.5)' }}>
                             <AgentCarousel
                                 activeAgentId={agentProfile.id}
                                 availableAgents={availableAgents}

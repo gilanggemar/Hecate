@@ -8,6 +8,7 @@ import { GameArenaPanel } from "@/components/games/GameArenaPanel";
 import { AgentSelectScreen } from "@/components/games/AgentSelectScreen";
 import { useNeuroverseStore, AgentSlot } from "@/stores/useNeuroverseStore";
 import { NeuroverseBoardPanel } from "@/components/games/NeuroverseBoardPanel";
+import { PentagramArenaPanel } from "@/components/games/pentagram/PentagramArenaPanel";
 import { useAvailableAgents } from "@/hooks/useAvailableAgents";
 import { getAgentProfile } from "@/lib/agentRoster";
 import { NETRUNNERS as NETRUNNERS_LIST, PINS, PinType } from "@/lib/games/adapters/neuroverse-data";
@@ -59,6 +60,11 @@ export default function GamesPage() {
     const handleNeuroverseClick = () => {
         setSelectedNvAgents(new Set());
         neuroverseStore.setView("agent-select");
+    };
+
+    // Handle Pentagram Protocol click
+    const handlePentagramClick = () => {
+        setView("pentagram-playing");
     };
 
     // Toggle agent selection for Neuroverse
@@ -165,6 +171,17 @@ export default function GamesPage() {
             <div className="flex flex-col h-full bg-transparent text-white p-4 md:p-6 lg:p-8 w-full">
                 <GameArenaPanel />
                 <GameXPAwardModal />
+            </div>
+        );
+    }
+
+    // Render: Pentagram Protocol — TRUE FULLSCREEN
+    // Uses fixed positioning to fill the entire viewport.
+    // The dashboard shell (top rail, bottom dock, SVG frame) renders ON TOP via their z-indexes.
+    if (view === "pentagram-playing") {
+        return (
+            <div className="fixed inset-0 z-[5] bg-black">
+                <PentagramArenaPanel onExit={() => setView("lobby")} />
             </div>
         );
     }
@@ -635,24 +652,29 @@ export default function GamesPage() {
                     </div>
                 </motion.div>
 
-                {/* 4. Game 2: Trivia Battle */}
+                {/* 4. Game 2: Pentagram Protocol */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, delay: 0.3 }}
-                    className="col-span-1 md:col-span-4 bg-[#111] border border-[#333] p-6 md:p-8 flex flex-col h-full justify-between group hover:border-[#f97316] transition-colors relative overflow-hidden cursor-pointer"
+                    onClick={handlePentagramClick}
+                    className="col-span-1 md:col-span-4 bg-[#0a0a0a] border border-orange-500/20 p-6 md:p-8 flex flex-col h-full justify-between group hover:border-orange-500/50 transition-colors relative overflow-hidden cursor-pointer"
                 >
                     <div className="absolute -right-8 -top-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <BrainCircuit className="w-64 h-64" />
+                        <Lock className="w-64 h-64 text-orange-500" />
                     </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative z-10 flex flex-col h-full">
                         <div className="flex items-center justify-between mb-4">
-                            <BrainCircuit className="w-10 h-10 text-white" />
-                            <span className="font-mono text-xs font-black tracking-widest text-[#555] border-2 border-[#333] bg-black px-3 py-1.5 group-hover:border-[#f97316]/50 group-hover:text-[#f97316] transition-colors">IN DEV</span>
+                            <Lock className="w-10 h-10 text-orange-500" />
+                            <span className="font-mono text-xs font-black tracking-widest text-orange-500 border-2 border-orange-500/30 bg-orange-500/10 px-3 py-1.5">READY</span>
                         </div>
                         <div className="flex-1 flex flex-col justify-end">
-                            <h3 className="text-4xl font-black uppercase tracking-tighter text-white mb-4">Trivia Battle</h3>
-                            <p className="text-[#888] font-medium text-lg leading-snug group-hover:text-[#aaa] transition-colors">Test your knowledge against the LLM&apos;s vast parameter set.</p>
+                            <h3 className="text-4xl font-black uppercase tracking-tighter text-white mb-2">Pentagram Protocol</h3>
+                            <p className="text-[#888] font-medium text-lg leading-snug group-hover:text-[#aaa] transition-colors mb-4">An interactive psychological evaluation. Navigate the narrative and extract the hidden variables.</p>
+                            <div className="flex items-center gap-2 font-black uppercase tracking-widest text-sm text-black bg-orange-500 w-fit px-5 py-3 group-hover:bg-orange-400 transition-colors shadow-lg shadow-orange-500/20">
+                                <Play className="w-4 h-4" /> Begin Session
+                            </div>
                         </div>
                     </div>
                 </motion.div>

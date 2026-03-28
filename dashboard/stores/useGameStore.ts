@@ -20,7 +20,7 @@ import { useGameXPStore, getTTTXPReward } from "@/stores/useGameXPStore";
 const registry = createDefaultRegistry();
 const sessionManager = new GameSessionManager(registry);
 
-export type GameView = "lobby" | "agent-select" | "playing";
+export type GameView = "lobby" | "agent-select" | "playing" | "pentagram-playing";
 
 export interface GameStoreState {
   // Navigation

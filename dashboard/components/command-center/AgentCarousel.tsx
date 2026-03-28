@@ -56,7 +56,7 @@ export function AgentCarousel({ activeAgentId, availableAgents, onSelectAgent }:
     }
 
     return (
-        <div className="grid grid-cols-4 gap-3 pt-6 pb-4">
+        <div className="grid grid-cols-4 gap-3 py-3">
             {availableAgents.map((agent) => (
                 <CarouselItem
                     key={agent.id}
