@@ -114,7 +114,7 @@ export const DateColumn = memo(function DateColumn({
             {/* Month boundary separator */}
             {isMonthStart && (
                 <div className="absolute -top-0.5 left-0 z-10 border-l-2 border-[var(--accent-base)]/30 h-full pointer-events-none">
-                    <span className="absolute -top-5 left-1 nerv-badge-text text-[var(--accent-base)] bg-[var(--accent-base)]/10 px-1.5 py-0.5 rounded-full">
+                    <span className="absolute -top-5 left-1 nerv-badge-text text-[var(--accent-base)] bg-[var(--accent-base)]/10 px-1.5 py-0.5 rounded-sm">
                         {monthLabel}
                     </span>
                 </div>

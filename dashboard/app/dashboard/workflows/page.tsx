@@ -137,7 +137,7 @@ export default function WorkflowsPage() {
                             {runs.length} {runs.length === 1 ? 'run' : 'runs'}
                         </span>
                     </div>
-                    <div className="flex-1 min-h-0 rounded-xl border border-border bg-card/30 p-3">
+                    <div className="flex-1 min-h-0 rounded-md border border-border bg-card/30 p-3">
                         <ScrollArea className="h-full">
                             <RunHistory runs={runs} onConfirm={openConfirm} />
                         </ScrollArea>
@@ -180,7 +180,7 @@ function WorkflowList({
 }) {
     if (workflows.length === 0) {
         return (
-            <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+            <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                 <CardContent className="p-8 text-center">
                     <GitBranch className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                     <p className="text-sm text-muted-foreground">No workflows yet.</p>
@@ -204,7 +204,7 @@ function WorkflowList({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                         >
-                            <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                            <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                                 <CardContent className="p-4">
                                     <div className="flex items-start gap-3">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-accent/50 ${statusCfg.color} shrink-0`}>
@@ -285,7 +285,7 @@ function RunHistory({ runs, onConfirm }: { runs: WorkflowRun[], onConfirm: (titl
 
     if (runs.length === 0) {
         return (
-            <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+            <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                 <CardContent className="p-8 text-center">
                     <Play className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                     <p className="text-sm text-muted-foreground">No runs yet.</p>
@@ -308,7 +308,7 @@ function RunHistory({ runs, onConfirm }: { runs: WorkflowRun[], onConfirm: (titl
                 return (
                     <Card
                         key={run.id}
-                        className="group rounded-xl border-border bg-card shadow-none py-0 gap-0 cursor-pointer hover:border-foreground/10 transition-colors"
+                        className="group rounded-md border-border bg-card shadow-none py-0 gap-0 cursor-pointer hover:border-foreground/10 transition-colors"
                         onClick={() => setExpandedId(isExpanded ? null : run.id)}
                     >
                         <CardContent className="p-3">
@@ -415,7 +415,7 @@ function TemplateList({ onCreateFromTemplate }: { onCreateFromTemplate: (t: any)
                 <FileText className="w-3.5 h-3.5" /> Starter Templates
             </h2>
             {WORKFLOW_TEMPLATES.map((tpl) => (
-                <Card key={tpl.id} className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                <Card key={tpl.id} className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                     <CardContent className="p-4">
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent/50 text-muted-foreground shrink-0">
@@ -501,7 +501,7 @@ function CreateWorkflowDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-md">
                 <DialogHeader>
                     <DialogTitle className="text-base">Create Workflow</DialogTitle>
                 </DialogHeader>
@@ -512,7 +512,7 @@ function CreateWorkflowDialog({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="My Pipeline"
-                            className="h-8 text-[13px] rounded-xl border-border bg-background"
+                            className="h-8 text-[13px] rounded-md border-border bg-background"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -521,7 +521,7 @@ function CreateWorkflowDialog({
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="What does this workflow do?"
-                            className="min-h-16 text-[13px] rounded-xl border-border bg-background resize-none"
+                            className="min-h-16 text-[13px] rounded-md border-border bg-background resize-none"
                         />
                     </div>
                 </div>
@@ -585,7 +585,7 @@ function EditWorkflowDialog({
 
     return (
         <Dialog open={!!workflow} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-md">
                 <DialogHeader>
                     <DialogTitle className="text-base">Edit Workflow</DialogTitle>
                 </DialogHeader>
@@ -596,7 +596,7 @@ function EditWorkflowDialog({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Workflow name"
-                            className="h-8 text-[13px] rounded-xl border-border bg-background"
+                            className="h-8 text-[13px] rounded-md border-border bg-background"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -605,7 +605,7 @@ function EditWorkflowDialog({
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="What does this workflow do?"
-                            className="min-h-16 text-[13px] rounded-xl border-border bg-background resize-none"
+                            className="min-h-16 text-[13px] rounded-md border-border bg-background resize-none"
                         />
                     </div>
                 </div>
@@ -636,7 +636,7 @@ function ConfirmDialog({
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xs rounded-2xl">
+            <DialogContent className="sm:max-w-xs rounded-md">
                 <DialogHeader>
                     <DialogTitle className="text-base">{title}</DialogTitle>
                     {description && <div className="text-sm text-muted-foreground mt-2">{description}</div>}

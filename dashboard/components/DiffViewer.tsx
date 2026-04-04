@@ -15,7 +15,7 @@ export function DiffViewer({ diffPayload, className }: DiffViewerProps) {
     const lines = diffPayload.split('\n');
 
     return (
-        <div className={cn("rounded-xl border border-border overflow-hidden font-mono text-[11px]", className)}>
+        <div className={cn("rounded-md border border-border overflow-hidden font-mono text-[11px]", className)}>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <tbody>

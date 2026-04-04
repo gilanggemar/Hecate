@@ -17,14 +17,23 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
     const isConnected = useOpenClawStore((s) => s.isConnected);
     const {
         activeModels,
-        defaultModel,
+        defaults,
         modelCatalog,
         isModelLoading,
         modelError,
-        pendingModelChange,
+        pendingChanges,
         fetchModels,
-        bufferModelChange,
+        bufferChange,
     } = useOpenClawModelStore();
+    
+    // Legacy mapping (we only care about primary here)
+    const activeModelsPrimary = activeModels.primary;
+    const defaultModel = defaults.primary;
+    
+    // Get the pending primary change if any
+    const pendingPrimaryChange = Array.from(pendingChanges.values()).find(
+        (c) => c.role === 'primary' && c.agentId === (agentId || 'main')
+    );
 
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -84,16 +93,16 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
     const openClawAgentId = agentId || 'main';
 
     const currentModel = useMemo(() => {
-        if (pendingModelChange && pendingModelChange.agentId === openClawAgentId) {
-            return pendingModelChange.modelRef;
+        if (pendingPrimaryChange) {
+            return pendingPrimaryChange.modelRef;
         }
-        return activeModels[openClawAgentId] ?? defaultModel ?? null;
-    }, [activeModels, defaultModel, openClawAgentId, pendingModelChange]);
+        return activeModelsPrimary[openClawAgentId] ?? defaultModel ?? null;
+    }, [activeModelsPrimary, defaultModel, openClawAgentId, pendingPrimaryChange]);
 
     const isDefaultAgent = useMemo(() => {
-        const agentModel = activeModels[openClawAgentId];
+        const agentModel = activeModelsPrimary[openClawAgentId];
         return !agentModel || agentModel === defaultModel;
-    }, [activeModels, openClawAgentId, defaultModel]);
+    }, [activeModelsPrimary, openClawAgentId, defaultModel]);
 
     const displayParts = useMemo(() => {
         if (!currentModel || currentModel === 'unknown') return null;
@@ -120,7 +129,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
     }, [modelCatalog, search]);
 
     const handleSelectModel = (modelRef: string) => {
-        bufferModelChange(openClawAgentId, modelRef, isDefaultAgent);
+        bufferChange(openClawAgentId, 'primary', modelRef, isDefaultAgent);
         setIsOpen(false);
         setSearch('');
     };
@@ -131,7 +140,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
             <div className="space-y-1.5">
                 <div className="text-[11px] uppercase tracking-[0.15em] font-mono text-white/40">Model</div>
                 <div
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono opacity-50 cursor-not-allowed"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-mono opacity-50 cursor-not-allowed"
                     style={{
                         background: `${colorHex}10`,
                         border: `1px solid ${colorHex}25`,
@@ -150,7 +159,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
             <div className="space-y-1.5">
                 <div className="text-[11px] uppercase tracking-[0.15em] font-mono text-white/40">Model</div>
                 <div
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-mono"
                     style={{
                         background: `${colorHex}10`,
                         border: `1px solid ${colorHex}30`,
@@ -170,7 +179,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
                 <div className="text-[11px] uppercase tracking-[0.15em] font-mono text-white/40">Model</div>
                 <button
                     onClick={() => fetchModels()}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-mono
                         bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors"
                 >
                     <AlertCircle size={12} className="text-red-400" />
@@ -180,7 +189,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
         );
     }
 
-    const isPending = pendingModelChange && pendingModelChange.agentId === openClawAgentId;
+    const isPending = !!pendingPrimaryChange;
 
     // ─── Dropdown portal ─────────────────────────────────────────────
     const dropdownPortal = isOpen && typeof document !== 'undefined'
@@ -192,7 +201,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -4, scale: 0.97 }}
                     transition={{ duration: 0.15 }}
-                    className="fixed z-[9999] w-64 rounded-xl border border-white/10 bg-[#0a0a0a] shadow-2xl overflow-hidden"
+                    className="fixed z-[9999] w-64 rounded-md border border-white/10 bg-[#0a0a0a] shadow-2xl overflow-hidden"
                     style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
                     {/* Header */}
@@ -276,7 +285,7 @@ export function AgentModelSelector({ agentId, colorHex = '#f97316' }: AgentModel
                     if (!isOpen) setSearch('');
                 }}
                 className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer",
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-mono transition-all cursor-pointer",
                     "hover:brightness-125",
                     isPending && "ring-1 ring-emerald-500/40"
                 )}

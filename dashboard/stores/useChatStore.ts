@@ -44,7 +44,7 @@ interface ChatActions {
     // Conversation management
     loadConversations: (agentId?: string) => Promise<void>;
     setActiveConversation: (conversationId: string | null) => Promise<void>;
-    createConversation: (agentId: string, title?: string) => Promise<string | null>;
+    createConversation: (agentId: string, title?: string, mode?: 'agent' | 'companion') => Promise<string | null>;
     updateConversation: (id: string, updates: Partial<Pick<Conversation, 'title' | 'pinned' | 'archived' | 'mission_config'>>) => Promise<void>;
     deleteConversation: (id: string) => Promise<void>;
 
@@ -155,12 +155,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         }
     },
 
-    createConversation: async (agentId: string, title?: string) => {
+    createConversation: async (agentId: string, title?: string, mode?: 'agent' | 'companion') => {
         try {
             const res = await fetch('/api/chat/conversations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ agent_id: agentId, title }),
+                body: JSON.stringify({ agent_id: agentId, title, mode: mode || 'agent' }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const { conversation } = await res.json();

@@ -69,7 +69,7 @@ export function AppSidebar() {
                                 <Link
                                     href={item.href}
                                     className={cn(
-                                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 group",
                                         isActive
                                             ? "bg-accent text-foreground font-medium"
                                             : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -113,13 +113,13 @@ export function AppSidebar() {
 
                 {/* Metrics */}
                 <div className="grid grid-cols-2 gap-2">
-                    <Card className="bg-accent/50 border-border rounded-xl py-0 gap-0 shadow-none">
+                    <Card className="bg-accent/50 border-border rounded-md py-0 gap-0 shadow-none">
                         <CardContent className="p-2.5 px-3">
                             <span className="text-muted-foreground block mb-0.5 text-[10px]">Agents</span>
                             <span className="text-foreground font-semibold text-lg">{visibleAgentsCount}</span>
                         </CardContent>
                     </Card>
-                    <Card className="bg-accent/50 border-border rounded-xl py-0 gap-0 shadow-none">
+                    <Card className="bg-accent/50 border-border rounded-md py-0 gap-0 shadow-none">
                         <CardContent className="p-2.5 px-3">
                             <span className="text-muted-foreground block mb-0.5 text-[10px]">Latency</span>
                             <span className="text-foreground font-semibold">{lastPing ? "< 40ms" : "--"}</span>

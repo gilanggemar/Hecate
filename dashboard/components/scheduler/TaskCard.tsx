@@ -67,7 +67,7 @@ export function TaskCard({
                 'nerv-glass-1 transition-all duration-150 cursor-grab active:cursor-grabbing select-none',
                 isCompact
                     ? 'rounded-lg p-2 mb-1.5 border-l-4'
-                    : 'rounded-xl p-3 mb-2 border-l-4',
+                    : 'rounded-md p-3 mb-2 border-l-4',
                 isDragging && 'opacity-50 border-dashed',
             )}
             style={{ borderLeftColor: agentColor }}

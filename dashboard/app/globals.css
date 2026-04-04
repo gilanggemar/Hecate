@@ -141,7 +141,7 @@ html {
 
 :root {
   /* LIGHT MODE */
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
   --bg-base: #F5F1ED;
   --bg-surface: #FFFFFF;
@@ -633,7 +633,15 @@ html {
 }
 
 /* ============================================
-   NERV.OS Typography System
+   NERV.OS Typography System — Inter
+   
+   Weight Hierarchy:
+     800  → Display / Hero text (agent names, splash)
+     700  → Metric numbers, KPI values
+     600  → Headings (H1, H2), section labels, badges
+     500  → Subheadings, emphasis, nav items
+     400  → Body text, descriptions, default
+     300  → Captions, timestamps, tertiary labels
    ============================================ */
 
 /* --- Page-Level Headings --- */
@@ -642,15 +650,23 @@ html {
   /* 28px */
   font-weight: 600;
   letter-spacing: -0.025em;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .nerv-h2 {
   font-size: 1.375rem;
   /* 22px */
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+
+.nerv-h3 {
+  font-size: 1.125rem;
+  /* 18px */
+  font-weight: 500;
+  letter-spacing: -0.014em;
+  line-height: 1.3;
 }
 
 /* --- Section Headers --- */
@@ -659,7 +675,7 @@ html {
   /* 11px */
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   line-height: 1;
   opacity: 0.5;
 }
@@ -669,7 +685,7 @@ html {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   line-height: 1;
 }
 
@@ -688,7 +704,7 @@ html {
   /* 32px */
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
   line-height: 1;
 }
 
@@ -697,7 +713,7 @@ html {
   /* 20px */
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.018em;
   line-height: 1;
 }
 
@@ -706,6 +722,7 @@ html {
   /* 15px */
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   line-height: 1;
 }
 
@@ -715,13 +732,15 @@ html {
   /* 14px */
   font-weight: 400;
   line-height: 1.6;
+  letter-spacing: -0.006em;
 }
 
 .nerv-body-sm {
   font-size: 0.8125rem;
   /* 13px */
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: -0.003em;
 }
 
 /* --- Captions / Timestamps / Tertiary Text --- */
@@ -731,6 +750,7 @@ html {
   font-weight: 400;
   opacity: 0.5;
   line-height: 1.4;
+  letter-spacing: 0.004em;
 }
 
 /* --- Badge / Chip Labels --- */
@@ -745,7 +765,7 @@ html {
 
 /* --- Mono / Code Text --- */
 .nerv-mono {
-  font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code',
+  font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code',
     ui-monospace, monospace;
   font-size: 0.8125rem;
   /* 13px */
@@ -755,7 +775,7 @@ html {
 }
 
 .nerv-mono-sm {
-  font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code',
+  font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code',
     ui-monospace, monospace;
   font-size: 0.6875rem;
   /* 11px */
@@ -1023,7 +1043,7 @@ time,
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
   box-shadow:
     0 8px 40px rgba(0, 0, 0, 0.5),
@@ -1063,7 +1083,7 @@ time,
     transparent 100%
   );
   pointer-events: none;
-  border-radius: 12px 12px 0 0;
+  border-radius: 6px 6px 0 0;
 }
 
 /* Corner accents — elegant L-shaped brackets */
@@ -1214,7 +1234,7 @@ time,
   min-width: 200px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
   box-shadow: var(--shadow-elevated);
   overflow: hidden;
   z-index: 50;
@@ -1306,7 +1326,7 @@ time,
   align-items: center;
   gap: 2px;
   padding: 4px 6px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: transparent;
   border: none;
 }
@@ -1317,7 +1337,7 @@ time,
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
-  border-radius: 14px;
+  border-radius: 4px;
   text-decoration: none;
   transition: all 150ms ease;
   white-space: nowrap;
@@ -1463,7 +1483,7 @@ time,
   align-items: stretch;
   gap: 2px;
   padding: 6px 8px;
-  border-radius: 16px;
+  border-radius: 6px;
   background: oklch(0.12 0.005 0 / 0.82);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -1490,7 +1510,7 @@ time,
   align-items: center;
   gap: 4px;
   padding: 8px 12px 6px;
-  border-radius: 12px;
+  border-radius: 6px;
   text-decoration: none;
   cursor: pointer;
   transition: all 120ms ease;

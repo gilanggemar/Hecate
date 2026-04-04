@@ -268,7 +268,7 @@ export function AgentTasks({ agentId, onPopoverChange }: { agentId: string; onPo
 
     return (
         <div className="w-full">
-            <div className="rounded-3xl bg-background/60 p-4 flex flex-col gap-4 mx-2 mb-2">
+            <div className="rounded-md bg-background/60 p-4 flex flex-col gap-4 mx-2 mb-2">
                 {/* Actions row */}
                 <div className="flex items-center justify-between px-2 pt-2">
                     <button onClick={handleAddItem} className="text-zinc-500 hover:text-zinc-300 transition-colors">

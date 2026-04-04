@@ -29,11 +29,11 @@ export function GatewayRestartDialog({ onConfirm, onCancel }: GatewayRestartDial
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="w-full max-w-md rounded-2xl bg-[#0c0c0b] border border-white/10 p-6 shadow-2xl"
+                className="w-full max-w-md rounded-md bg-[#0c0c0b] border border-white/10 p-6 shadow-2xl"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-start gap-3 mb-4">
-                    <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/15">
+                    <div className="p-2 rounded-md bg-amber-500/10 border border-amber-500/15">
                         <AlertTriangle className="size-5 text-amber-400/80" />
                     </div>
                     <div>
@@ -45,7 +45,7 @@ export function GatewayRestartDialog({ onConfirm, onCancel }: GatewayRestartDial
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 mb-5">
+                <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-4 py-3 mb-5">
                     <p className="text-[11px] font-mono text-white/30">
                         All tool and skill configuration changes will be written to the Gateway config.
                         The gateway will reload to activate the new settings.

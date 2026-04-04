@@ -217,7 +217,7 @@ export function HeroCropModal({ file, agentId, onClose, onApply }: HeroCropModal
                             <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-base, #FF6D29)' }} />
                             Crop Area
                         </div>
-                        <div className="rounded-xl overflow-hidden flex items-center justify-center min-h-0 flex-1">
+                        <div className="rounded-md overflow-hidden flex items-center justify-center min-h-0 flex-1">
                             {imageSrc && (
                                 <ReactCrop
                                     crop={crop}

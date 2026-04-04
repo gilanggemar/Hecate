@@ -100,7 +100,7 @@ export const ToolNodeCard = ({ tc, isLive }: ToolNodeCardProps) => {
     return (
         <div className={cn(
             "animate-in fade-in slide-in-from-bottom-2 duration-300",
-            "border rounded-xl p-3 w-full text-sm transition-all",
+            "border rounded-md p-3 w-full text-sm transition-all",
             inProgress ? "bg-accent border-border" :
                 isError ? "bg-red-500/5 border-red-500/20" :
                     "bg-accent/50 border-border",

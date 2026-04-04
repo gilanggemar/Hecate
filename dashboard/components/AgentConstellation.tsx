@@ -196,7 +196,7 @@ export default function AgentConstellation({
     }, []);
 
     return (
-        <div ref={containerRef} className={`relative rounded-xl border border-border bg-black/5 overflow-hidden ${className}`} style={{ height: height ? height : '100%', width: width ? width : '100%' }}>
+        <div ref={containerRef} className={`relative rounded-md border border-border bg-black/5 overflow-hidden ${className}`} style={{ height: height ? height : '100%', width: width ? width : '100%' }}>
             {/* Legend & Labels */}
             <div className="absolute top-4 left-4 z-10 pointer-events-none">
                 <h3 className="nerv-section text-muted-foreground">Agent Constellation</h3>

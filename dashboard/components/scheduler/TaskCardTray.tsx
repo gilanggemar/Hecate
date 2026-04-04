@@ -69,7 +69,7 @@ function DraggableWorkflowCard({ workflow }: { workflow: any }) {
             <motion.div
                 whileHover={!isDragging ? { scale: 1.02 } : undefined}
                 className={cn(
-                    'nerv-glass-1 rounded-xl p-3 mb-2 border-l-4 transition-all duration-150',
+                    'nerv-glass-1 rounded-md p-3 mb-2 border-l-4 transition-all duration-150',
                     'cursor-grab active:cursor-grabbing select-none',
                     isDragging && 'opacity-50 border-dashed',
                 )}
@@ -91,7 +91,7 @@ function DraggableWorkflowCard({ workflow }: { workflow: any }) {
                             {stepCount} step{stepCount !== 1 ? 's' : ''}
                         </span>
                         <span className={cn(
-                            'nerv-badge-text px-1.5 py-0.5 rounded-full text-[9px]',
+                            'nerv-badge-text px-1.5 py-0.5 rounded-sm text-[9px]',
                             workflow.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/[0.08]',
                         )}>
                             {workflow.status || 'draft'}
@@ -148,7 +148,7 @@ export function TaskCardTray() {
             <div className="px-3 py-3 border-b border-white/[0.06] shrink-0">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="nerv-section-prominent">Unscheduled</h3>
-                    <span className="nerv-badge-text bg-white/[0.08] px-2 py-0.5 rounded-full">
+                    <span className="nerv-badge-text bg-white/[0.08] px-2 py-0.5 rounded-sm">
                         {unscheduledTasks.length + filteredWorkflows.length}
                     </span>
                 </div>

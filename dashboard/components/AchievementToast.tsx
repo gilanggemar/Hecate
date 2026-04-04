@@ -31,7 +31,7 @@ export const AchievementToastContent = ({ id, achievement }: { id: string | numb
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="relative flex flex-col w-full min-w-[340px] max-w-[420px] p-4 rounded-xl border border-white/10 bg-background/80 backdrop-blur-md shadow-lg overflow-hidden"
+            className="relative flex flex-col w-full min-w-[340px] max-w-[420px] p-4 rounded-md border border-white/10 bg-background/80 backdrop-blur-md shadow-lg overflow-hidden"
             style={{ borderLeft: `3px solid ${achievement.color}` }}
         >
             {/* Epic Flash Overlay */}

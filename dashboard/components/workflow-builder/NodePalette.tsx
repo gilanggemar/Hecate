@@ -100,7 +100,7 @@ export default function NodePalette() {
                             width: 680, maxHeight: "70vh",
                             background: "oklch(0.11 0.005 0 / 0.95)",
                             backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-                            border: "1px solid oklch(1 0 0 / 0.10)", borderRadius: 16,
+                            border: "1px solid oklch(1 0 0 / 0.10)", borderRadius: 6,
                             boxShadow: "0 10px 40px oklch(0 0 0 / 0.5)",
                             display: "flex", flexDirection: "column", overflow: "hidden",
                         }}
@@ -119,7 +119,7 @@ export default function NodePalette() {
                         <div style={{ padding: "0 16px 10px" }}>
                             <div style={{
                                 display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
-                                borderRadius: 10, background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.08)",
+                                borderRadius: 6, background: "oklch(1 0 0 / 0.04)", border: "1px solid oklch(1 0 0 / 0.08)",
                             }}>
                                 <Search size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                                 <input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)}
@@ -158,7 +158,7 @@ export default function NodePalette() {
                                                         onClick={() => handleAdd(item)}
                                                         style={{
                                                             width: "100%", display: "flex", alignItems: "center", gap: 8,
-                                                            padding: "10px 12px", borderRadius: 10,
+                                                            padding: "10px 12px", borderRadius: 6,
                                                             background: "oklch(0.15 0.005 0 / 0.5)",
                                                             border: "1px solid oklch(1 0 0 / 0.06)",
                                                             cursor: "pointer", color: cat.accent, transition: "border-color 150ms, background 150ms",

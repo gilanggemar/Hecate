@@ -7,11 +7,11 @@ import type { AgentProfile } from '@/lib/agentRoster';
 import { useAgentZeroStore } from '@/store/useAgentZeroStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { useAgentSettingsStore } from '@/store/useAgentSettingsStore';
-import { Outfit } from 'next/font/google';
+import { Inter } from 'next/font/google';
 
 import { AgentIconSelector } from './AgentIconSelector';
 
-const outfit = Outfit({ subsets: ['latin'], weight: '800' });
+const interDisplay = Inter({ subsets: ['latin'], weight: '800' });
 
 const TAG_COLORS = [
     { bg: 'rgba(167,139,250,0.18)', text: '#c4b5fd', border: 'rgba(167,139,250,0.35)' },
@@ -203,7 +203,7 @@ function AchievementBadge({ badge, index }: { badge: BadgeDef; index: number }) 
             className="relative group cursor-default"
         >
             <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300"
+                className="w-9 h-9 rounded-md flex items-center justify-center transition-all duration-300"
                 style={{
                     background: badge.bgColor,
                     border: `1px solid ${badge.borderColor}`,
@@ -290,7 +290,7 @@ export function AgentIdentityPlate({ agent, level: propLevel, currentXp: propXp,
                 <RarityStars level={level} />
                 
                 <motion.h2
-                    className={`${outfit.className} text-[90px] uppercase leading-none mt-1 mb-3 tracking-tight cursor-default select-none`}
+                    className={`${interDisplay.className} text-[90px] uppercase leading-none mt-1 mb-3 tracking-tight cursor-default select-none`}
                     title={agent.name}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}

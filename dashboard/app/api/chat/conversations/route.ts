@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { agent_id, title, project_id } = body;
+        const { agent_id, title, project_id, mode } = body;
 
         if (!agent_id) {
             return NextResponse.json({ error: 'agent_id is required' }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(request: Request) {
                 title: title || null,
                 project_id: project_id || null,
                 message_count: 0,
+                mode: mode || 'agent',
             })
             .select()
             .single();

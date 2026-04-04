@@ -23,7 +23,7 @@ export function GroupNode({ id, data, selected }: any) {
 
     return (
         <div 
-            className={`relative w-full h-full rounded-xl border-2 border-dashed transition-colors group`}
+            className={`relative w-full h-full rounded-md border-2 border-dashed transition-colors group`}
             style={{
                 borderColor: selected ? (data.color || 'var(--accent-base)') : 'var(--border)',
                 backgroundColor: data.color ? `${data.color}11` : 'rgba(232, 90, 27, 0.05)'

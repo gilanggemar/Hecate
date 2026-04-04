@@ -17,7 +17,7 @@ export function ConnectionGuard({ children }: ConnectionGuardProps) {
         return (
             <div className="flex flex-1 items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-5 text-center max-w-md">
-                    <div className="flex items-center justify-center size-16 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-center size-16 rounded-md bg-white/5 border border-white/10">
                         <Unplug className="size-7 text-white/40" />
                     </div>
                     <div className="space-y-2">

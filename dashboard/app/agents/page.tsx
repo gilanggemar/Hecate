@@ -61,7 +61,7 @@ export default function AgentsPage() {
 
 
             {availableAgents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center flex-1 pb-20 border border-dashed rounded-3xl border-white/5 bg-foreground/5">
+                <div className="flex flex-col items-center justify-center flex-1 pb-20 border border-dashed rounded-md border-white/5 bg-foreground/5">
                     <div className="text-5xl mb-6 opacity-80">👻</div>
                     <h3 className="text-xl font-semibold tracking-tight text-foreground mb-2">No Agents Connected</h3>
                     <p className="text-muted-foreground text-center max-w-sm mb-6 text-sm">

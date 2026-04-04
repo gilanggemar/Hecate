@@ -110,15 +110,15 @@ export default function AuditPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search logs..."
-                        className="h-8 pl-9 text-[12px] rounded-xl border-border bg-background"
+                        className="h-8 pl-9 text-[12px] rounded-md border-border bg-background"
                     />
                 </div>
 
                 <Select value={filterAgent} onValueChange={setFilterAgent}>
-                    <SelectTrigger className="h-8 w-36 text-[12px] rounded-xl border-border bg-background">
+                    <SelectTrigger className="h-8 w-36 text-[12px] rounded-md border-border bg-background">
                         <SelectValue placeholder="All Agents" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent className="rounded-md">
                         <SelectItem value="all" className="text-xs rounded-lg">All Agents</SelectItem>
                         <SelectItem value="daisy" className="text-xs rounded-lg">Daisy</SelectItem>
                         <SelectItem value="ivy" className="text-xs rounded-lg">Ivy</SelectItem>
@@ -128,10 +128,10 @@ export default function AuditPage() {
                 </Select>
 
                 <Select value={filterAction} onValueChange={setFilterAction}>
-                    <SelectTrigger className="h-8 w-44 text-[12px] rounded-xl border-border bg-background">
+                    <SelectTrigger className="h-8 w-44 text-[12px] rounded-md border-border bg-background">
                         <SelectValue placeholder="All Actions" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent className="rounded-md">
                         {ACTION_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value} className="text-xs rounded-lg">
                                 {opt.label}
@@ -145,7 +145,7 @@ export default function AuditPage() {
             <ScrollArea className="flex-1">
                 <div className="space-y-1.5 pb-6">
                     {filteredEntries.length === 0 && !isLoading && (
-                        <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                        <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                             <CardContent className="p-8 text-center">
                                 <FileText className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                                 <p className="text-sm text-muted-foreground">No audit entries found.</p>
@@ -175,7 +175,7 @@ export default function AuditPage() {
                                     transition={{ duration: 0.15 }}
                                 >
                                     <Card
-                                        className="rounded-xl border-border bg-card shadow-none py-0 gap-0 cursor-pointer hover:border-foreground/10 transition-colors"
+                                        className="rounded-md border-border bg-card shadow-none py-0 gap-0 cursor-pointer hover:border-foreground/10 transition-colors"
                                         onClick={() => setExpandedId(isExpanded ? null : (entry.id ?? null))}
                                     >
                                         <CardContent className="p-3">

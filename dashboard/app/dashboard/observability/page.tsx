@@ -21,7 +21,7 @@ const ObservabilityCharts = dynamic(
     () => import("@/components/observability/ObservabilityCharts"),
     {
         ssr: false,
-        loading: () => <div className="h-64 w-full rounded-xl bg-muted animate-pulse" />,
+        loading: () => <div className="h-64 w-full rounded-md bg-muted animate-pulse" />,
     }
 );
 
@@ -60,10 +60,10 @@ export default function ObservabilityPage() {
             <div className="flex items-center justify-between pb-3">
                 <h1 className="text-xl font-semibold tracking-tight text-foreground">Observability</h1>
                 <Select value={range} onValueChange={setRange}>
-                    <SelectTrigger className="h-8 w-28 text-[12px] rounded-xl border-border bg-background">
+                    <SelectTrigger className="h-8 w-28 text-[12px] rounded-md border-border bg-background">
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent className="rounded-md">
                         <SelectItem value="24h" className="text-xs rounded-lg">Last 24h</SelectItem>
                         <SelectItem value="7d" className="text-xs rounded-lg">Last 7 days</SelectItem>
                         <SelectItem value="30d" className="text-xs rounded-lg">Last 30 days</SelectItem>
@@ -107,7 +107,7 @@ export default function ObservabilityPage() {
                         </h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {errorData.length === 0 ? (
-                                <Card className="col-span-full rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                                <Card className="col-span-full rounded-md border-dashed border-border bg-card/50 shadow-none">
                                     <CardContent className="p-6 text-center">
                                         <p className="text-xs text-muted-foreground/50">No error data yet</p>
                                     </CardContent>
@@ -115,7 +115,7 @@ export default function ObservabilityPage() {
                             ) : (
                                 errorData.map((e) => (
                                     <motion.div key={e.agent} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                                        <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                                        <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                                             <CardContent className="p-4 text-center">
                                                 <p className="text-[11px] text-muted-foreground mb-1">{e.agent}</p>
                                                 <p className={`text-lg font-semibold ${e.rate > 10 ? 'text-red-400' : e.rate > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
@@ -138,13 +138,13 @@ export default function ObservabilityPage() {
 /* ─── Spend Card ─── */
 function SpendCard({ label, amount, icon: Icon }: { label: string; amount: number; icon: any }) {
     return (
-        <Card className="relative p-5 rounded-xl transition-all hover:border-foreground/20 group gap-0 shadow-none bg-card border-border">
+        <Card className="relative p-5 rounded-md transition-all hover:border-foreground/20 group gap-0 shadow-none bg-card border-border">
             <div className="flex items-start justify-between">
                 <div>
                     <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">{label}</p>
                     <p className="text-lg font-semibold text-foreground">{formatCost(amount)}</p>
                 </div>
-                <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-background border border-border text-muted-foreground">
+                <div className="w-9 h-9 flex items-center justify-center rounded-md bg-background border border-border text-muted-foreground">
                     <Icon className="w-4 h-4" />
                 </div>
             </div>

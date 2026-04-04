@@ -36,7 +36,7 @@ function CarouselItem({
             title={agent.name}
         >
             <div
-                className="w-[54px] h-[72px] rounded-xl bg-cover bg-center border-2 transition-all duration-300 flex items-center justify-center font-bold text-sm text-white/70"
+                className="w-[54px] h-[72px] rounded-md bg-cover bg-center border-2 transition-all duration-300 flex items-center justify-center font-bold text-sm text-white/70"
                 style={{
                     backgroundImage: avatarUri ? `url(${avatarUri})` : 'none',
                     backgroundColor: avatarUri ? 'transparent' : '#222',

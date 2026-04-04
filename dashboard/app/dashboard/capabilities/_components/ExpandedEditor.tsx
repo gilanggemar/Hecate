@@ -578,7 +578,7 @@ export function ExpandedEditor({
                     </button>
                 ) : (
                     // Edit instruction input — orange-themed
-                    <div className="flex items-center gap-1.5 p-1.5 rounded-xl
+                    <div className="flex items-center gap-1.5 p-1.5 rounded-md
                         bg-[#0c0c0c]/95 border border-orange-500/30
                         shadow-xl shadow-orange-500/15 backdrop-blur-xl"
                         style={{ minWidth: 320 }}

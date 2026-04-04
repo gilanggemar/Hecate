@@ -63,7 +63,7 @@ export function FleetStatusCards() {
                             transition={{ delay: i * 0.1, duration: 0.3 }}
                             whileHover={{ translateY: -2, scale: 1.01 }}
                             className={cn(
-                                "group relative overflow-hidden rounded-xl p-4 transition-all duration-300",
+                                "group relative overflow-hidden rounded-md p-4 transition-all duration-300",
                                 `nerv-glass-agent-${agentId}`
                             )}
                             style={{ borderLeftColor: colorVar, borderLeftWidth: '3px' }}

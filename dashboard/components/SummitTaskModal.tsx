@@ -191,7 +191,7 @@ export function SummitTaskModal() {
                     <div className="flex-1 overflow-y-auto px-6 min-h-0">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 pt-2">
                             {participants.map(agentId => (
-                                <div key={agentId} className="space-y-3 bg-secondary/10 p-4 rounded-xl border border-border/50 h-fit">
+                                <div key={agentId} className="space-y-3 bg-secondary/10 p-4 rounded-md border border-border/50 h-fit">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-semibold text-sm">{getAgentProfile(agentId)?.name || agentId}</h3>

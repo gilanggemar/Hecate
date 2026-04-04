@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
     MessageSquare, Plus, Trash2, Clock, Pin, PinOff, Archive,
-    ArchiveRestore, Pencil, Search, X, Grid3X3, LayoutList, Loader2
+    ArchiveRestore, Pencil, Search, X, Grid3X3, LayoutList, Loader2,
+    Bot, Heart
 } from 'lucide-react';
 
 interface Conversation {
@@ -18,6 +19,7 @@ interface Conversation {
     updated_at: string;
     pinned: boolean;
     archived: boolean;
+    mode?: 'agent' | 'companion';
     lastPreview?: string;
 }
 
@@ -375,14 +377,20 @@ export const ChatHistorySidebar = ({
                                                     : rawTitle;
                                                 return (
                                                 <div 
-                                                    className="text-[12px] font-medium flex-1 min-w-0"
+                                                    className="text-[12px] font-medium flex-1 min-w-0 flex items-center gap-1.5"
                                                     style={{ 
                                                         color: 'var(--nerv-text-primary)',
                                                         whiteSpace: 'nowrap',
                                                     }}
                                                 >
-                                                    {convo.pinned && <Pin className="w-2.5 h-2.5 inline mr-1" style={{ color: 'var(--nerv-cyan)' }} />}
-                                                    {displayTitle}
+                                                    {/* Mode icon: Bot for agent, Heart for companion */}
+                                                    {convo.mode === 'companion' ? (
+                                                        <Heart className="w-3 h-3 shrink-0 text-pink-400 fill-pink-400/30" />
+                                                    ) : (
+                                                        <Bot className="w-3 h-3 shrink-0" style={{ color: 'var(--nerv-text-tertiary)' }} />
+                                                    )}
+                                                    {convo.pinned && <Pin className="w-2.5 h-2.5 inline" style={{ color: 'var(--nerv-cyan)' }} />}
+                                                    <span className="truncate">{displayTitle}</span>
                                                 </div>
                                                 );
                                             })()
@@ -417,7 +425,7 @@ export const ChatHistorySidebar = ({
             {contextMenu && (
                 <div
                     ref={contextMenuRef}
-                    className="fixed z-[100] rounded-xl overflow-hidden py-1 shadow-lg"
+                    className="fixed z-[100] rounded-md overflow-hidden py-1 shadow-lg"
                     style={{
                         left: contextMenu.x,
                         top: contextMenu.y,
@@ -494,7 +502,7 @@ export const ChatHistorySidebar = ({
                     onClick={() => setDeleteConfirmId(null)}
                 >
                     <div
-                        className="mx-4 p-4 rounded-xl w-full max-w-[240px]"
+                        className="mx-4 p-4 rounded-md w-full max-w-[240px]"
                         style={{
                             background: 'var(--nerv-surface-3)',
                             border: '1px solid var(--nerv-border-default)',

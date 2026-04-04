@@ -18,7 +18,7 @@ export function ToolItem({ name, group, description, allowed, inherited, isToggl
 
     return (
         <div className={cn(
-            'group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors',
+            'group flex items-center gap-3 px-3.5 py-2.5 rounded-md transition-colors',
             'hover:bg-white/[0.03] border border-transparent',
             inherited && 'opacity-60',
         )}>

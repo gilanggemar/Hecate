@@ -67,7 +67,7 @@ export default function LoginPage() {
                     : { opacity: 1, y: 0, scale: 1 }
                 }
                 transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                className="w-full max-w-md mx-4 rounded-2xl px-10 py-12 space-y-8"
+                className="w-full max-w-md mx-4 rounded-md px-10 py-12 space-y-8"
                 style={{
                     pointerEvents: navigating ? 'none' : 'auto',
                     backgroundColor: 'rgba(10, 10, 10, 0.7)',

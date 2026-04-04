@@ -119,7 +119,7 @@ export function BackgroundCropModal({ file, onClose, onApply }: BackgroundCropMo
 
                 <div className="flex flex-col gap-4 mt-2 flex-1 min-h-0">
                     {/* Crop Area */}
-                    <div className="bg-black/40 rounded-xl overflow-hidden flex items-center justify-center p-2 flex-1 min-h-0 shrink">
+                    <div className="bg-black/40 rounded-md overflow-hidden flex items-center justify-center p-2 flex-1 min-h-0 shrink">
                         {imageSrc && (
                             <ReactCrop
                                 crop={crop}
@@ -143,7 +143,7 @@ export function BackgroundCropModal({ file, onClose, onApply }: BackgroundCropMo
                     </div>
 
                     {/* Controls Bottom Bar */}
-                    <div className="flex flex-col md:flex-row gap-6 p-5 rounded-xl bg-black/30 border border-white/5 items-center justify-between shrink-0 mt-2">
+                    <div className="flex flex-col md:flex-row gap-6 p-5 rounded-md bg-black/30 border border-white/5 items-center justify-between shrink-0 mt-2">
                         
                         {/* Sliders Area */}
                         <div className="flex flex-col flex-1 w-full gap-5 md:pr-6 md:border-r border-white/10">

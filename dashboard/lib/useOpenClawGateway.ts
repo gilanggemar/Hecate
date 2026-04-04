@@ -235,11 +235,14 @@ export async function initializeAgentSessions(agentId: string) {
     if (!gw.isConnected) return;
     
     try {
-        // Just return the list of session keys, OpenClaw auto-creates sessions on chat.send
-        const res = await gw.request('sessions.list', { limit: 100 });
+        // Use a shorter timeout — sessions.list is optional and may not be supported
+        const res = await Promise.race([
+            gw.request('sessions.list', { limit: 100 }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('sessions.list timeout (5s)')), 5000)),
+        ]);
         return res;
-    } catch (err) {
-        console.error('[Session Init] Error:', err);
+    } catch {
+        // Silently ignore — sessions.list is non-critical and may not be implemented
     }
 }
 

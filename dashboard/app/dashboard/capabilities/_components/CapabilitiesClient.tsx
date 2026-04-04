@@ -47,9 +47,9 @@ export function CapabilitiesClient() {
     } = useOpenClawCapabilitiesStore();
 
     const {
-        hasUnsavedModelChange,
-        applyModelChange,
-        discardModelChange,
+        hasUnsavedChanges: hasUnsavedModelChange,
+        applyAllChanges: applyModelChange,
+        discardAllChanges: discardModelChange,
     } = useOpenClawModelStore();
 
     // Combined unsaved state — any of these means we have pending changes
@@ -200,7 +200,7 @@ export function CapabilitiesClient() {
 
                 {/* Error State */}
                 {error && (
-                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+                    <div className="rounded-md border border-red-500/20 bg-red-500/5 px-4 py-3">
                         <p className="text-xs font-mono text-red-400/80">
                             {error}
                         </p>

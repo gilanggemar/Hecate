@@ -147,7 +147,7 @@ export const MissionBar: React.FC<MissionBarProps> = ({
     return (
         <div
             className={cn(
-                "relative flex items-center gap-2 px-3 rounded-xl transition-all duration-200",
+                "relative flex items-center gap-2 px-3 rounded-md transition-all duration-200",
                 isEmpty ? "py-1" : "py-2",
                 className
             )}

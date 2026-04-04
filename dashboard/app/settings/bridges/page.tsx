@@ -83,7 +83,7 @@ export default function PlatformBridgesPage() {
             <ScrollArea className="flex-1">
                 <div className="space-y-3 pb-6 max-w-3xl">
                     {bridges.length === 0 ? (
-                        <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                        <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                             <CardContent className="p-8 text-center">
                                 <Link className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                                 <p className="text-sm text-muted-foreground">No platform bridges configured.</p>
@@ -100,10 +100,10 @@ export default function PlatformBridgesPage() {
 
                                 return (
                                     <motion.div key={bridge.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                                        <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                                        <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                                             <CardContent className="p-4">
                                                 <div className="flex items-start gap-4">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-accent/30 ${meta.color} shrink-0`}>
+                                                    <div className={`w-10 h-10 rounded-md flex items-center justify-center bg-accent/30 ${meta.color} shrink-0`}>
                                                         <PlatformIcon className="w-5 h-5" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -180,14 +180,14 @@ function CreateBridgeDialog({ open, onOpenChange, onCreated }: { open: boolean; 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-md">
                 <DialogHeader><DialogTitle className="text-base">Configure Platform Bridge</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-2">
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground">Platform</label>
                         <Select value={platform} onValueChange={(v) => setPlatform(v as PlatformType)}>
-                            <SelectTrigger className="h-8 text-[12px] rounded-xl border-border bg-background"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-xl">
+                            <SelectTrigger className="h-8 text-[12px] rounded-md border-border bg-background"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-md">
                                 {Object.entries(PLATFORM_METADATA).map(([key, meta]) => (
                                     <SelectItem key={key} value={key} className="text-xs rounded-lg">{meta.name}</SelectItem>
                                 ))}
@@ -196,15 +196,15 @@ function CreateBridgeDialog({ open, onOpenChange, onCreated }: { open: boolean; 
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground">Connection Name</label>
-                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Engineering Server" className="h-8 text-[13px] rounded-xl border-border bg-background" />
+                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Engineering Server" className="h-8 text-[13px] rounded-md border-border bg-background" />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground flex items-center gap-1"><Shield className="w-3 h-3" /> API Key / Token</label>
-                        <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} type="password" placeholder="Bot token or API key" className="h-8 text-[13px] rounded-xl border-border bg-background font-mono" />
+                        <Input value={apiKey} onChange={(e) => setApiKey(e.target.value)} type="password" placeholder="Bot token or API key" className="h-8 text-[13px] rounded-md border-border bg-background font-mono" />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground">Webhook URL (Optional)</label>
-                        <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://..." className="h-8 text-[13px] rounded-xl border-border bg-background font-mono" />
+                        <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://..." className="h-8 text-[13px] rounded-md border-border bg-background font-mono" />
                     </div>
                 </div>
                 <DialogFooter>

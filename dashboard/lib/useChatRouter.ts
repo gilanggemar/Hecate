@@ -101,7 +101,7 @@ export function useChatRouter() {
     }, [integratedAgents, a0Messages, openClawMessages]);
 
     // 3. Dispatch Message — now uses gateway for OpenClaw agents
-    const dispatchMessage = useCallback(async (agentId: string, message: string, sessionKey?: string, attachments?: any[], skipStoreAdd?: boolean) => {
+    const dispatchMessage = useCallback(async (agentId: string, message: string, sessionKey?: string, attachments?: any[], skipStoreAdd?: boolean, modelOverride?: string) => {
         const agent = integratedAgents.find(a => a.id === agentId);
         if (!agent) {
             console.warn("Agent not found for dispatch:", agentId);
@@ -113,7 +113,7 @@ export function useChatRouter() {
         } else {
             // OpenClaw — use the gateway via the shim
             const sk = sessionKey || `agent:${agentId}:nchat`;
-            sendChatMessage(agentId, message, sk, attachments, skipStoreAdd);
+            sendChatMessage(agentId, message, sk, attachments, skipStoreAdd, modelOverride);
         }
     }, [integratedAgents, sendA0Message, sendChatMessage]);
 

@@ -59,10 +59,10 @@ export function HeroMetrics() {
                     key={card.id}
                     variants={fadeInUp}
                     whileHover={{ translateY: -2 }}
-                    className="group nerv-glass-2 rounded-xl p-4 flex flex-col relative overflow-hidden transition-all duration-300"
+                    className="group nerv-glass-2 rounded-md p-4 flex flex-col relative overflow-hidden transition-all duration-300"
                     style={{ '--hover-border-color': card.color } as React.CSSProperties}
                 >
-                    <div className="absolute inset-0 border-2 border-transparent group-hover:border-[var(--hover-border-color)] opacity-0 group-hover:opacity-30 rounded-xl transition-all duration-300 pointer-events-none" />
+                    <div className="absolute inset-0 border-2 border-transparent group-hover:border-[var(--hover-border-color)] opacity-0 group-hover:opacity-30 rounded-md transition-all duration-300 pointer-events-none" />
 
                     <div className="flex justify-between items-start mb-2">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${card.color} 20%, transparent)` }}>

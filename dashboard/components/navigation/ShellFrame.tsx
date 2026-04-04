@@ -28,7 +28,7 @@ export function ShellFrame({ children }: { children: React.ReactNode }) {
     const top = m;
     const right = vw - m;
     const bottom = vh - m;
-    const r = 20;
+    const r = 6;
 
     // ─── Bottom dock notch ───
     const isDockExpanded = useLayoutStore((s) => s.isBottomDockExpanded);

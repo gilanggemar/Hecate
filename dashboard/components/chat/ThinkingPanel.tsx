@@ -18,7 +18,7 @@ export function ThinkingPanel({ text, isStreaming = false, className }: Thinking
     return (
         <div
             className={cn(
-                "rounded-xl border border-border/50 overflow-hidden transition-all duration-200",
+                "rounded-md border border-border/50 overflow-hidden transition-all duration-200",
                 "bg-zinc-900/40 backdrop-blur-sm",
                 className
             )}

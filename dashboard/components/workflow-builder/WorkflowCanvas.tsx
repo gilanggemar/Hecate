@@ -77,7 +77,7 @@ const connectionLineStyle = { stroke: "var(--accent-base)", strokeWidth: 2 };
 const minimapStyle: React.CSSProperties = {
     background: "oklch(0.1 0.005 0 / 0.6)",
     backdropFilter: "blur(12px)",
-    borderRadius: 10,
+    borderRadius: 6,
     border: "1px solid oklch(1 0 0 / 0.08)",
     overflow: "hidden",
 };
@@ -498,7 +498,7 @@ export default function WorkflowCanvas() {
                 </div>
                 <Controls position="bottom-left" showInteractive={false} style={{
                     background: "oklch(0.1 0.005 0 / 0.6)", backdropFilter: "blur(12px)",
-                    borderRadius: 10, border: "1px solid oklch(1 0 0 / 0.08)", overflow: "hidden",
+                    borderRadius: 6, border: "1px solid oklch(1 0 0 / 0.08)", overflow: "hidden",
                 }} />
             </ReactFlow>
 

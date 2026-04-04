@@ -21,7 +21,7 @@ export function NervSkeleton({ variant, className }: NervSkeletonProps) {
     let variantClasses = "";
     switch (variant) {
         case 'card':
-            variantClasses = "h-[120px] w-full rounded-xl";
+            variantClasses = "h-[120px] w-full rounded-md";
             break;
         case 'metric':
             variantClasses = "h-[40px] w-[80px] rounded-lg";
@@ -33,7 +33,7 @@ export function NervSkeleton({ variant, className }: NervSkeletonProps) {
             variantClasses = "w-[32px] h-[32px] rounded-full";
             break;
         case 'chart':
-            variantClasses = "h-[200px] w-full rounded-xl";
+            variantClasses = "h-[200px] w-full rounded-md";
             break;
     }
 

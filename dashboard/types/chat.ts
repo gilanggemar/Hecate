@@ -12,6 +12,7 @@ export interface Conversation {
     pinned: boolean;
     archived: boolean;
     project_id: string | null;
+    mode: 'agent' | 'companion';
     mission_config: MissionConfig | Record<string, any>;
     message_count: number;
     created_at: string;

@@ -18,7 +18,7 @@ const TABS: { value: TabValue; label: string }[] = [
 
 export function TabSwitcher({ activeTab, onTabChange }: TabSwitcherProps) {
     return (
-        <div className="inline-flex items-center gap-1 rounded-xl bg-white/5 border border-white/10 p-1">
+        <div className="inline-flex items-center gap-1 rounded-md bg-white/5 border border-white/10 p-1">
             {TABS.map((tab) => (
                 <button
                     key={tab.value}

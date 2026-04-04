@@ -252,7 +252,7 @@ Respond ONLY with the raw knowledge text.`;
     }, [liveMessages, isExtracting, selectedAgentId]);
 
     return (
-        <div className={`bg-background/90 backdrop-blur-xl border-2 shadow-2xl rounded-xl w-[350px] h-[450px] flex flex-col overflow-hidden transition-colors ${selected ? 'border-accent-base ring-2 ring-accent-base/20' : 'border-border ring-1 ring-white/5'}`}>
+        <div className={`bg-background/90 backdrop-blur-xl border-2 shadow-2xl rounded-md w-[350px] h-[450px] flex flex-col overflow-hidden transition-colors ${selected ? 'border-accent-base ring-2 ring-accent-base/20' : 'border-border ring-1 ring-white/5'}`}>
             <div className="p-2 border-b border-white/10 flex items-center justify-between bg-black/40 gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                     <MessageSquare className="w-4 h-4 text-accent-base shrink-0" />
@@ -301,7 +301,7 @@ Respond ONLY with the raw knowledge text.`;
                 ) : (
                     localMessages.map((m, i) => (
                         <div key={i} className={`text-sm flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                            <div className={`inline-block px-3 py-2 rounded-xl max-w-[85%] whitespace-pre-wrap word-break ${m.role === 'user' ? 'bg-accent-base/20 text-accent-base rounded-tr-sm' : 'bg-white/5 text-foreground rounded-tl-sm border border-white/5'}`}>
+                            <div className={`inline-block px-3 py-2 rounded-md max-w-[85%] whitespace-pre-wrap word-break ${m.role === 'user' ? 'bg-accent-base/20 text-accent-base rounded-tr-sm' : 'bg-white/5 text-foreground rounded-tl-sm border border-white/5'}`}>
                                 {m.content || (m.streaming && <Loader2 className="w-3 h-3 animate-spin opacity-50" />)}
                             </div>
                         </div>

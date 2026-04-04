@@ -69,7 +69,7 @@ export function CommandPalette() {
             {/* Dialog */}
             <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full max-w-lg">
                 <Command
-                    className="rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+                    className="rounded-md border border-border bg-card shadow-2xl overflow-hidden"
                     label="Command Palette"
                 >
                     <div className="flex items-center gap-2 px-4 border-b border-border">
@@ -102,7 +102,7 @@ export function CommandPalette() {
                                                 key={item.id}
                                                 value={`${item.label} ${item.keywords || ""}`}
                                                 onSelect={item.action}
-                                                className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-foreground cursor-pointer transition-colors data-[selected=true]:bg-accent/50 data-[selected=true]:text-foreground"
+                                                className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-foreground cursor-pointer transition-colors data-[selected=true]:bg-accent/50 data-[selected=true]:text-foreground"
                                             >
                                                 <Icon className="w-4 h-4 text-muted-foreground" />
                                                 <span className="flex-1">{item.label}</span>

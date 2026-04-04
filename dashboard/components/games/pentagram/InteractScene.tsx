@@ -146,7 +146,7 @@ function ActionButton({
             }}
             whileTap={{ scale: scale * 0.92 }}
             className={cn(
-                "relative select-none touch-none cursor-pointer rounded-xl border-2 px-8 py-4 font-black uppercase tracking-widest text-sm shadow-2xl transition-colors",
+                "relative select-none touch-none cursor-pointer rounded-md border-2 px-8 py-4 font-black uppercase tracking-widest text-sm shadow-2xl transition-colors",
                 pulsing && !disabled && "animate-pulse",
                 disabled && "cursor-not-allowed",
                 extraClass
@@ -161,7 +161,7 @@ function ActionButton({
         >
             {/* Ripple glow */}
             <div
-                className="absolute inset-0 rounded-xl pointer-events-none"
+                className="absolute inset-0 rounded-md pointer-events-none"
                 style={{
                     background: `radial-gradient(circle at center, ${color}11 0%, transparent 70%)`,
                 }}

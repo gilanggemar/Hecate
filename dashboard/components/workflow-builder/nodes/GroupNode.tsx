@@ -37,7 +37,7 @@ function GroupNodeInner({ id, data, selected }: NodeProps) {
                     height: "100%",
                     minWidth: 250,
                     minHeight: isCollapsed ? 40 : 150,
-                    borderRadius: 16,
+                    borderRadius: 6,
                     background: isHovered
                         ? "oklch(0.75 0.18 55 / 0.06)"
                         : "oklch(0.10 0.005 0 / 0.25)",

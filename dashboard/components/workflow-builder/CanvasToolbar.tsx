@@ -110,7 +110,7 @@ export default function CanvasToolbar() {
         >
             <div style={{
                 display: "flex", alignItems: "center", gap: 8,
-                padding: "6px 12px", borderRadius: 12,
+                padding: "6px 12px", borderRadius: 6,
                 background: "oklch(0.11 0.005 0 / 0.8)", backdropFilter: "blur(24px)",
                 WebkitBackdropFilter: "blur(24px)", border: "1px solid oklch(1 0 0 / 0.10)",
                 boxShadow: "0 8px 40px oklch(0 0 0 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.05)",

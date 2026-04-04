@@ -24,7 +24,7 @@ export default function ObservabilityCharts({ chartData: rawChartData, costByAge
                 <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5" /> Token Consumption
                 </h2>
-                <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                     <CardContent className="p-4">
                         {chartData.length === 0 ? (
                             <div className="h-48 flex items-center justify-center text-muted-foreground/50 text-xs">
@@ -93,7 +93,7 @@ export default function ObservabilityCharts({ chartData: rawChartData, costByAge
                     <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <DollarSign className="w-3.5 h-3.5" /> Cost per Agent
                     </h2>
-                    <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                    <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                         <CardContent className="p-4">
                             {costByAgentData.length === 0 ? (
                                 <div className="h-40 flex items-center justify-center text-muted-foreground/50 text-xs">
@@ -135,7 +135,7 @@ export default function ObservabilityCharts({ chartData: rawChartData, costByAge
                     <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5" /> Avg Latency per Provider
                     </h2>
-                    <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                    <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                         <CardContent className="p-4">
                             {latencyData.length === 0 ? (
                                 <div className="h-40 flex items-center justify-center text-muted-foreground/50 text-xs">

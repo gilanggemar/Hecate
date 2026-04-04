@@ -94,7 +94,7 @@ export function SchedulerHeader() {
                     <h1 className="nerv-h2">Mission Scheduler</h1>
                     {/* Streak badge */}
                     {streak > 0 && (
-                        <span className="bg-[var(--accent-base)]/20 text-[var(--accent-base)] rounded-full px-3 py-1 text-xs font-semibold flex items-center gap-1">
+                        <span className="bg-[var(--accent-base)]/20 text-[var(--accent-base)] rounded-sm px-3 py-1 text-xs font-semibold flex items-center gap-1">
                             <Flame className="w-3.5 h-3.5" />
                             {streak}-day streak
                         </span>
@@ -107,7 +107,7 @@ export function SchedulerHeader() {
                         variant="outline"
                         size="sm"
                         onClick={() => scrollToToday()}
-                        className="rounded-full text-xs h-7 px-3"
+                        className="rounded-sm text-xs h-7 px-3"
                     >
                         Today
                     </Button>
@@ -132,13 +132,13 @@ export function SchedulerHeader() {
 
                 {/* Right: View range */}
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center rounded-full bg-white/[0.04] p-0.5">
+                    <div className="flex items-center rounded-sm bg-white/[0.04] p-0.5">
                         {viewRanges.map(({ label, value }) => (
                             <button
                                 key={value}
                                 onClick={() => setViewRange(value)}
                                 className={cn(
-                                    'px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150',
+                                    'px-2.5 py-1 rounded-sm text-xs font-medium transition-all duration-150',
                                     viewRangeWeeks === value
                                         ? 'bg-[var(--accent-base)] text-[var(--text-on-accent)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]',
@@ -162,7 +162,7 @@ export function SchedulerHeader() {
                                 key={agent.id}
                                 onClick={() => toggleAgentFilter(agent.id)}
                                 className={cn(
-                                    'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150 shrink-0',
+                                    'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-medium transition-all duration-150 shrink-0',
                                     isActive
                                         ? 'text-white'
                                         : 'nerv-glass-1 opacity-60 hover:opacity-100',
@@ -181,7 +181,7 @@ export function SchedulerHeader() {
                     {filterAgentIds.length > 0 && (
                         <button
                             onClick={() => useSchedulerStore.getState().clearAgentFilters()}
-                            className="nerv-caption px-2 py-1 rounded-full hover:bg-white/[0.06] transition-colors"
+                            className="nerv-caption px-2 py-1 rounded-sm hover:bg-white/[0.06] transition-colors"
                         >
                             Clear
                         </button>

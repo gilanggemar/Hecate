@@ -183,7 +183,7 @@ export default function SchedulerTimeline({
     const hours = Array.from({ length: 13 }, (_, i) => i * 2); // 0, 2, 4...24
 
     return (
-        <div className={`rounded-xl border border-border bg-card p-4 ${className}`}>
+        <div className={`rounded-md border border-border bg-card p-4 ${className}`}>
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <h3 className="nerv-section text-muted-foreground">Schedule Timeline</h3>

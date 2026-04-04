@@ -116,7 +116,7 @@ export default function ProvidersPage() {
                     </h2>
 
                     {providerList.length === 0 && !isLoading && (
-                        <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                        <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                             <CardContent className="p-8 text-center">
                                 <Zap className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                                 <p className="text-sm text-muted-foreground">No providers configured yet.</p>
@@ -140,7 +140,7 @@ export default function ProvidersPage() {
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                                    <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                                         <CardContent className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
@@ -257,7 +257,7 @@ function AddProviderDialog({
                     <Plus className="w-3 h-3" /> Add Provider
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-md">
                 <DialogHeader>
                     <DialogTitle className="text-base">Add Provider</DialogTitle>
                 </DialogHeader>
@@ -267,12 +267,12 @@ function AddProviderDialog({
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground">Provider Type</label>
                         <Select value={type} onValueChange={(v) => setType(v as ProviderType)}>
-                            <SelectTrigger className="h-9 text-[13px] rounded-xl border-border bg-background">
+                            <SelectTrigger className="h-9 text-[13px] rounded-md border-border bg-background">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl">
+                            <SelectContent className="rounded-md">
                                 {PROVIDER_TYPES.map((p) => (
-                                    <SelectItem key={p.value} value={p.value} className="text-xs rounded-xl">
+                                    <SelectItem key={p.value} value={p.value} className="text-xs rounded-md">
                                         <span className="font-medium">{p.label}</span>
                                         <span className="text-muted-foreground ml-1.5">— {p.description}</span>
                                     </SelectItem>
@@ -288,7 +288,7 @@ function AddProviderDialog({
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder={`My ${selectedMeta?.label || "Provider"}`}
-                            className="h-9 text-[13px] rounded-xl border-border bg-background"
+                            className="h-9 text-[13px] rounded-md border-border bg-background"
                         />
                     </div>
 
@@ -303,7 +303,7 @@ function AddProviderDialog({
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
                                 placeholder="sk-•••"
-                                className="h-9 text-[13px] rounded-xl border-border bg-background font-mono"
+                                className="h-9 text-[13px] rounded-md border-border bg-background font-mono"
                             />
                         </div>
                     )}
@@ -318,7 +318,7 @@ function AddProviderDialog({
                             value={baseUrl}
                             onChange={(e) => setBaseUrl(e.target.value)}
                             placeholder={selectedMeta ? `Default: varies by provider` : "https://api.example.com"}
-                            className="h-9 text-[13px] rounded-xl border-border bg-background"
+                            className="h-9 text-[13px] rounded-md border-border bg-background"
                         />
                     </div>
 

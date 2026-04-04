@@ -92,15 +92,15 @@ export default function ConsolePage() {
                     <SelectTrigger className="w-44 h-8 text-xs rounded-full border-border bg-transparent text-muted-foreground gap-2">
                         <SelectValue placeholder="Filter agent" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl">
-                        <SelectItem value="all" className="text-xs rounded-xl">All Agents</SelectItem>
+                    <SelectContent className="rounded-md">
+                        <SelectItem value="all" className="text-xs rounded-md">All Agents</SelectItem>
                         {agents.map((a: any) => {
                             const id = a.accountId || a.name || a.id;
                             const label = a.accountId
                                 ? a.accountId.charAt(0).toUpperCase() + a.accountId.slice(1)
                                 : a.name || a.id;
                             return (
-                                <SelectItem key={id} value={id} className="text-xs rounded-xl">
+                                <SelectItem key={id} value={id} className="text-xs rounded-md">
                                     {label}
                                 </SelectItem>
                             );
@@ -123,7 +123,7 @@ export default function ConsolePage() {
                         />
                     </div>
 
-                    <Card className="flex-1 bg-card border-border rounded-xl py-0 gap-0 shadow-none overflow-hidden">
+                    <Card className="flex-1 bg-card border-border rounded-md py-0 gap-0 shadow-none overflow-hidden">
                         <ScrollArea className="h-full">
                             {filteredLogs.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60 gap-2 p-8">
@@ -157,7 +157,7 @@ export default function ConsolePage() {
                     <h2 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <PlayCircle className="w-3.5 h-3.5" /> Execution Monitor
                     </h2>
-                    <Card className="flex-1 bg-card border-border rounded-xl py-0 gap-0 shadow-none overflow-hidden">
+                    <Card className="flex-1 bg-card border-border rounded-md py-0 gap-0 shadow-none overflow-hidden">
                         <ScrollArea className="h-full">
                             {filteredTasks.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60 gap-2 p-8">
@@ -170,7 +170,7 @@ export default function ConsolePage() {
                                         <div
                                             key={task.id}
                                             className={cn(
-                                                "flex items-center gap-3 py-2 px-2.5 rounded-xl border transition-all",
+                                                "flex items-center gap-3 py-2 px-2.5 rounded-md border transition-all",
                                                 task.status === "IN_PROGRESS" ? "border-blue-500/20 bg-blue-500/5" :
                                                     task.status === "FAILED" ? "border-red-500/20 bg-red-500/5" :
                                                         "border-border bg-accent/50"

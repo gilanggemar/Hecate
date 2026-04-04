@@ -131,7 +131,7 @@ export function ProjectPanel({ agentId, agentName, className }: ProjectPanelProp
                             <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                         </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" sideOffset={8} align="start" className="rounded-2xl p-1.5 min-w-[200px]">
+                    <DropdownMenuContent side="top" sideOffset={8} align="start" className="rounded-md p-1.5 min-w-[200px]">
                         <DropdownMenuItem
                             className="rounded-[calc(1rem-6px)] text-xs"
                             onClick={() => setActiveProject(null)}

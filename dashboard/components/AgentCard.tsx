@@ -77,7 +77,7 @@ export function AgentCard({ agent }: AgentCardProps) {
 
     return (
         <Card className={cn(
-            "relative rounded-3xl backdrop-blur-sm transition-all duration-300 shadow-xl border border-border/40",
+            "relative rounded-md backdrop-blur-sm transition-all duration-300 shadow-xl border border-border/40",
             isOnline ? "bg-card" : "bg-card/60",
             hasOpenPopover && "z-50"
         )}>

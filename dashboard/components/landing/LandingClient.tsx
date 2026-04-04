@@ -99,7 +99,7 @@ export default function LandingClient() {
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                     
                     <div className="flex items-center gap-4 z-10">
-                        <div className="bg-[#FF6D29] w-12 h-12 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,109,41,0.2)]">
+                        <div className="bg-[#FF6D29] w-12 h-12 rounded-md flex items-center justify-center shadow-[0_0_20px_rgba(255,109,41,0.2)]">
                             <Logo className="w-6 h-6 text-[#080706]" />
                         </div>
                         <span className="text-2xl font-bold tracking-tight text-[#F5F0EB]">
@@ -125,7 +125,7 @@ export default function LandingClient() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
                     onClick={() => router.push('/login')}
-                    className="md:col-span-1 md:row-span-2 bg-[#FF6D29] rounded-3xl p-8 flex flex-col items-center justify-center cursor-pointer group hover:bg-[#ff8247] transition-all duration-300 relative shadow-[0_0_40px_rgba(255,109,41,0.1)] hover:shadow-[0_0_60px_rgba(255,109,41,0.2)] pointer-events-auto"
+                    className="md:col-span-1 md:row-span-2 bg-[#FF6D29] rounded-md p-8 flex flex-col items-center justify-center cursor-pointer group hover:bg-[#ff8247] transition-all duration-300 relative shadow-[0_0_40px_rgba(255,109,41,0.1)] hover:shadow-[0_0_60px_rgba(255,109,41,0.2)] pointer-events-auto"
                 >
                     <div className="flex flex-col items-center gap-6">
                         <span className="text-4xl md:text-5xl lg:text-6xl font-black text-[#080706] uppercase tracking-tighter">
@@ -338,7 +338,7 @@ export default function LandingClient() {
                                             
                                             <div className="space-y-4">
                                                 {[1, 2, 3].map((i) => (
-                                                    <div key={i} className="h-16 w-full bg-[#080706]/80 rounded-2xl border border-white/5 flex items-center px-6 overflow-hidden relative">
+                                                    <div key={i} className="h-16 w-full bg-[#080706]/80 rounded-md border border-white/5 flex items-center px-6 overflow-hidden relative">
                                                         <motion.div 
                                                             initial={{ x: '-100%' }}
                                                             animate={{ x: '200%' }}

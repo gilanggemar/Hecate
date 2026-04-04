@@ -105,7 +105,7 @@ export default function NodeConfigPanel() {
                     width: "100%", maxWidth: 1100, height: "100%", maxHeight: 650,
                     background: "oklch(0.10 0.005 0 / 0.98)",
                     backdropFilter: "blur(20px)",
-                    borderRadius: 16,
+                    borderRadius: 6,
                     border: "1px solid oklch(1 0 0 / 0.08)",
                     boxShadow: "0 16px 60px oklch(0 0 0 / 0.6), 0 0 0 1px oklch(1 0 0 / 0.03)",
                     display: "flex", flexDirection: "column", overflow: "hidden",

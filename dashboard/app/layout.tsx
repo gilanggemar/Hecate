@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Outfit, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthInitializer } from "@/components/AuthInitializer";
 import { GlobalAssemblyOverlay } from "@/components/GlobalAssemblyOverlay";
 
-const outfit = Outfit({
+const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${outfit.variable} ${jetbrainsMono.variable} font-sans antialiased text-foreground flex min-h-screen`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased text-foreground flex min-h-screen`}
         suppressHydrationWarning
       >
         <ThemeProvider>

@@ -68,7 +68,7 @@ export default function SignupPage() {
             initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-            className="w-full max-w-lg mx-4 rounded-2xl px-10 py-10 space-y-7"
+            className="w-full max-w-lg mx-4 rounded-md px-10 py-10 space-y-7"
             style={{
                 pointerEvents: 'auto',
                 backgroundColor: 'rgba(10, 10, 10, 0.7)',

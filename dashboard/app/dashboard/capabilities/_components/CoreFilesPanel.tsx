@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Loader2, Heart } from 'lucide-react';
 import { useOpenClawCapabilitiesStore } from '@/stores/useOpenClawCapabilitiesStore';
 import { AgentSelector } from './AgentSelector';
 import { FileList } from './FileList';
 import { FileEditor } from './FileEditor';
+import { CompanionEditor } from './CompanionEditor';
 
 export function CoreFilesPanel() {
     const {
@@ -57,6 +58,22 @@ export function CoreFilesPanel() {
     };
 
     const handleSelectFile = (fileName: string) => {
+        // COMPANION.md is a special Supabase-stored file — not from OpenClaw workspace
+        if (fileName === 'COMPANION.md') {
+            if (isFileDirty) {
+                const confirm = window.confirm(
+                    `You have unsaved changes to ${selectedFileName}. Discard changes?`
+                );
+                if (!confirm) return;
+            }
+            // We use the store's selectFile with a special marker
+            // But since COMPANION.md isn't in the workspace, we just need to update selectedFileName
+            clearFileSelection();
+            // Use a manual approach — update the store to show COMPANION.md as selected
+            useOpenClawCapabilitiesStore.setState({ selectedFileName: 'COMPANION.md' });
+            return;
+        }
+
         if (isFileDirty && fileName !== selectedFileName) {
             const confirm = window.confirm(
                 `You have unsaved changes to ${selectedFileName}. Discard changes?`
@@ -74,10 +91,16 @@ export function CoreFilesPanel() {
         }
     };
 
+    // Is COMPANION.md currently selected?
+    const isCompanionSelected = selectedFileName === 'COMPANION.md';
+
     // Derive the workspace path from the first file's path or selected file path
     const workspacePath = selectedFilePath
         ? selectedFilePath.substring(0, selectedFilePath.lastIndexOf('/'))
         : null;
+
+    // Get current agent name for the companion editor
+    const currentAgentName = agents.find(a => a.id === selectedAgentId)?.name || undefined;
 
     return (
         <div className="flex flex-col gap-4">
@@ -110,7 +133,7 @@ export function CoreFilesPanel() {
             />
 
             {/* Workspace path */}
-            {workspacePath && (
+            {workspacePath && !isCompanionSelected && (
                 <div className="text-[10px] font-mono text-white/25">
                     Workspace: {workspacePath}
                 </div>
@@ -119,7 +142,7 @@ export function CoreFilesPanel() {
             {/* Two-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-[400px]">
                 {/* Left: File List */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+                <div className="rounded-md border border-white/10 bg-white/[0.02] overflow-hidden">
                     <FileList
                         files={workspaceFiles}
                         selectedFileName={selectedFileName}
@@ -128,29 +151,46 @@ export function CoreFilesPanel() {
                     />
                 </div>
 
-                {/* Right: File Editor */}
-                <FileEditor
-                    fileName={selectedFileName}
-                    filePath={selectedFilePath}
-                    content={fileDraftContent}
-                    isDirty={isFileDirty}
-                    isLoading={isFileContentLoading}
-                    isSaving={isFileSaving}
-                    error={fileError}
-                    onContentChange={updateFileDraft}
-                    onSave={handleSave}
-                    onReset={resetFileDraft}
-                />
+                {/* Right: Editor — either CompanionEditor or FileEditor */}
+                {isCompanionSelected && selectedAgentId ? (
+                    <CompanionEditor
+                        agentId={selectedAgentId}
+                        agentName={currentAgentName}
+                    />
+                ) : (
+                    <FileEditor
+                        fileName={selectedFileName}
+                        filePath={selectedFilePath}
+                        content={fileDraftContent}
+                        isDirty={isFileDirty}
+                        isLoading={isFileContentLoading}
+                        isSaving={isFileSaving}
+                        error={fileError}
+                        onContentChange={updateFileDraft}
+                        onSave={handleSave}
+                        onReset={resetFileDraft}
+                    />
+                )}
             </div>
 
-            {/* Footer Notice */}
-            <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500/70" />
-                <p className="text-xs font-mono text-amber-500/70 leading-relaxed">
-                    Changes are saved to the real OpenClaw workspace.
-                    They take effect on the agent&apos;s next session/turn.
-                </p>
-            </div>
+            {/* Footer Notice — changes based on selected file */}
+            {isCompanionSelected ? (
+                <div className="flex items-start gap-3 rounded-md border border-pink-500/15 bg-pink-500/5 px-4 py-3">
+                    <Heart className="mt-0.5 size-4 shrink-0 text-pink-400/60" />
+                    <p className="text-xs font-mono text-pink-400/60 leading-relaxed">
+                        Companion profiles are stored locally in your NERV.OS dashboard (Supabase).
+                        They are independent from OpenClaw and activate when Companion Mode is toggled.
+                    </p>
+                </div>
+            ) : (
+                <div className="flex items-start gap-3 rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500/70" />
+                    <p className="text-xs font-mono text-amber-500/70 leading-relaxed">
+                        Changes are saved to the real OpenClaw workspace.
+                        They take effect on the agent&apos;s next session/turn.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

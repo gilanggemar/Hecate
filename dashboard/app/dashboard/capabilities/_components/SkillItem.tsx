@@ -21,7 +21,7 @@ export function SkillItem({ name, description, enabled, eligible, missingRequire
 
     return (
         <div className={cn(
-            'group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors',
+            'group flex items-center gap-3 px-3.5 py-2.5 rounded-md transition-colors',
             'hover:bg-white/[0.03]',
             inherited && 'opacity-60',
         )}>

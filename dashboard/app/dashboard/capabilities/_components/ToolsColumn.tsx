@@ -38,7 +38,7 @@ export function ToolsColumn({ tools, togglingItems, onToggle }: ToolsColumnProps
     const enabledCount = tools.filter(t => t.allowed).length;
 
     return (
-        <div className="flex flex-col rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+        <div className="flex flex-col rounded-md border border-white/[0.06] bg-white/[0.02]">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
                 <div className="flex items-center gap-2">

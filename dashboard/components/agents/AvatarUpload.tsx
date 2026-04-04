@@ -128,7 +128,7 @@ export function AvatarUpload({ currentAvatar, agentName, onAvatarChange, size = 
         <>
             {/* Avatar display + click-to-upload trigger */}
             <div
-                className="relative rounded-xl overflow-hidden border border-border bg-accent/30 flex items-center justify-center cursor-pointer group shrink-0"
+                className="relative rounded-md overflow-hidden border border-border bg-accent/30 flex items-center justify-center cursor-pointer group shrink-0"
                 style={{ width: w, height: h }}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}

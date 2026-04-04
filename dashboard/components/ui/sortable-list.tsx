@@ -66,7 +66,7 @@ function SortableListItem({
           value={item}
           className={cn(
             "relative z-auto grow",
-            "h-full rounded-3xl bg-[#1c1c1c] dark:bg-[#1c1c1c]",
+            "h-full rounded-md bg-[#1c1c1c] dark:bg-[#1c1c1c]",
             "border border-white/5",
             "cursor-grab w-full"
           )}

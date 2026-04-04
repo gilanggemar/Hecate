@@ -94,7 +94,7 @@ function PasswordInput({ value, onChange, placeholder }: {
             <Input
                 type={show ? 'text' : 'password'} value={value}
                 onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-                className="pr-9 font-mono text-[13px] rounded-xl border-border bg-background"
+                className="pr-9 font-mono text-[13px] rounded-md border-border bg-background"
             />
             <Button type="button" variant="ghost" size="icon"
                 className="absolute right-0 top-0 h-full w-9 rounded-r-xl text-muted-foreground hover:text-foreground"
@@ -139,7 +139,7 @@ function ProfileCard({ profile, isSelected, onClick }: {
             type="button"
             onClick={onClick}
             className={cn(
-                'w-full text-left p-3 rounded-xl border transition-all duration-150 group',
+                'w-full text-left p-3 rounded-md border transition-all duration-150 group',
                 isSelected
                     ? 'border-emerald-500/30 bg-emerald-500/[0.04] ring-1 ring-emerald-500/20'
                     : 'border-border/40 bg-card/40 hover:bg-card/70 hover:border-border/60'
@@ -192,7 +192,7 @@ function TestResultsPanel({ result }: { result: ConnectionTestResult | null }) {
         label: string; tested: boolean; reachable: boolean;
         latencyMs: number | null; error: string | null; extra?: React.ReactNode;
     }) => (
-        <div className="space-y-1.5 p-3 rounded-xl bg-background/40 border border-border/30">
+        <div className="space-y-1.5 p-3 rounded-md bg-background/40 border border-border/30">
             <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-foreground">{label}</span>
                 {!tested ? (
@@ -353,12 +353,12 @@ function RightPanel({
                         <div className="space-y-1.5">
                             <label className="text-[11px] text-muted-foreground">Profile Name *</label>
                             <Input value={form.name} onChange={(e) => setField('name', e.target.value)}
-                                placeholder="e.g. Production VPS" className="text-[13px] rounded-xl border-border bg-background" />
+                                placeholder="e.g. Production VPS" className="text-[13px] rounded-md border-border bg-background" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[11px] text-muted-foreground">Description</label>
                             <Input value={form.description} onChange={(e) => setField('description', e.target.value)}
-                                placeholder="Optional notes..." className="text-[13px] rounded-xl border-border bg-background" />
+                                placeholder="Optional notes..." className="text-[13px] rounded-md border-border bg-background" />
                         </div>
                     </div>
                 </Section>
@@ -376,22 +376,22 @@ function RightPanel({
                                 <div className="space-y-1.5">
                                     <label className="text-[11px] text-muted-foreground">WebSocket URL</label>
                                     <Input value={form.openclawWsUrl} onChange={(e) => setField('openclawWsUrl', e.target.value)}
-                                        placeholder="ws://127.0.0.1:18789" className="font-mono text-[13px] rounded-xl border-border bg-background" />
+                                        placeholder="ws://127.0.0.1:18789" className="font-mono text-[13px] rounded-md border-border bg-background" />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[11px] text-muted-foreground">HTTP URL</label>
                                     <Input value={form.openclawHttpUrl} onChange={(e) => setField('openclawHttpUrl', e.target.value)}
-                                        placeholder="http://127.0.0.1:18789" className="font-mono text-[13px] rounded-xl border-border bg-background" />
+                                        placeholder="http://127.0.0.1:18789" className="font-mono text-[13px] rounded-md border-border bg-background" />
                                 </div>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <label className="text-[11px] text-muted-foreground">Auth Mode</label>
                                     <Select value={form.openclawAuthMode} onValueChange={(v) => setField('openclawAuthMode', v)}>
-                                        <SelectTrigger className="h-9 text-[13px] rounded-xl border-border bg-background"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="rounded-2xl">
-                                            <SelectItem value="token" className="text-xs rounded-xl">Token</SelectItem>
-                                            <SelectItem value="none" className="text-xs rounded-xl">None</SelectItem>
+                                        <SelectTrigger className="h-9 text-[13px] rounded-md border-border bg-background"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="rounded-md">
+                                            <SelectItem value="token" className="text-xs rounded-md">Token</SelectItem>
+                                            <SelectItem value="none" className="text-xs rounded-md">None</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -419,16 +419,16 @@ function RightPanel({
                             <div className="space-y-1.5">
                                 <label className="text-[11px] text-muted-foreground">Base URL</label>
                                 <Input value={form.agentZeroBaseUrl} onChange={(e) => setField('agentZeroBaseUrl', e.target.value)}
-                                    placeholder="http://127.0.0.1:80" className="font-mono text-[13px] rounded-xl border-border bg-background" />
+                                    placeholder="http://127.0.0.1:80" className="font-mono text-[13px] rounded-md border-border bg-background" />
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <label className="text-[11px] text-muted-foreground">Auth Mode</label>
                                     <Select value={form.agentZeroAuthMode} onValueChange={(v) => setField('agentZeroAuthMode', v)}>
-                                        <SelectTrigger className="h-9 text-[13px] rounded-xl border-border bg-background"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="rounded-2xl">
-                                            <SelectItem value="api_key" className="text-xs rounded-xl">API Key</SelectItem>
-                                            <SelectItem value="none" className="text-xs rounded-xl">None</SelectItem>
+                                        <SelectTrigger className="h-9 text-[13px] rounded-md border-border bg-background"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="rounded-md">
+                                            <SelectItem value="api_key" className="text-xs rounded-md">API Key</SelectItem>
+                                            <SelectItem value="none" className="text-xs rounded-md">None</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -443,10 +443,10 @@ function RightPanel({
                             <div className="space-y-1.5">
                                 <label className="text-[11px] text-muted-foreground">Transport</label>
                                 <Select value={form.agentZeroTransport} onValueChange={(v) => setField('agentZeroTransport', v)}>
-                                    <SelectTrigger className="h-9 text-[13px] rounded-xl border-border bg-background"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-2xl">
-                                        <SelectItem value="rest" className="text-xs rounded-xl">REST Polling</SelectItem>
-                                        <SelectItem value="websocket" className="text-xs rounded-xl">WebSocket (Socket.IO)</SelectItem>
+                                    <SelectTrigger className="h-9 text-[13px] rounded-md border-border bg-background"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="rounded-md">
+                                        <SelectItem value="rest" className="text-xs rounded-md">REST Polling</SelectItem>
+                                        <SelectItem value="websocket" className="text-xs rounded-md">WebSocket (Socket.IO)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -464,7 +464,7 @@ function RightPanel({
                             const preset = PRESETS[key]; const Icon = preset.icon;
                             return (
                                 <Button key={key} type="button" variant="outline" size="sm"
-                                    className="rounded-xl h-7 text-[11px] gap-1 border-border/40 text-muted-foreground hover:text-foreground px-2.5"
+                                    className="rounded-md h-7 text-[11px] gap-1 border-border/40 text-muted-foreground hover:text-foreground px-2.5"
                                     onClick={() => applyPreset(key)}>
                                     <Icon className="w-3 h-3" /> {preset.label}
                                 </Button>
@@ -477,11 +477,11 @@ function RightPanel({
 
                 <div className="flex items-center gap-2">
                     <Button onClick={handleSubmit} disabled={isSaving || !form.name.trim()} size="sm"
-                        className="rounded-xl h-8 px-5 text-xs bg-foreground text-background hover:bg-foreground/90 gap-1.5">
+                        className="rounded-md h-8 px-5 text-xs bg-foreground text-background hover:bg-foreground/90 gap-1.5">
                         {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
                         {isCreating ? 'Create Profile' : 'Save Changes'}
                     </Button>
-                    <Button variant="ghost" size="sm" className="rounded-xl h-8 px-3 text-xs text-muted-foreground"
+                    <Button variant="ghost" size="sm" className="rounded-md h-8 px-3 text-xs text-muted-foreground"
                         onClick={isCreating ? onCancelCreate : onCancelEdit}>
                         Cancel
                     </Button>
@@ -674,7 +674,7 @@ export default function ConnectionProfiles() {
         <div className="space-y-3">
             {/* Error banner */}
             {error && (
-                <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                <div className="flex items-center justify-between gap-2 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
                     <div className="flex items-center gap-2">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> <span>{error}</span>
                     </div>
@@ -688,7 +688,7 @@ export default function ConnectionProfiles() {
                 <div className="space-y-2">
                     <Button onClick={() => { setIsCreating(true); setIsEditing(false); setSelectedId(null); }}
                         variant="outline" size="sm"
-                        className="rounded-xl h-8 text-xs gap-1.5 border-dashed border-border/40 text-muted-foreground hover:text-foreground w-full">
+                        className="rounded-md h-8 text-xs gap-1.5 border-dashed border-border/40 text-muted-foreground hover:text-foreground w-full">
                         <Plus className="w-3.5 h-3.5" /> New Profile
                     </Button>
 
@@ -714,7 +714,7 @@ export default function ConnectionProfiles() {
                 </div>
 
                 {/* RIGHT — Detail / Editor */}
-                <Card className="rounded-xl border-border/40 bg-card/30 shadow-none overflow-hidden py-0 gap-0">
+                <Card className="rounded-md border-border/40 bg-card/30 shadow-none overflow-hidden py-0 gap-0">
                     <RightPanel
                         profile={selectedProfile}
                         isEditing={isEditing}

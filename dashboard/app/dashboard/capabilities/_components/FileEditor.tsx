@@ -36,7 +36,7 @@ export function FileEditor({
     // No file selected
     if (!fileName) {
         return (
-            <div className="flex items-center justify-center h-full min-h-[300px] rounded-xl border border-white/5 bg-white/[0.02]">
+            <div className="flex items-center justify-center h-full min-h-[300px] rounded-md border border-white/5 bg-white/[0.02]">
                 <p className="text-xs font-mono text-white/25">
                     Select a file from the list to view and edit its content.
                 </p>
@@ -47,7 +47,7 @@ export function FileEditor({
     // Loading file content
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-full min-h-[300px] rounded-xl border border-white/5 bg-white/[0.02]">
+            <div className="flex items-center justify-center h-full min-h-[300px] rounded-md border border-white/5 bg-white/[0.02]">
                 <div className="flex flex-col items-center gap-2">
                     <Loader2 className="size-5 text-white/30 animate-spin" />
                     <p className="text-xs font-mono text-white/30">Loading {fileName}...</p>
@@ -58,7 +58,7 @@ export function FileEditor({
 
     return (
         <>
-            <div className="flex flex-col rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <div className="flex flex-col rounded-md border border-white/10 bg-white/[0.02] overflow-hidden">
                 {/* File Header */}
                 <div className="px-4 py-3 border-b border-white/5">
                     <h3 className="text-sm font-mono font-semibold text-white/90">{fileName}</h3>

@@ -86,7 +86,7 @@ export default function FavoritesModal() {
                             backdropFilter: "blur(24px)",
                             WebkitBackdropFilter: "blur(24px)",
                             border: "1px solid oklch(1 0 0 / 0.10)",
-                            borderRadius: 16,
+                            borderRadius: 6,
                             boxShadow: "0 16px 64px oklch(0 0 0 / 0.5)",
                             display: "flex", flexDirection: "column", overflow: "hidden",
                         }}
@@ -122,7 +122,7 @@ export default function FavoritesModal() {
                                         onClick={() => handleAdd(item)}
                                         style={{
                                             display: "flex", alignItems: "center", gap: 8,
-                                            padding: "8px 10px", borderRadius: 10,
+                                            padding: "8px 10px", borderRadius: 6,
                                             background: "oklch(0.15 0.005 0 / 0.5)",
                                             border: "1px solid oklch(1 0 0 / 0.04)",
                                             cursor: "pointer", color: item.accent,

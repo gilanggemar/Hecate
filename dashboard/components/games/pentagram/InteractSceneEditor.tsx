@@ -1083,7 +1083,7 @@ export function InteractSceneEditor() {
                 maxHeight: "calc(100vh - 80px)",
             }}
         >
-            <div className="w-full bg-neutral-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden" style={{ maxHeight: "calc(100vh - 80px)" }}>
+            <div className="w-full bg-neutral-950/95 backdrop-blur-xl border border-white/10 rounded-md shadow-2xl shadow-black/60 flex flex-col overflow-hidden" style={{ maxHeight: "calc(100vh - 80px)" }}>
                 
                 {/* Header — drag handle */}
                 <div

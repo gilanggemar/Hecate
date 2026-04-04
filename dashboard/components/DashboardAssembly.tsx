@@ -209,7 +209,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
 
                 {/* ═══ OUTER FRAME ═══ */}
                 <motion.div
-                    className="absolute inset-0 rounded-2xl overflow-hidden"
+                    className="absolute inset-0 rounded-md overflow-hidden"
                     style={{ border: '1.5px solid rgba(255,255,255,0.06)' }}
                     initial={{ opacity: 0, scale: 0.92 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -224,7 +224,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
                         left: 14,
                         right: 14,
                         height: 28,
-                        borderRadius: 14,
+                        borderRadius: 6,
                         background: skeletonBg,
                         border: skeletonBorder,
                     }}
@@ -259,7 +259,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
                         right: 14,
                         width: 28,
                         height: 28,
-                        borderRadius: 14,
+                        borderRadius: 6,
                         background: skeletonBg,
                         border: skeletonBorder,
                     }}
@@ -284,7 +284,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
                         left: 14,
                         width: '42%',
                         bottom: 56,
-                        borderRadius: 12,
+                        borderRadius: 6,
                         background: skeletonBg,
                         border: skeletonBorder,
                     }}
@@ -357,7 +357,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
                         left: '46%',
                         right: 14,
                         bottom: 56,
-                        borderRadius: 12,
+                        borderRadius: 6,
                         background: skeletonBg,
                         border: skeletonBorder,
                     }}
@@ -426,7 +426,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
                         left: 14,
                         right: 14,
                         height: 32,
-                        borderRadius: 16,
+                        borderRadius: 6,
                         background: skeletonBg,
                         border: skeletonBorder,
                     }}
@@ -467,7 +467,7 @@ export function DashboardAssembly({ isReady, onComplete }: DashboardAssemblyProp
                 {/* ═══ PULSE when assembled ═══ */}
                 {phase >= 3 && (
                     <motion.div
-                        className="absolute inset-0 rounded-2xl pointer-events-none"
+                        className="absolute inset-0 rounded-md pointer-events-none"
                         style={{
                             border: '1px solid rgba(255,109,41,0.2)',
                         }}

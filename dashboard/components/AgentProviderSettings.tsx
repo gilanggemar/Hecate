@@ -56,10 +56,10 @@ export function AgentProviderSettings({
             <div className="space-y-1.5">
                 <label className="text-[11px] text-muted-foreground">Provider</label>
                 <Select value={selectedProvider} onValueChange={handleProviderChange}>
-                    <SelectTrigger className="h-8 text-[12px] rounded-xl border-border bg-background">
+                    <SelectTrigger className="h-8 text-[12px] rounded-md border-border bg-background">
                         <SelectValue placeholder="Select provider" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent className="rounded-md">
                         {providerList.map((p) => (
                             <SelectItem key={p.id} value={p.id} className="text-xs rounded-lg">
                                 {p.name}
@@ -76,10 +76,10 @@ export function AgentProviderSettings({
                     {loadingModels && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
                 </label>
                 <Select value={selectedModel} onValueChange={handleModelChange} disabled={!selectedProvider || loadingModels}>
-                    <SelectTrigger className="h-8 text-[12px] rounded-xl border-border bg-background">
+                    <SelectTrigger className="h-8 text-[12px] rounded-md border-border bg-background">
                         <SelectValue placeholder={loadingModels ? "Loading..." : "Select model"} />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent className="rounded-md">
                         {models.map((m) => (
                             <SelectItem key={m.id} value={m.id} className="text-xs rounded-lg">
                                 <div className="flex items-center justify-between w-full gap-3">

@@ -430,8 +430,8 @@ export function ConstellationCanvas() {
 
             {/* Drop Overlay Indicator */}
             {isDraggingOver && (
-                <div className="absolute inset-4 z-40 bg-accent-base/5 backdrop-blur-sm border-2 border-dashed border-accent-base rounded-2xl flex flex-col items-center justify-center animate-in fade-in transition-all pointer-events-none">
-                    <div className="bg-background/90 p-6 rounded-2xl shadow-2xl flex flex-col items-center">
+                <div className="absolute inset-4 z-40 bg-accent-base/5 backdrop-blur-sm border-2 border-dashed border-accent-base rounded-md flex flex-col items-center justify-center animate-in fade-in transition-all pointer-events-none">
+                    <div className="bg-background/90 p-6 rounded-md shadow-2xl flex flex-col items-center">
                         <UploadCloud className="w-12 h-12 text-accent-base mb-3 animate-bounce" />
                         <h2 className="text-xl font-bold text-accent-base">Drop to add Knowledge</h2>
                         <p className="text-xs text-muted-foreground mt-1 text-center max-w-[200px]">
@@ -473,7 +473,7 @@ export function ConstellationCanvas() {
             {/* Guide Modal Overlay */}
             {showGuide && (
                 <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-background border border-border rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-in zoom-in-95">
+                    <div className="bg-background border border-border rounded-md shadow-2xl max-w-md w-full p-6 relative animate-in zoom-in-95">
                         <Button 
                             variant="ghost" 
                             size="icon" 

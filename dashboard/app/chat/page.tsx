@@ -5,12 +5,13 @@ import { useSocketStore } from "@/lib/useSocket";
 import { useChatRouter } from "@/lib/useChatRouter";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect, useMemo, UIEvent } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, UIEvent } from "react";
 import {
     Bot, User, Loader2, MessageSquare, Activity, Terminal as TerminalIcon,
     Wifi, WifiOff, ArrowDown, PanelLeftOpen, PanelLeftClose, ArrowUpRight,
     FileText, Image as ImageIcon, X as XIcon, Package, Check, Pencil,
-    Target, Shield, Compass, Copy, Square, Brain, MessageSquareText, GitMerge
+    Target, Shield, Compass, Copy, Square, Brain, MessageSquareText, GitMerge,
+    Heart
 } from "lucide-react";
 import {
     IconPlus, IconPaperclip, IconCode, IconWorld, IconHistory,
@@ -47,6 +48,8 @@ import { usePromptChunkStore } from "@/store/usePromptChunkStore";
 import { useMemoryStore } from "@/store/useMemoryStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useOpenClawStore } from "@/store/useOpenClawStore";
+import { useCompanionModeStore } from "@/stores/useCompanionModeStore";
+import { useOpenClawModelStore } from "@/stores/useOpenClawModelStore";
 
 import { parseOpenClawToolCalls } from "@/lib/openclawToolParser";
 import { AgentZeroMessageCard, tryParseAgentZeroJSON } from "@/components/chat/AgentZeroMessageCard";
@@ -704,46 +707,72 @@ export default function ChatPage() {
                 modeIndicators,
                 _sortTime: Date.now(),
             } as any);
-            // ── INSTANTLY dispatch to agent (don't wait for uploads or DB) ──
-            dispatchMessage(capturedAgentId, finalMessage, sessionKey, base64Attachments.length > 0 ? base64Attachments : undefined, true);
-        } else {
-            a0ModeIndicatorsRef.current.set(finalMessage, modeIndicators);
-            dispatchMessage(capturedAgentId, finalMessage, sessionKey, base64Attachments.length > 0 ? base64Attachments : undefined);
-        }
 
-        // ── BACKGROUND: file upload, conversation creation, DB persistence ──
-        // All of this runs in the background — the UI is already updated above.
-        (async () => {
-            try {
-                // 1. Read files to base64 + upload to Supabase Storage (background)
-                let publicAttachments: any[] | undefined = undefined;
-                if (base64Attachments.length > 0) {
+            // ── Check companion mode ──
+            const isCompanion = useCompanionModeStore.getState().isCompanionMode(capturedAgentId);
 
-                    publicAttachments = await Promise.all(base64Attachments.map(async (att) => {
-                        try {
-                            const res = await fetch('/api/chat/upload', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ name: att.name, type: att.type, data: att.url }),
-                            });
-                            if (res.ok) {
-                                const { url: publicUrl } = await res.json();
-                                return { ...att, publicUrl };
-                            }
-                        } catch (err) {
-                            console.error('[Upload attachment]', err);
-                        }
-                        return { ...att, publicUrl: null };
-                    }));
+            if (isCompanion) {
+                // ═══ COMPANION MODE: bypass OpenClaw, call companion API directly ═══
+                // Determine which companion sub-role to use based on content
+                const modelStore = useOpenClawModelStore.getState();
+                const hasImageAttachment = base64Attachments.length > 0 && base64Attachments.some(
+                    (a: any) => a.type?.startsWith('image/') || a.name?.match(/\.(png|jpg|jpeg|gif|webp|svg)$/i)
+                );
+
+                // Pick the appropriate companion sub-role model
+                const getCompanionModel = (role: string): string => {
+                    return modelStore.activeModels[role as keyof typeof modelStore.activeModels]?.[capturedAgentId]
+                        || modelStore.defaults[role as keyof typeof modelStore.defaults]
+                        || '';
+                };
+
+                // Fallback chain: specialized → companion_chat → legacy companion → empty
+                const chatModel = getCompanionModel('companion_chat') || getCompanionModel('companion') || '';
+                let companionModelRef: string;
+                let taskType = 'chat';
+
+                if (hasImageAttachment) {
+                    companionModelRef = getCompanionModel('companion_vision') || chatModel;
+                    taskType = 'vision';
+                } else {
+                    companionModelRef = chatModel;
                 }
 
-                // 2. Auto-create conversation if needed (background)
+                // Get companion profile markdown
+                const { useCompanionProfileStore } = await import('@/stores/useCompanionProfileStore');
+                const companionStore = useCompanionProfileStore.getState();
+                const systemPrompt = companionStore.getCompiledMarkdown(capturedAgentId, capturedAgentName);
+
+                // Build history from visible messages (last 20 for context)
+                const history = visibleMessages.slice(-20).map(m => ({
+                    role: m.role as 'user' | 'assistant',
+                    content: m.content,
+                }));
+
+                // Add current message
+                history.push({ role: 'user', content: cleanMessage });
+
+                // Add streaming placeholder
+                const streamingMsgId = `companion-${Date.now()}`;
+                addToStore({
+                    id: streamingMsgId,
+                    role: 'assistant',
+                    content: '',
+                    timestamp: new Date().toLocaleTimeString(),
+                    agentId: capturedAgentId,
+                    sessionKey: sessionKey,
+                    streaming: true,
+                    _sortTime: Date.now(),
+                } as any);
+
+                // Auto-create conversation if needed (for companion mode)
                 let convoId = capturedConvoId;
                 if (!convoId) {
                     try {
                         const newId = await chatStore.createConversation(
                             capturedAgentId,
-                            cleanMessage.substring(0, 60) || `Chat with ${capturedAgentName}`
+                            cleanMessage.substring(0, 60) || `Companion chat with ${capturedAgentName}`,
+                            'companion'
                         );
                         if (newId) {
                             convoId = newId;
@@ -751,40 +780,181 @@ export default function ChatPage() {
                             setSidebarRefreshTrigger(prev => prev + 1);
                         }
                     } catch (err) {
-                        console.error('Failed to auto-create conversation:', err);
+                        console.error('Failed to auto-create companion conversation:', err);
                     }
                 }
 
-                // 3. Persist user message to Supabase (background)
+                // Persist user message
                 if (convoId) {
-                    try {
-                        await fetch('/api/chat/messages', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                conversation_id: convoId,
-                                role: 'user',
-                                content: cleanMessage,
-                                metadata: {
-                                    strategyMode: capturedStrategyMode,
-                                    quotedReply: capturedQuotedReply?.text,
-                                    modeIndicators,
-                                    attachments: publicAttachments?.map(a => ({
-                                        name: a.name,
-                                        type: a.type,
-                                        url: a.publicUrl || a.url,
-                                    })),
-                                },
-                            }),
+                    fetch('/api/chat/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            conversation_id: convoId,
+                            role: 'user',
+                            content: cleanMessage,
+                            metadata: { source: 'companion' },
+                        }),
+                    }).catch(err => console.error('Failed to persist companion user msg:', err));
+                }
+
+                // Call companion chat API
+                try {
+                    const res = await fetch('/api/companion-chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agent_id: capturedAgentId,
+                            model_ref: companionModelRef,
+                            system_prompt: systemPrompt,
+                            messages: history,
+                            conversation_id: convoId,
+                            task_type: taskType,
+                        }),
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({ error: 'Unknown error' }));
+                        throw new Error(errData.error || `HTTP ${res.status}`);
+                    }
+
+                    // Stream response
+                    const reader = res.body?.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = '';
+
+                    if (reader) {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            const lines = chunk.split('\n');
+
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                const data = line.slice(6).trim();
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    if (parsed.content) {
+                                        fullContent += parsed.content;
+                                        // Update streaming content in the store
+                                        const { updateChatMessage } = useSocketStore.getState();
+                                        if (updateChatMessage) {
+                                            updateChatMessage(streamingMsgId, { content: fullContent });
+                                        }
+                                    }
+                                    if (parsed.done) {
+                                        // Finalize the message
+                                        const { updateChatMessage } = useSocketStore.getState();
+                                        if (updateChatMessage) {
+                                            updateChatMessage(streamingMsgId, { content: fullContent, streaming: false });
+                                        }
+                                    }
+                                } catch {
+                                    // skip
+                                }
+                            }
+                        }
+                    }
+                } catch (err: any) {
+                    console.error('[Companion chat error]', err);
+                    // Show error as assistant message
+                    const { updateChatMessage } = useSocketStore.getState();
+                    if (updateChatMessage) {
+                        updateChatMessage(streamingMsgId, {
+                            content: `⚠️ Companion mode error: ${err.message || 'Failed to reach model'}`,
+                            streaming: false,
                         });
-                    } catch (err) {
-                        console.error('Failed to persist user message:', err);
                     }
                 }
-            } catch (err) {
-                console.error('[Background persist error]', err);
+            } else {
+                // ═══ AGENT MODE: dispatch through OpenClaw as before ═══
+                dispatchMessage(capturedAgentId, finalMessage, sessionKey, base64Attachments.length > 0 ? base64Attachments : undefined, true);
             }
-        })();
+        } else {
+            a0ModeIndicatorsRef.current.set(finalMessage, modeIndicators);
+            dispatchMessage(capturedAgentId, finalMessage, sessionKey, base64Attachments.length > 0 ? base64Attachments : undefined);
+        }
+
+        // ── BACKGROUND: file upload, conversation creation, DB persistence ──
+        // All of this runs in the background — the UI is already updated above.
+        // NOTE: For companion mode, persistence is handled inline above.
+        const isCompanionBg = useCompanionModeStore.getState().isCompanionMode(capturedAgentId);
+        if (!isCompanionBg) {
+            (async () => {
+                try {
+                    // 1. Read files to base64 + upload to Supabase Storage (background)
+                    let publicAttachments: any[] | undefined = undefined;
+                    if (base64Attachments.length > 0) {
+
+                        publicAttachments = await Promise.all(base64Attachments.map(async (att) => {
+                            try {
+                                const res = await fetch('/api/chat/upload', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ name: att.name, type: att.type, data: att.url }),
+                                });
+                                if (res.ok) {
+                                    const { url: publicUrl } = await res.json();
+                                    return { ...att, publicUrl };
+                                }
+                            } catch (err) {
+                                console.error('[Upload attachment]', err);
+                            }
+                            return { ...att, publicUrl: null };
+                        }));
+                    }
+
+                    // 2. Auto-create conversation if needed (background)
+                    let convoId = capturedConvoId;
+                    if (!convoId) {
+                        try {
+                            const newId = await chatStore.createConversation(
+                                capturedAgentId,
+                                cleanMessage.substring(0, 60) || `Chat with ${capturedAgentName}`
+                            );
+                            if (newId) {
+                                convoId = newId;
+                                setActiveConversationId(newId);
+                                setSidebarRefreshTrigger(prev => prev + 1);
+                            }
+                        } catch (err) {
+                            console.error('Failed to auto-create conversation:', err);
+                        }
+                    }
+
+                    // 3. Persist user message to Supabase (background)
+                    if (convoId) {
+                        try {
+                            await fetch('/api/chat/messages', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    conversation_id: convoId,
+                                    role: 'user',
+                                    content: cleanMessage,
+                                    metadata: {
+                                        strategyMode: capturedStrategyMode,
+                                        quotedReply: capturedQuotedReply?.text,
+                                        modeIndicators,
+                                        attachments: publicAttachments?.map(a => ({
+                                            name: a.name,
+                                            type: a.type,
+                                            url: a.publicUrl || a.url,
+                                        })),
+                                    },
+                                }),
+                            });
+                        } catch (err) {
+                            console.error('Failed to persist user message:', err);
+                        }
+                    }
+                } catch (err) {
+                    console.error('[Background persist error]', err);
+                }
+            })();
+        }
     };
 
     const handleEscalate = () => {
@@ -803,6 +973,42 @@ export default function ChatPage() {
     const activeAgent = integratedAgents.find(a => a.id === selectedAgentId);
     const isGlobalOrAgentConnected = activeAgent?.isOnline ?? false;
     const isAgentZero = activeAgent?.provider === 'agent-zero' || activeAgent?.provider === 'external';
+
+    // Handle selecting a conversation from the sidebar — syncs companion mode toggle
+    const handleSelectConversation = useCallback(async (conversationId: string | undefined) => {
+        if (!conversationId || !selectedAgentId) {
+            setActiveConversationId(conversationId);
+            return;
+        }
+
+        // Try to determine the conversation's mode from the chatStore conversations map
+        const convo = chatStore.conversations[conversationId];
+        if (convo && convo.mode) {
+            const shouldBeCompanion = convo.mode === 'companion';
+            const currentlyCompanion = useCompanionModeStore.getState().isCompanionMode(selectedAgentId);
+            if (shouldBeCompanion !== currentlyCompanion) {
+                useCompanionModeStore.getState().setCompanionMode(selectedAgentId, shouldBeCompanion);
+            }
+        } else {
+            // Fallback: fetch conversation details from the API if not in local store
+            try {
+                const res = await fetch(`/api/chat/conversations/${conversationId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const mode = data.conversation?.mode || 'agent';
+                    const shouldBeCompanion = mode === 'companion';
+                    const currentlyCompanion = useCompanionModeStore.getState().isCompanionMode(selectedAgentId);
+                    if (shouldBeCompanion !== currentlyCompanion) {
+                        useCompanionModeStore.getState().setCompanionMode(selectedAgentId, shouldBeCompanion);
+                    }
+                }
+            } catch {
+                // Non-critical — toggle stays as-is
+            }
+        }
+
+        setActiveConversationId(conversationId);
+    }, [selectedAgentId, chatStore.conversations]);
 
     // Build allAgents list for sidebar
     const allAgentsList = useMemo(() =>
@@ -840,7 +1046,7 @@ export default function ChatPage() {
                         allAgents={allAgentsList}
                         className="w-[280px] h-full"
                         activeConversationId={activeConversationId}
-                        onSelectConversation={setActiveConversationId}
+                        onSelectConversation={handleSelectConversation}
                         refreshTrigger={sidebarRefreshTrigger}
                     />
                 )}
@@ -881,7 +1087,7 @@ export default function ChatPage() {
                                         chatStore.setActiveAgent(agent.id);
                                     }}
                                     className={cn(
-                                        "relative flex items-center text-xs h-8 px-4 gap-2.5 transition-all flex-shrink-0 rounded-full",
+                                        "relative flex items-center text-xs h-8 px-4 gap-2.5 transition-all flex-shrink-0 rounded-sm",
                                         isSelected
                                             ? "bg-orange-500/15 text-orange-400 border-2 border-orange-500/50 ring-2 ring-orange-500/20"
                                             : "bg-zinc-900/60 text-muted-foreground border border-zinc-800 hover:border-zinc-600 hover:text-foreground hover:bg-zinc-800/60"
@@ -896,6 +1102,14 @@ export default function ChatPage() {
                             );
                         })}
                     </div>
+
+                    {/* Companion Mode Toggle */}
+                    {selectedAgentId && (
+                        <CompanionToggle
+                            agentId={selectedAgentId}
+                            onModeSwitch={() => setSidebarRefreshTrigger(t => t + 1)}
+                        />
+                    )}
                 </div>
 
                 {/* ─── Main Content (Chat + Process Hierarchy) ─── */}
@@ -910,8 +1124,8 @@ export default function ChatPage() {
                         onPaste={handlePaste}
                     >
                         {isDraggingOver && (
-                            <div className="absolute inset-0 z-50 m-2 rounded-2xl border-2 border-dashed border-orange-500/50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none transition-all">
-                                <div className="p-4 rounded-full bg-orange-500/10 mb-2">
+                            <div className="absolute inset-0 z-50 m-2 rounded-md border-2 border-dashed border-orange-500/50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none transition-all">
+                                <div className="p-4 rounded-sm bg-orange-500/10 mb-2">
                                     <IconPaperclip className="w-8 h-8 text-orange-500" />
                                 </div>
                                 <p className="text-lg font-semibold text-foreground">Drop to add files</p>
@@ -990,7 +1204,7 @@ export default function ChatPage() {
                                                                 rows={4}
                                                             />
                                                             <div className="flex items-center gap-1 self-end mt-1">
-                                                                <Button size="icon" variant="ghost" onClick={() => setEditingMessageId(null)} className="h-6 w-6 rounded-full hover:bg-white/10"><XIcon className="w-3.5 h-3.5 text-red-400" /></Button>
+                                                                <Button size="icon" variant="ghost" onClick={() => setEditingMessageId(null)} className="h-6 w-6 rounded-sm hover:bg-white/10"><XIcon className="w-3.5 h-3.5 text-red-400" /></Button>
                                                                 <Button size="icon" variant="ghost" onClick={async () => {
                                                                     if (editDraft.trim()) {
                                                                         const msgIndex = allConversationMessages.findIndex(m => m.id === msg.id);
@@ -1046,7 +1260,7 @@ export default function ChatPage() {
                                                                         }
                                                                     }
                                                                     setEditingMessageId(null);
-                                                                }} className="h-6 w-6 rounded-full hover:bg-white/10"><Check className="w-3.5 h-3.5 text-green-400" /></Button>
+                                                                }} className="h-6 w-6 rounded-sm hover:bg-white/10"><Check className="w-3.5 h-3.5 text-green-400" /></Button>
                                                             </div>
                                                         </div>
                                                     ) : (renderMessageContent(isUser ? stripInjectedPrefixes(msg.content) : msg.content) || (msg.attachments && msg.attachments.length > 0)) && (
@@ -1087,19 +1301,19 @@ export default function ChatPage() {
                                                                     return (
                                                                         <div className="flex items-center gap-1 mt-1">
                                                                             {indicators.hasGoal && (
-                                                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-success) 12%, transparent)', color: 'var(--nerv-success)', border: '1px solid color-mix(in srgb, var(--nerv-success) 20%, transparent)' }} title="Goal active">
+                                                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-success) 12%, transparent)', color: 'var(--nerv-success)', border: '1px solid color-mix(in srgb, var(--nerv-success) 20%, transparent)' }} title="Goal active">
                                                                                     <Target className="w-2.5 h-2.5" />
                                                                                     <span>Goal</span>
                                                                                 </div>
                                                                             )}
                                                                             {indicators.hasConstraints && (
-                                                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-warn) 12%, transparent)', color: 'var(--nerv-warn)', border: '1px solid color-mix(in srgb, var(--nerv-warn) 20%, transparent)' }} title="Constraints active">
+                                                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-warn) 12%, transparent)', color: 'var(--nerv-warn)', border: '1px solid color-mix(in srgb, var(--nerv-warn) 20%, transparent)' }} title="Constraints active">
                                                                                     <Shield className="w-2.5 h-2.5" />
                                                                                     <span>Constraints</span>
                                                                                 </div>
                                                                             )}
                                                                             {indicators.hasStrategy && (
-                                                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-cyan) 12%, transparent)', color: 'var(--nerv-cyan)', border: '1px solid color-mix(in srgb, var(--nerv-cyan) 20%, transparent)' }} title={`Strategy: ${indicators.strategyMode || 'active'}`}>
+                                                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-cyan) 12%, transparent)', color: 'var(--nerv-cyan)', border: '1px solid color-mix(in srgb, var(--nerv-cyan) 20%, transparent)' }} title={`Strategy: ${indicators.strategyMode || 'active'}`}>
                                                                                     <Compass className="w-2.5 h-2.5" />
                                                                                     <span>{indicators.strategyMode ? indicators.strategyMode.charAt(0).toUpperCase() + indicators.strategyMode.slice(1) : 'Strategy'}</span>
                                                                                 </div>
@@ -1170,7 +1384,7 @@ export default function ChatPage() {
                             {/* ═══ BRANCHING OVERLAY ═══ */}
                             {isBranching && (
                                 <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-                                    <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-xl" style={{ background: 'var(--popover)', border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                                    <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-md" style={{ background: 'var(--popover)', border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
                                         <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
                                         <span className="text-[13px] font-medium text-foreground">Branching conversation…</span>
                                         <span className="text-[11px] text-muted-foreground">Copying messages to new branch</span>
@@ -1202,7 +1416,7 @@ export default function ChatPage() {
                             {showScrollBottom && (
                                 <button
                                     onClick={scrollToBottom}
-                                    className="absolute left-1/2 -translate-x-1/2 -top-12 z-50 p-2 rounded-full bg-background/60 backdrop-blur-md border border-border/50 text-foreground shadow-lg hover:bg-accent transition-all flex items-center justify-center hover:-translate-y-1 hover:shadow-xl hover:scale-105"
+                                    className="absolute left-1/2 -translate-x-1/2 -top-12 z-50 p-2 rounded-sm bg-background/60 backdrop-blur-md border border-border/50 text-foreground shadow-lg hover:bg-accent transition-all flex items-center justify-center hover:-translate-y-1 hover:shadow-xl hover:scale-105"
                                     title="Jump to latest message"
                                     style={{
                                         boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
@@ -1227,7 +1441,7 @@ export default function ChatPage() {
                                         disabled={!selectedAgentId || filteredMessages.length === 0}
                                         variant="ghost"
                                         size="sm"
-                                        className="text-[11px] h-8 px-3 gap-1.5 rounded-full disabled:opacity-30 transition-all border border-transparent hover:border-border/50"
+                                        className="text-[11px] h-8 px-3 gap-1.5 rounded-sm disabled:opacity-30 transition-all border border-transparent hover:border-border/50"
                                         style={{ color: 'var(--nerv-text-tertiary)' }}
                                         onMouseEnter={e => {
                                             (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px var(--nerv-cyan-glow)';
@@ -1246,7 +1460,7 @@ export default function ChatPage() {
                                         disabled={!selectedAgentId || visibleMessages.length === 0}
                                         variant="ghost"
                                         size="sm"
-                                        className="text-[11px] h-8 px-3 gap-1.5 rounded-full disabled:opacity-30 transition-all border border-transparent hover:border-border/50"
+                                        className="text-[11px] h-8 px-3 gap-1.5 rounded-sm disabled:opacity-30 transition-all border border-transparent hover:border-border/50"
                                         style={{ color: 'var(--nerv-text-tertiary)' }}
                                     >
                                         <Package className="w-3 h-3" />
@@ -1273,7 +1487,7 @@ export default function ChatPage() {
                                 />
                             )}
 
-                            <div className="bg-background border border-border shadow-sm rounded-3xl focus-within:ring-1 focus-within:ring-border/50 transition-all relative">
+                            <div className="bg-background border border-border shadow-sm rounded-md focus-within:ring-1 focus-within:ring-border/50 transition-all relative">
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -1315,7 +1529,7 @@ export default function ChatPage() {
                                                         if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl);
                                                         setPendingFiles(prev => prev.filter((_, j) => j !== i));
                                                     }}
-                                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
                                                     style={{ background: 'rgba(0,0,0,0.6)' }}
                                                 >
                                                     <XIcon className="w-2.5 h-2.5 text-white" />
@@ -1351,12 +1565,12 @@ export default function ChatPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-8 w-8 p-0 rounded-full border border-border hover:bg-accent"
+                                                    className="h-8 w-8 p-0 rounded-sm border border-border hover:bg-accent"
                                                 >
                                                     <IconPlus className="size-3" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="max-w-xs rounded-2xl p-1.5">
+                                            <DropdownMenuContent align="start" className="max-w-xs rounded-md p-1.5">
                                                 <DropdownMenuGroup className="space-y-1">
                                                     <DropdownMenuItem
                                                         className="rounded-[calc(1rem-6px)] text-xs"
@@ -1421,7 +1635,7 @@ export default function ChatPage() {
                                         <Button
                                             type="submit"
                                             disabled={!message.trim() || !activeAgent?.isOnline}
-                                            className="size-7 p-0 rounded-full bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="size-7 p-0 rounded-sm bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
                                             onClick={handleSendMessage}
                                         >
                                             <IconSend className="size-3 text-primary-foreground" />
@@ -1447,7 +1661,7 @@ export default function ChatPage() {
                         <div className="w-0.5 h-12 bg-zinc-700/0 group-hover:bg-zinc-700/50 rounded-full transition-colors duration-300" />
                     </div>
 
-                    <div className="w-full h-full border border-white/[0.06] rounded-xl overflow-hidden" style={{ background: 'rgba(8,7,6,0.5)' }}>
+                    <div className="w-full h-full border border-white/[0.06] rounded-md overflow-hidden" style={{ background: 'rgba(8,7,6,0.5)' }}>
                         <UnifiedProcessTree
                             agentId={selectedAgentId}
                             provider={activeAgent?.provider || 'openclaw'}
@@ -1562,3 +1776,138 @@ Note: For readiness status, only use "ready", "warning", or "blocked".`;
         </div>
     );
 }
+
+/* ─── Companion Mode Toggle ─── */
+function CompanionToggle({ agentId, onModeSwitch }: { agentId: string; onModeSwitch?: () => void }) {
+    const isCompanion = useCompanionModeStore((s) => s.isCompanionMode(agentId));
+    const setCompanionMode = useCompanionModeStore((s) => s.setCompanionMode);
+    const chatStore = useChatStore();
+    const [showModal, setShowModal] = useState(false);
+    const [switching, setSwitching] = useState(false);
+    const targetMode = isCompanion ? 'agent' : 'companion';
+
+    const handleClick = () => {
+        setShowModal(true);
+    };
+
+    const handleConfirm = async () => {
+        setSwitching(true);
+        try {
+            // Toggle the mode
+            setCompanionMode(agentId, !isCompanion);
+
+            // Create a new conversation with the target mode
+            const newMode = targetMode;
+            const convId = await chatStore.createConversation(agentId, undefined, newMode);
+
+            if (convId) {
+                await chatStore.setActiveConversation(convId);
+            }
+
+            // Trigger sidebar refresh
+            onModeSwitch?.();
+        } catch (err) {
+            console.error('[CompanionToggle] mode switch failed:', err);
+        } finally {
+            setSwitching(false);
+            setShowModal(false);
+        }
+    };
+
+    return (
+        <>
+            <button
+                onClick={handleClick}
+                className={cn(
+                    "relative flex items-center gap-1.5 h-8 px-3 rounded-sm text-xs font-medium transition-all duration-200 shrink-0 border",
+                    isCompanion
+                        ? "bg-pink-500/15 text-pink-400 border-pink-500/40 ring-1 ring-pink-500/20"
+                        : "bg-zinc-900/60 text-muted-foreground border-zinc-800 hover:border-zinc-600 hover:text-foreground hover:bg-zinc-800/60"
+                )}
+                title={isCompanion ? "Companion Mode — click to switch to Agent Mode" : "Agent Mode — click to switch to Companion Mode"}
+            >
+                {isCompanion ? (
+                    <Heart className="w-3.5 h-3.5 fill-pink-400" />
+                ) : (
+                    <Bot className="w-3.5 h-3.5" />
+                )}
+                <span
+                    className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-colors",
+                        isCompanion ? "bg-pink-400 animate-pulse" : "bg-zinc-600"
+                    )}
+                />
+            </button>
+
+            {/* Confirmation Modal */}
+            {showModal && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+                    onClick={() => !switching && setShowModal(false)}
+                >
+                    <div
+                        className="mx-4 p-5 rounded-md w-full max-w-[340px]"
+                        style={{
+                            background: 'var(--nerv-surface-3, #1a1a1a)',
+                            border: `1px solid ${targetMode === 'companion' ? 'rgba(236,72,153,0.3)' : 'rgba(100,100,120,0.3)'}`,
+                            boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-2.5 mb-3">
+                            {targetMode === 'companion' ? (
+                                <div className="p-1.5 rounded-sm bg-pink-500/15 border border-pink-500/20">
+                                    <Heart className="w-4 h-4 text-pink-400 fill-pink-400/30" />
+                                </div>
+                            ) : (
+                                <div className="p-1.5 rounded-sm bg-zinc-700/30 border border-zinc-600/30">
+                                    <Bot className="w-4 h-4 text-zinc-400" />
+                                </div>
+                            )}
+                            <span className="text-[13px] font-semibold" style={{ color: 'var(--nerv-text-primary, #fff)' }}>
+                                Switch to {targetMode === 'companion' ? 'Companion' : 'Agent'} Mode?
+                            </span>
+                        </div>
+
+                        <p className="text-[11px] mb-4 leading-relaxed" style={{ color: 'var(--nerv-text-secondary, #aaa)' }}>
+                            {targetMode === 'companion'
+                                ? 'This will start a new conversation using your Companion profile. OpenClaw agent files will be bypassed and the companion model will be used instead.'
+                                : 'This will start a new conversation using the standard OpenClaw agent configuration.'
+                            }
+                        </p>
+
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => setShowModal(false)}
+                                disabled={switching}
+                                className="px-3 py-1.5 rounded-sm text-[11px] font-medium transition-colors"
+                                style={{
+                                    color: 'var(--nerv-text-secondary, #aaa)',
+                                    background: 'var(--nerv-surface-4, #252525)',
+                                    border: '1px solid var(--nerv-border-subtle, #333)',
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirm}
+                                disabled={switching}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-sm text-[11px] font-medium transition-all flex items-center gap-1.5",
+                                    targetMode === 'companion'
+                                        ? "bg-pink-500/20 text-pink-400 border border-pink-500/30 hover:bg-pink-500/30"
+                                        : "bg-zinc-700/30 text-zinc-300 border border-zinc-600/30 hover:bg-zinc-700/50"
+                                )}
+                            >
+                                {switching && <Loader2 className="w-3 h-3 animate-spin" />}
+                                {switching ? 'Switching…' : `Switch to ${targetMode === 'companion' ? 'Companion' : 'Agent'}`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+

@@ -1064,7 +1064,7 @@ export function useSocket() {
     /**
      * Send a chat message to an agent via the gateway `chat.send` RPC.
      */
-    const sendChatMessage = useCallback((agentId: string, message: string, customSessionKey?: string, attachments?: any[], skipStoreAdd?: boolean): string => {
+    const sendChatMessage = useCallback((agentId: string, message: string, customSessionKey?: string, attachments?: any[], skipStoreAdd?: boolean, modelOverride?: string): string => {
         const gw = getGateway();
         const sessionKey = customSessionKey || `agent:${agentId}:main`;
         const idempotencyKey = uid();
@@ -1092,7 +1092,8 @@ export function useSocket() {
                 sessionKey,
                 message,
                 attachments: gatewayAttachments,
-                idempotencyKey
+                idempotencyKey,
+                ...(modelOverride ? { model: modelOverride } : {}),
             }).then((res) => {
                 console.log('[chat.send ok]', res);
                 const gatewayRunId = res?.runId;

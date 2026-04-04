@@ -59,7 +59,7 @@ export default function ApiReferencePage() {
                 )}
             </div>
 
-            <div className="flex items-center gap-1 bg-accent/30 rounded-xl p-1 w-fit">
+            <div className="flex items-center gap-1 bg-accent/30 rounded-md p-1 w-fit">
                 <button onClick={() => setTab("endpoints")} className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${tab === "endpoints" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
                     <Braces className="w-3.5 h-3.5 inline mr-1.5" />Endpoints
                 </button>
@@ -84,7 +84,7 @@ export default function ApiReferencePage() {
                             const expanded = expandedEndpoint === key;
                             return (
                                 <motion.div key={key} layout>
-                                    <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0 cursor-pointer hover:bg-accent/20 transition-colors"
+                                    <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0 cursor-pointer hover:bg-accent/20 transition-colors"
                                         onClick={() => setExpandedEndpoint(expanded ? null : key)}>
                                         <CardContent className="p-3">
                                             <div className="flex items-center gap-3">
@@ -143,7 +143,7 @@ export default function ApiReferencePage() {
                 ) : (
                     <div className="space-y-2 pb-6 max-w-2xl">
                         {keys.length === 0 ? (
-                            <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                            <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                                 <CardContent className="p-8 text-center">
                                     <Key className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                                     <p className="text-sm text-muted-foreground">No API keys.</p>
@@ -154,7 +154,7 @@ export default function ApiReferencePage() {
                             <AnimatePresence mode="popLayout">
                                 {keys.map((k: any) => (
                                     <motion.div key={k.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                                        <Card className="rounded-xl border-border bg-card shadow-none py-0 gap-0">
+                                        <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0">
                                             <CardContent className="p-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent/50 text-amber-400 shrink-0">
@@ -227,13 +227,13 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-md">
                 <DialogHeader><DialogTitle className="text-base">{newKey ? "API Key Created" : "New API Key"}</DialogTitle></DialogHeader>
                 {newKey ? (
                     <div className="space-y-3 py-2">
                         <p className="text-[11px] text-amber-400">⚠ Copy this key now. It won't be shown again.</p>
                         <div className="flex items-center gap-2">
-                            <code className="flex-1 text-[11px] font-mono px-3 py-2 rounded-xl bg-accent/50 text-foreground break-all">{newKey}</code>
+                            <code className="flex-1 text-[11px] font-mono px-3 py-2 rounded-md bg-accent/50 text-foreground break-all">{newKey}</code>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg" onClick={handleCopy}>
                                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                             </Button>
@@ -244,7 +244,7 @@ function CreateKeyDialog({ open, onOpenChange, onCreated }: { open: boolean; onO
                         <div className="space-y-1.5">
                             <label className="text-[11px] text-muted-foreground">Name</label>
                             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My API Key"
-                                className="h-8 text-[13px] rounded-xl border-border bg-background" />
+                                className="h-8 text-[13px] rounded-md border-border bg-background" />
                         </div>
                     </div>
                 )}

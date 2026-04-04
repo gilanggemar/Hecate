@@ -22,7 +22,7 @@ export const QuotedReplyBanner: React.FC<QuotedReplyBannerProps> = ({
     return (
         <div
             className={cn(
-                "flex items-start gap-2 px-3 py-2 rounded-xl transition-all duration-200",
+                "flex items-start gap-2 px-3 py-2 rounded-md transition-all duration-200",
                 className
             )}
             style={{

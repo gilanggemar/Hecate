@@ -70,7 +70,7 @@ export function PopoverForm({
               className="absolute p-1 overflow-visible bg-muted shadow-2xl z-[100] outline-none border border-zinc-800"
               ref={ref}
               style={{
-                borderRadius: 10,
+                borderRadius: 6,
                 width,
                 height,
                 top: '50%',
@@ -126,7 +126,7 @@ export function PopoverForm({
                       bounce: 0,
                     }}
                     key="open-child"
-                    style={{ borderRadius: 10 }}
+                    style={{ borderRadius: 6 }}
                     className="h-full border bg-white dark:bg-[#121212] z-20 "
                   >
                     {openChild}

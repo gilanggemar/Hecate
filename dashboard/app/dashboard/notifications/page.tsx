@@ -107,7 +107,7 @@ export default function NotificationsPage() {
                 </div>
             </div>
 
-            <div className="flex items-center gap-1 bg-accent/30 rounded-xl p-1 w-fit">
+            <div className="flex items-center gap-1 bg-accent/30 rounded-md p-1 w-fit">
                 <button
                     onClick={() => setTab("inbox")}
                     className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${tab === "inbox" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -147,7 +147,7 @@ export default function NotificationsPage() {
                             </div>
                         )}
                         {notifications.length === 0 && pendingGates.length === 0 ? (
-                            <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                            <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                                 <CardContent className="p-8 text-center">
                                     <BellOff className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                                     <p className="text-sm text-muted-foreground">No notifications.</p>
@@ -167,7 +167,7 @@ export default function NotificationsPage() {
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, scale: 0.95 }}
                                         >
-                                            <Card className={`rounded-xl border-border shadow-none py-0 gap-0 transition-colors ${n.isRead ? "bg-card" : "bg-accent/20 border-foreground/5"
+                                            <Card className={`rounded-md border-border shadow-none py-0 gap-0 transition-colors ${n.isRead ? "bg-card" : "bg-accent/20 border-foreground/5"
                                                 }`}>
                                                 <CardContent className="p-3">
                                                     <div className="flex items-start gap-3">
@@ -219,7 +219,7 @@ export default function NotificationsPage() {
                 ) : (
                     <div className="space-y-2 pb-6 max-w-2xl">
                         {alertRules.length === 0 ? (
-                            <Card className="rounded-xl border-dashed border-border bg-card/50 shadow-none">
+                            <Card className="rounded-md border-dashed border-border bg-card/50 shadow-none">
                                 <CardContent className="p-8 text-center">
                                     <Shield className="w-8 h-8 mx-auto text-muted-foreground/40 mb-3" />
                                     <p className="text-sm text-muted-foreground">No alert rules configured.</p>
@@ -233,7 +233,7 @@ export default function NotificationsPage() {
                                     const sevColor = SEVERITY_COLORS[rule.severity as AlertSeverity] || "text-muted-foreground";
                                     return (
                                         <motion.div key={rule.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                                            <Card className={`rounded-xl border-border shadow-none py-0 gap-0 ${rule.isActive ? "bg-card" : "bg-card/50 opacity-60"}`}>
+                                            <Card className={`rounded-md border-border shadow-none py-0 gap-0 ${rule.isActive ? "bg-card" : "bg-card/50 opacity-60"}`}>
                                                 <CardContent className="p-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-accent/50 ${sevColor} shrink-0`}>
@@ -331,7 +331,7 @@ function PendingApprovalCard({
     };
 
     return (
-        <Card className="rounded-xl border-orange-500/30 bg-orange-500/5 shadow-none py-0 gap-0">
+        <Card className="rounded-md border-orange-500/30 bg-orange-500/5 shadow-none py-0 gap-0">
             <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500/15 text-orange-400 shrink-0 mt-0.5">
@@ -427,7 +427,7 @@ function CreateAlertDialog({ open, onOpenChange, onCreated }: { open: boolean; o
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-md">
                 <DialogHeader>
                     <DialogTitle className="text-base">New Alert Rule</DialogTitle>
                 </DialogHeader>
@@ -435,14 +435,14 @@ function CreateAlertDialog({ open, onOpenChange, onCreated }: { open: boolean; o
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground">Name</label>
                         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="High cost alert"
-                            className="h-8 text-[13px] rounded-xl border-border bg-background" />
+                            className="h-8 text-[13px] rounded-md border-border bg-background" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <label className="text-[11px] text-muted-foreground">Condition</label>
                             <Select value={condition} onValueChange={setCondition}>
-                                <SelectTrigger className="h-8 text-[12px] rounded-xl border-border bg-background"><SelectValue /></SelectTrigger>
-                                <SelectContent className="rounded-xl">
+                                <SelectTrigger className="h-8 text-[12px] rounded-md border-border bg-background"><SelectValue /></SelectTrigger>
+                                <SelectContent className="rounded-md">
                                     {Object.entries(CONDITION_LABELS).map(([k, v]) => (
                                         <SelectItem key={k} value={k} className="text-xs rounded-lg">{v.label}</SelectItem>
                                     ))}
@@ -452,14 +452,14 @@ function CreateAlertDialog({ open, onOpenChange, onCreated }: { open: boolean; o
                         <div className="space-y-1.5">
                             <label className="text-[11px] text-muted-foreground">Threshold</label>
                             <Input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)}
-                                className="h-8 text-[12px] rounded-xl border-border bg-background" />
+                                className="h-8 text-[12px] rounded-md border-border bg-background" />
                         </div>
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[11px] text-muted-foreground">Severity</label>
                         <Select value={severity} onValueChange={setSeverity}>
-                            <SelectTrigger className="h-8 text-[12px] rounded-xl border-border bg-background"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-xl">
+                            <SelectTrigger className="h-8 text-[12px] rounded-md border-border bg-background"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-md">
                                 <SelectItem value="low" className="text-xs rounded-lg">Low</SelectItem>
                                 <SelectItem value="medium" className="text-xs rounded-lg">Medium</SelectItem>
                                 <SelectItem value="high" className="text-xs rounded-lg">High</SelectItem>

@@ -16,7 +16,7 @@ export function LogTerminal({ logs }: { logs: string[] }) {
     }, [logs]);
 
     return (
-        <div className="flex flex-col h-full bg-background border border-border rounded-xl text-xs overflow-hidden">
+        <div className="flex flex-col h-full bg-background border border-border rounded-md text-xs overflow-hidden">
             {/* Terminal Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-accent/50">
                 <span className="text-muted-foreground text-xs">System Logs</span>

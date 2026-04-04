@@ -16,7 +16,7 @@ export function NoteNode(props: NodeProps) {
                 minWidth: 160,
                 maxWidth: 240,
                 padding: 12,
-                borderRadius: 10,
+                borderRadius: 6,
                 background: "oklch(0.16 0.02 80 / 0.75)",
                 backdropFilter: "blur(8px)",
                 border: `1.5px dashed ${selected ? accent : "oklch(1 0 0 / 0.12)"}`,

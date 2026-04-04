@@ -891,7 +891,7 @@ export default function SummitPage() {
                                     setActiveSessionId(null);
                                     clearSummit();
                                 }}
-                                className="h-6 w-6 p-0 rounded-full hover:bg-orange-500/10"
+                                className="h-6 w-6 p-0 rounded-sm hover:bg-orange-500/10"
                                 aria-label="New session"
                             >
                                 <Plus className="w-3.5 h-3.5 text-orange-500" />
@@ -920,7 +920,7 @@ export default function SummitPage() {
                                         loadHistoricalSession(s.id);
                                     }}
                                     className={cn(
-                                        "group relative w-full text-left p-2.5 rounded-xl text-xs transition-colors overflow-hidden",
+                                        "group relative w-full text-left p-2.5 rounded-md text-xs transition-colors overflow-hidden",
                                         isActive
                                             ? "bg-orange-500/15 text-orange-400 border border-orange-500/30"
                                             : isBlocked
@@ -1020,7 +1020,7 @@ export default function SummitPage() {
                                     disabled={selectedIds.size < 2 || !isConnected}
                                     size="sm"
                                     className={cn(
-                                        "rounded-full text-xs h-8 px-4 gap-2",
+                                        "rounded-sm text-xs h-8 px-4 gap-2",
                                         selectedIds.size >= 2 && isConnected
                                             ? "bg-orange-500 text-white hover:bg-orange-600"
                                             : "bg-accent text-muted-foreground cursor-not-allowed"
@@ -1038,7 +1038,7 @@ export default function SummitPage() {
                                         }}
                                         variant="outline"
                                         size="sm"
-                                        className="rounded-full text-xs h-8 px-4 gap-2 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                                        className="rounded-sm text-xs h-8 px-4 gap-2 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
                                     >
                                         <Check className="w-3 h-3" />
                                         Force Agree
@@ -1047,7 +1047,7 @@ export default function SummitPage() {
                                         onClick={endSession}
                                         variant="outline"
                                         size="sm"
-                                        className="rounded-full text-xs h-8 px-4 gap-2 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
+                                        className="rounded-sm text-xs h-8 px-4 gap-2 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
                                     >
                                         <X className="w-3 h-3" />
                                         Stop Summit
@@ -1069,7 +1069,7 @@ export default function SummitPage() {
                                         key={agent.id}
                                         onClick={() => toggleAgent(agent.id)}
                                         className={cn(
-                                            "px-4 py-1.5 rounded-full text-xs transition-all flex items-center gap-2 border",
+                                            "px-4 py-1.5 rounded-sm text-xs transition-all flex items-center gap-2 border",
                                             isSelected
                                                 ? `${color.bg} ${color.text} ${color.border}`
                                                 : "bg-transparent text-muted-foreground border-border hover:border-foreground/30"
@@ -1090,8 +1090,8 @@ export default function SummitPage() {
                 {/* Messages Area + Timeline */}
                 <div className="flex-1 min-h-0 flex relative">
                     {isDraggingOver && (
-                        <div className="absolute inset-0 z-50 m-2 rounded-2xl border-2 border-dashed border-orange-500/50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none transition-all">
-                            <div className="p-4 rounded-full bg-orange-500/10 mb-2"><IconPaperclip className="w-8 h-8 text-orange-500" /></div>
+                        <div className="absolute inset-0 z-50 m-2 rounded-md border-2 border-dashed border-orange-500/50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none transition-all">
+                            <div className="p-4 rounded-sm bg-orange-500/10 mb-2"><IconPaperclip className="w-8 h-8 text-orange-500" /></div>
                             <p className="text-lg font-semibold text-foreground">Drop to add files</p>
                             <p className="text-sm text-muted-foreground">Attach images, documents, or data files</p>
                         </div>
@@ -1113,7 +1113,7 @@ export default function SummitPage() {
                             <Button
                                 onClick={handleContinue}
                                 variant="outline"
-                                className="mt-4 rounded-full text-xs"
+                                className="mt-4 rounded-sm text-xs"
                             >
                                 <Zap className="w-3.5 h-3.5" />
                                 Start Deliberation
@@ -1123,7 +1123,7 @@ export default function SummitPage() {
                         <>
                         {displayMessages.length > visibleWindow && (
                             <div className="flex justify-center py-2">
-                                <button onClick={() => setVisibleWindow(prev => prev + 50)} className="text-[11px] text-muted-foreground hover:text-foreground px-3 py-1 rounded-full border border-border hover:bg-accent transition-colors">
+                                <button onClick={() => setVisibleWindow(prev => prev + 50)} className="text-[11px] text-muted-foreground hover:text-foreground px-3 py-1 rounded-sm border border-border hover:bg-accent transition-colors">
                                     Load {Math.min(50, displayMessages.length - visibleWindow)} older messages
                                 </button>
                             </div>
@@ -1186,8 +1186,8 @@ export default function SummitPage() {
                                             <div className="flex flex-col gap-2 w-full mt-1 min-w-[200px]">
                                                 <Textarea autoFocus value={editDraft} onChange={(e) => setEditDraft(e.target.value)} className="text-[13px] bg-background text-foreground resize-none border-border/50 focus-visible:ring-1 focus-visible:ring-orange-500/50" rows={4} />
                                                 <div className="flex items-center gap-1 self-end mt-1">
-                                                    <Button size="icon" variant="ghost" onClick={() => setEditingMessageId(null)} className="h-6 w-6 rounded-full hover:bg-white/10"><X className="w-3.5 h-3.5 text-red-400" /></Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => { setEditingMessageId(null); }} className="h-6 w-6 rounded-full hover:bg-white/10"><Check className="w-3.5 h-3.5 text-green-400" /></Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => setEditingMessageId(null)} className="h-6 w-6 rounded-sm hover:bg-white/10"><X className="w-3.5 h-3.5 text-red-400" /></Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => { setEditingMessageId(null); }} className="h-6 w-6 rounded-sm hover:bg-white/10"><Check className="w-3.5 h-3.5 text-green-400" /></Button>
                                                 </div>
                                             </div>
                                         ) : (
@@ -1205,7 +1205,7 @@ export default function SummitPage() {
                                                             const isError = status === 'failed';
                                                             const inProgress = status === 'in_progress';
                                                             return (
-                                                                <div key={tcIdx} className={cn("bg-accent border rounded-xl p-3 w-full text-sm mt-1 min-w-0", isError ? "border-red-500/30" : "border-border")}>
+                                                                <div key={tcIdx} className={cn("bg-accent border rounded-md p-3 w-full text-sm mt-1 min-w-0", isError ? "border-red-500/30" : "border-border")}>
                                                                     <div className="flex items-center justify-between mb-2">
                                                                         <div className="flex items-center gap-2 text-foreground text-xs font-medium">
                                                                             {inProgress ? <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" /> : <Puzzle className={cn("w-3.5 h-3.5", isError ? "text-red-400" : "text-muted-foreground")} />}
@@ -1260,9 +1260,9 @@ export default function SummitPage() {
                                                         if (!hasAny) return null;
                                                         return (
                                                             <div className="flex items-center gap-1 mt-1">
-                                                                {indicators.hasGoal && (<div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-success) 12%, transparent)', color: 'var(--nerv-success)', border: '1px solid color-mix(in srgb, var(--nerv-success) 20%, transparent)' }}><Target className="w-2.5 h-2.5" /><span>Goal</span></div>)}
-                                                                {indicators.hasConstraints && (<div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-warn) 12%, transparent)', color: 'var(--nerv-warn)', border: '1px solid color-mix(in srgb, var(--nerv-warn) 20%, transparent)' }}><Shield className="w-2.5 h-2.5" /><span>Constraints</span></div>)}
-                                                                {indicators.hasStrategy && (<div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-cyan) 12%, transparent)', color: 'var(--nerv-cyan)', border: '1px solid color-mix(in srgb, var(--nerv-cyan) 20%, transparent)' }}><Compass className="w-2.5 h-2.5" /><span>{indicators.strategyMode ? indicators.strategyMode.charAt(0).toUpperCase() + indicators.strategyMode.slice(1) : 'Strategy'}</span></div>)}
+                                                                {indicators.hasGoal && (<div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-success) 12%, transparent)', color: 'var(--nerv-success)', border: '1px solid color-mix(in srgb, var(--nerv-success) 20%, transparent)' }}><Target className="w-2.5 h-2.5" /><span>Goal</span></div>)}
+                                                                {indicators.hasConstraints && (<div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-warn) 12%, transparent)', color: 'var(--nerv-warn)', border: '1px solid color-mix(in srgb, var(--nerv-warn) 20%, transparent)' }}><Shield className="w-2.5 h-2.5" /><span>Constraints</span></div>)}
+                                                                {indicators.hasStrategy && (<div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-medium" style={{ background: 'color-mix(in srgb, var(--nerv-cyan) 12%, transparent)', color: 'var(--nerv-cyan)', border: '1px solid color-mix(in srgb, var(--nerv-cyan) 20%, transparent)' }}><Compass className="w-2.5 h-2.5" /><span>{indicators.strategyMode ? indicators.strategyMode.charAt(0).toUpperCase() + indicators.strategyMode.slice(1) : 'Strategy'}</span></div>)}
                                                             </div>
                                                         );
                                                     })()}
@@ -1287,7 +1287,7 @@ export default function SummitPage() {
                     {/* Continue card — when rounds reached */}
                     {summitActive && deliberationRound >= maxRounds && !isAnyStreaming && !roundInFlight && (
                         <div className="flex justify-center my-4 w-full">
-                            <Button onClick={() => setMaxRounds(prev => prev + 10)} variant="outline" className="text-xs h-8 rounded-full gap-1.5">
+                            <Button onClick={() => setMaxRounds(prev => prev + 10)} variant="outline" className="text-xs h-8 rounded-sm gap-1.5">
                                 <Play className="w-3 h-3" /> Continue (+10 rounds)
                             </Button>
                         </div>
@@ -1295,7 +1295,7 @@ export default function SummitPage() {
 
                     {/* Scroll to bottom */}
                     {showScrollBottom && (
-                        <button onClick={scrollToBottom} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium shadow-lg transition-all hover:scale-105" style={{ background: 'var(--popover)', border: '1px solid var(--border)', color: 'var(--foreground)' }}>
+                        <button onClick={scrollToBottom} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[11px] font-medium shadow-lg transition-all hover:scale-105" style={{ background: 'var(--popover)', border: '1px solid var(--border)', color: 'var(--foreground)' }}>
                             <ArrowDown className="w-3 h-3" /> New messages
                         </button>
                     )}
@@ -1325,7 +1325,7 @@ export default function SummitPage() {
                 <div className="pt-2 pb-0 w-full">
                     {/* Mission Bar - inside input area */}
                     <MissionBar missionConfig={missionConfig} onMissionChange={setMissionConfig} className="mx-0 mb-2" />
-                    <div className="bg-background border border-border shadow-sm rounded-3xl focus-within:ring-1 focus-within:ring-border/50 transition-all relative">
+                    <div className="bg-background border border-border shadow-sm rounded-md focus-within:ring-1 focus-within:ring-border/50 transition-all relative">
                         <div className="px-3 pt-3 pb-2 grow relative">
                             {(isAnyStreaming || currentSpeaker) && (
                                 <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2 animate-pulse">
@@ -1372,7 +1372,7 @@ export default function SummitPage() {
                                                     <span className="text-[8px] text-muted-foreground truncate max-w-[56px] px-1">{pf.file.name}</span>
                                                 </div>
                                             )}
-                                            <button onClick={() => { if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl); setPendingFiles(prev => prev.filter((_, idx) => idx !== i)); }} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"><X className="w-2.5 h-2.5 text-white" /></button>
+                                            <button onClick={() => { if (pf.previewUrl) URL.revokeObjectURL(pf.previewUrl); setPendingFiles(prev => prev.filter((_, idx) => idx !== i)); }} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-sm bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"><X className="w-2.5 h-2.5 text-white" /></button>
                                         </div>
                                     ))}
                                 </div>
@@ -1421,7 +1421,7 @@ export default function SummitPage() {
                                         .filter(a => a.name.toLowerCase().includes(mentionQuery));
                                     if (filtered.length === 0) return null;
                                     return (
-                                        <div className="absolute bottom-full left-0 mb-1 bg-popover border border-border rounded-xl shadow-xl p-1 min-w-[180px] z-50">
+                                        <div className="absolute bottom-full left-0 mb-1 bg-popover border border-border rounded-md shadow-xl p-1 min-w-[180px] z-50">
                                             {filtered.map((a, i) => (
                                                 <button
                                                     key={a.id}
@@ -1451,7 +1451,7 @@ export default function SummitPage() {
                                 <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFilesSelected(Array.from(e.target.files)); e.target.value = ''; }} />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-accent" disabled={!summitActive}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-sm hover:bg-accent" disabled={!summitActive}>
                                             <IconPlus className="w-4 h-4 text-muted-foreground" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -1475,7 +1475,7 @@ export default function SummitPage() {
                                         onClick={handleContinue}
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 px-3 rounded-full border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 gap-1.5"
+                                        className="h-8 px-3 rounded-sm border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 gap-1.5"
                                     >
                                         <Play className="w-3 h-3" />
                                         <span className="text-xs">Continue</span>
@@ -1487,7 +1487,7 @@ export default function SummitPage() {
                                 <Button
                                     type="submit"
                                     disabled={!message.trim() || !isConnected || !summitActive}
-                                    className="size-8 p-0 rounded-full bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="size-8 p-0 rounded-sm bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
                                     onClick={handleSend}
                                 >
                                     <IconSend className="size-3 text-primary-foreground" />
@@ -1499,7 +1499,7 @@ export default function SummitPage() {
 
                 {/* Floating Quote Popup */}
                 {selectionPopup && (
-                    <div id="nerv-summit-selection-quote" className="fixed z-[9999] flex items-center gap-1 px-2 py-1 rounded-full shadow-lg cursor-pointer transition-all hover:scale-105" style={{ left: selectionPopup.x, top: selectionPopup.y, transform: 'translate(-50%, -100%)', background: 'var(--popover)', border: '1px solid var(--border)' }} onClick={() => { setQuotedReply({ text: selectionPopup.text, messageId: selectionPopup.messageId }); setSelectionPopup(null); window.getSelection()?.removeAllRanges(); }}>
+                    <div id="nerv-summit-selection-quote" className="fixed z-[9999] flex items-center gap-1 px-2 py-1 rounded-sm shadow-lg cursor-pointer transition-all hover:scale-105" style={{ left: selectionPopup.x, top: selectionPopup.y, transform: 'translate(-50%, -100%)', background: 'var(--popover)', border: '1px solid var(--border)' }} onClick={() => { setQuotedReply({ text: selectionPopup.text, messageId: selectionPopup.messageId }); setSelectionPopup(null); window.getSelection()?.removeAllRanges(); }}>
                         <ArrowUpRight className="w-3 h-3 text-foreground" />
                         <span className="text-[10px] font-medium text-foreground">Quote</span>
                     </div>
@@ -1516,7 +1516,7 @@ export default function SummitPage() {
                         <label className="text-[11px] text-muted-foreground block">Topic & Behaviors</label>
                         <div 
                             onClick={() => setShowTopicModal(true)}
-                            className="bg-transparent border border-border text-foreground text-xs rounded-xl p-3 cursor-pointer hover:bg-white/5 transition-colors min-h-[44px] flex items-center"
+                            className="bg-transparent border border-border text-foreground text-xs rounded-md p-3 cursor-pointer hover:bg-white/5 transition-colors min-h-[44px] flex items-center"
                         >
                             {summitTopic.trim() ? (
                                 <span className="line-clamp-2 text-foreground/90 leading-snug">{summitTopic}</span>
@@ -1545,7 +1545,7 @@ export default function SummitPage() {
                                 <div
                                     key={rpcId}
                                     className={cn(
-                                        "p-1.5 px-2 border rounded-xl transition-all",
+                                        "p-1.5 px-2 border rounded-md transition-all",
                                         color.border, color.bg
                                     )}
                                 >
@@ -1580,7 +1580,7 @@ export default function SummitPage() {
                                     onClick={() => toggleAgent(agent.id)}
                                     variant="ghost"
                                     className={cn(
-                                        "w-full p-2.5 h-auto border rounded-xl text-left justify-start",
+                                        "w-full p-2.5 h-auto border rounded-md text-left justify-start",
                                         isSelected
                                             ? `${color.border} ${color.bg}`
                                             : "border-border bg-transparent hover:border-foreground/20"
@@ -1632,15 +1632,15 @@ export default function SummitPage() {
                     <div className="p-3 border-t border-border space-y-2 flex-shrink-0">
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-transparent p-2 border border-border rounded-xl text-center">
+                            <div className="bg-transparent p-2 border border-border rounded-md text-center">
                                 <span className="text-[10px] text-muted-foreground block">Session</span>
                                 <span className="text-foreground font-semibold text-sm">{summitRound}</span>
                             </div>
-                            <div className="bg-transparent p-2 border border-border rounded-xl text-center">
+                            <div className="bg-transparent p-2 border border-border rounded-md text-center">
                                 <span className="text-[10px] text-muted-foreground block">Delib</span>
                                 <span className="text-foreground font-semibold text-sm">{deliberationRound}</span>
                             </div>
-                            <div className="bg-transparent p-2 border border-border rounded-xl text-center">
+                            <div className="bg-transparent p-2 border border-border rounded-md text-center">
                                 <span className="text-[10px] text-muted-foreground block">Replies</span>
                                 <span className="text-foreground font-semibold text-sm">
                                     {assistantMsgCount}
@@ -1649,14 +1649,14 @@ export default function SummitPage() {
                         </div>
 
                         {/* Max Rounds Control */}
-                        <div className="flex items-center justify-between bg-transparent p-2 border border-border rounded-xl">
+                        <div className="flex items-center justify-between bg-transparent p-2 border border-border rounded-md">
                             <span className="text-[10px] text-muted-foreground">Max Rounds</span>
                             <div className="flex items-center gap-1">
                                 <Button
                                     onClick={() => setMaxRounds(prev => Math.max(1, prev - 10))}
                                     variant="ghost"
                                     size="icon-xs"
-                                    className="w-5 h-5 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground"
+                                    className="w-5 h-5 rounded-sm bg-background border border-border text-muted-foreground hover:text-foreground"
                                 >-</Button>
                                 <input 
                                     type="text"
@@ -1678,7 +1678,7 @@ export default function SummitPage() {
                                     onClick={() => setMaxRounds(prev => Math.min(999, prev + 10))}
                                     variant="ghost"
                                     size="icon-xs"
-                                    className="w-5 h-5 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground"
+                                    className="w-5 h-5 rounded-sm bg-background border border-border text-muted-foreground hover:text-foreground"
                                 >+</Button>
                             </div>
                         </div>
@@ -1688,7 +1688,7 @@ export default function SummitPage() {
                             onClick={() => setAutoDeliberate(prev => !prev)}
                             variant="outline"
                             className={cn(
-                                "w-full h-auto p-2 rounded-xl text-xs flex items-center justify-center gap-2",
+                                "w-full h-auto p-2 rounded-md text-xs flex items-center justify-center gap-2",
                                 autoDeliberate
                                     ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20"
                                     : "bg-transparent text-muted-foreground border-border hover:bg-accent hover:text-foreground"
@@ -1711,7 +1711,7 @@ export default function SummitPage() {
                         <Button
                             onClick={() => { clearSummit(); setSelectedIds(new Set()); setAutoDeliberate(false); }}
                             variant="outline"
-                            className="w-full h-auto p-1.5 rounded-xl text-xs bg-transparent text-muted-foreground border-border hover:bg-accent hover:text-foreground"
+                            className="w-full h-auto p-1.5 rounded-md text-xs bg-transparent text-muted-foreground border-border hover:bg-accent hover:text-foreground"
                         >
                             <RotateCcw className="w-2.5 h-2.5" />
                             Reset Session
@@ -1723,14 +1723,14 @@ export default function SummitPage() {
             {/* ── Phase 2: Resolution Modal ── */}
             {showPhase2 && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPhase2(false)}>
-                    <div className="w-full max-w-2xl mx-4 h-[80vh] flex flex-col overflow-hidden bg-background border border-border rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-full max-w-2xl mx-4 h-[80vh] flex flex-col overflow-hidden bg-background border border-border rounded-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         
                         {/* Static Header Section */}
                         <div className="shrink-0 flex flex-col">
                             {/* Header */}
                             <div className="p-6 border-b border-border">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-accent border border-border flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-md bg-accent border border-border flex items-center justify-center">
                                         <FileText className="w-5 h-5 text-foreground" />
                                     </div>
                                     <div>
@@ -1772,7 +1772,7 @@ export default function SummitPage() {
                                         const msgCount = agentMsgCounts[rpcId] ?? 0;
                                         const agentMsgs = summitMessages.filter(m => m.agentId === rpcId && m.role === 'assistant' && !m.streaming);
                                         return (
-                                            <div key={rpcId} className={cn("p-4 border rounded-xl", color.border, "bg-accent/30")}>
+                                            <div key={rpcId} className={cn("p-4 border rounded-md", color.border, "bg-accent/30")}>
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <span className={cn("text-sm font-medium", color.text)}>{name}</span>
                                                     <span className="text-[10px] text-muted-foreground">{msgCount} contribution{msgCount !== 1 ? 's' : ''}</span>
@@ -1815,7 +1815,7 @@ export default function SummitPage() {
                                     clearSummit();
                                     router.push("/agents");
                                 }}
-                                className="flex-1 h-auto p-3 rounded-xl text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 w-full sm:w-auto"
+                                className="flex-1 h-auto p-3 rounded-md text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 w-full sm:w-auto"
                             >
                                 <Rocket className="w-4 h-4 mr-1.5" />
                                 Execute the Plan
@@ -1841,7 +1841,7 @@ export default function SummitPage() {
                                     setMaxRounds(prev => prev + 3);
                                 }}
                                 variant="outline"
-                                className="flex-1 h-auto p-3 rounded-xl text-xs font-medium w-full sm:w-auto"
+                                className="flex-1 h-auto p-3 rounded-md text-xs font-medium w-full sm:w-auto"
                             >
                                 <RefreshCw className="w-4 h-4 mr-1.5" />
                                 Refine (+3 Rounds)
@@ -1859,7 +1859,7 @@ export default function SummitPage() {
                     onClick={() => setDeleteSessionConfirmId(null)}
                 >
                     <div
-                        className="mx-4 p-4 rounded-xl w-full max-w-[240px]"
+                        className="mx-4 p-4 rounded-md w-full max-w-[240px]"
                         style={{
                             background: 'var(--nerv-surface-3)',
                             border: '1px solid var(--nerv-border-default)',
@@ -1914,7 +1914,7 @@ export default function SummitPage() {
                     onClick={() => setShowTopicModal(false)}
                 >
                     <div
-                        className="mx-4 rounded-xl w-full max-w-lg overflow-hidden flex flex-col bg-background border border-border"
+                        className="mx-4 rounded-md w-full max-w-lg overflow-hidden flex flex-col bg-background border border-border"
                         style={{
                             boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                             maxHeight: '85vh'
@@ -1958,7 +1958,7 @@ export default function SummitPage() {
                                         const name = agent ? agentDisplayName(agent) : rpcId;
                                         const color = agentColorMap[rpcId] ?? COLOR_PALETTE[0];
                                         return (
-                                            <div key={rpcId} className="p-3 border border-border rounded-xl space-y-2 bg-transparent">
+                                            <div key={rpcId} className="p-3 border border-border rounded-md space-y-2 bg-transparent">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-semibold text-foreground">{name}</span>
                                                 </div>
@@ -1973,7 +1973,7 @@ export default function SummitPage() {
                                         );
                                     })}
                                     {(!summitActive && selectedIds.size === 0) && (
-                                        <div className="text-[11px] text-muted-foreground italic py-2 text-center border rounded-xl border-dashed">
+                                        <div className="text-[11px] text-muted-foreground italic py-2 text-center border rounded-md border-dashed">
                                             Select agents first to set custom behaviors
                                         </div>
                                     )}
@@ -1993,7 +1993,7 @@ export default function SummitPage() {
 
             {showLeaveModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-[#121212] border border-[#2A2A2A] rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+                    <div className="bg-[#121212] border border-[#2A2A2A] rounded-md max-w-md w-full p-6 shadow-2xl relative">
                         <h2 className="text-xl font-bold text-foreground mb-3 flex items-center gap-2">
                             <AlertTriangle className="w-5 h-5 text-orange-500" />
                             Leave Summit?

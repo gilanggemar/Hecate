@@ -29,7 +29,7 @@ export function AgentSelector({ agents, selectedAgentId, onSelect }: AgentSelect
 
     if (agents.length === 0) {
         return (
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div className="rounded-md border border-white/10 bg-white/5 px-4 py-3">
                 <p className="text-xs font-mono text-white/40">No agents configured on this Gateway.</p>
             </div>
         );
@@ -39,7 +39,7 @@ export function AgentSelector({ agents, selectedAgentId, onSelect }: AgentSelect
         <div ref={ref} className="relative">
             <button
                 onClick={() => setOpen(!open)}
-                className="flex items-center justify-between gap-3 w-full max-w-sm rounded-xl border border-white/10
+                className="flex items-center justify-between gap-3 w-full max-w-sm rounded-md border border-white/10
                     bg-white/5 px-4 py-2.5 text-sm font-mono hover:bg-white/8 transition-colors"
             >
                 <div className="flex items-center gap-2.5">
@@ -60,7 +60,7 @@ export function AgentSelector({ agents, selectedAgentId, onSelect }: AgentSelect
             </button>
 
             {open && (
-                <div className="absolute top-full left-0 z-50 mt-1 w-full max-w-sm rounded-xl border border-white/10
+                <div className="absolute top-full left-0 z-50 mt-1 w-full max-w-sm rounded-md border border-white/10
                     bg-[#0a0a0a] shadow-xl overflow-hidden">
                     {agents.map(agent => (
                         <button
