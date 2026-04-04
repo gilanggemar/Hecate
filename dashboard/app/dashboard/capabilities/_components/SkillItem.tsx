@@ -12,11 +12,12 @@ interface SkillItemProps {
     eligible: boolean;
     missingRequirements?: string[];
     inherited?: boolean;
+    source?: 'github' | 'skill.sh' | 'manual' | 'inherited';
     isToggling?: boolean;
     onToggle: (enabled: boolean) => void;
 }
 
-export function SkillItem({ name, description, enabled, eligible, missingRequirements, inherited, isToggling, onToggle }: SkillItemProps) {
+export function SkillItem({ name, description, enabled, eligible, missingRequirements, inherited, source, isToggling, onToggle }: SkillItemProps) {
     const [showTooltip, setShowTooltip] = useState(false);
 
     return (
@@ -41,6 +42,16 @@ export function SkillItem({ name, description, enabled, eligible, missingRequire
                     {inherited && (
                         <span className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-white/25 bg-white/5 px-1.5 py-0.5 rounded-md">
                             inherited
+                        </span>
+                    )}
+                    {source && source !== 'inherited' && (
+                        <span className={cn(
+                            'shrink-0 text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md',
+                            source === 'github' && 'text-blue-400/60 bg-blue-500/8',
+                            source === 'manual' && 'text-amber-400/60 bg-amber-500/8',
+                            source === 'skill.sh' && 'text-emerald-400/60 bg-emerald-500/8',
+                        )}>
+                            {source === 'manual' ? 'workspace' : source}
                         </span>
                     )}
                     {!eligible && missingRequirements && missingRequirements.length > 0 && (

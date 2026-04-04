@@ -1,364 +1,711 @@
+// store/useConstellationStore.ts
+// Agent Architecture Canvas state.
+// Bridges structured agent data to the OpenClaw Gateway via file read/write.
+// Uses the SAME gateway API as useOpenClawCapabilitiesStore (agents.files.*)
+
 import { create } from 'zustand';
+import { getGateway } from '@/lib/openclawGateway';
+import { useOpenClawCapabilitiesStore } from '@/stores/useOpenClawCapabilitiesStore';
 import {
-    Connection,
-    Edge,
-    EdgeChange,
-    Node,
-    NodeChange,
-    addEdge,
-    applyNodeChanges,
-    applyEdgeChanges,
-} from '@xyflow/react';
-import { v4 as uuidv4 } from 'uuid';
+    type AgentArchitecture,
+    type AgentRelationship,
+    type AgentFile,
+    type BuildScore,
+    createEmptyAgent,
+    AGENT_DEFAULTS,
+    DEFAULT_RELATIONSHIPS,
+} from '@/lib/constellation/agentSchema';
+import { parseAgentFiles, parseDoctrineMd, calculateBuildScore, DOCTRINE_FILE_NAMES, SPECIAL_FILES } from '@/lib/constellation/markdownParser';
+import { serializeAgentToFiles } from '@/lib/constellation/markdownSerializer';
 
-export type ConstellationNodeType = 'attachment' | 'group' | 'chat';
+// ─── Hierarchical Layout Positions ──────────────────────────────────────────
 
-export interface ConstellationState {
-    nodes: Node[];
-    edges: Edge[];
-    onNodesChange: (changes: NodeChange[]) => void;
-    onEdgesChange: (changes: EdgeChange[]) => void;
-    onConnect: (connection: Connection) => void;
-    setNodes: (nodes: Node[]) => void;
-    setEdges: (edges: Edge[]) => void;
-    addNode: (node: Node) => void;
-    activeId: string | null;
-    activeName: string | null;
-    setActiveConstellation: (id: string | null, name: string | null) => void;
-    groupNodes: (nodeIds: string[]) => void;
-    spawnChat: (sourceId: string, position: { x: number, y: number }) => void;
-    updateChatMessages: (nodeId: string, messages: any[]) => void;
-    getAggregatedContext: (nodeId: string) => { textContext: string; attachments: any[] };
-    updateNodeData: (id: string, data: any) => void;
-    copiedNodes: Node[];
-    copySelected: () => void;
-    pasteCopied: () => void;
-    deleteSelected: () => void;
-    autoResizeGroup: (groupId: string) => void;
+const HIERARCHY_POSITIONS: Record<string, { x: number; y: number }> = {
+    // All four chiefs in a single row below the CEO node
+    // Card width is 280px, using 320px spacing for breathing room
+    ivy:    { x: 0,   y: 300 },   // COO — operations hub
+    daisy:  { x: 320, y: 300 },   // CIO — intelligence
+    celia:  { x: 640, y: 300 },   // CTO — builds
+    thalia: { x: 960, y: 300 },   // CMO — distribution
+};
+
+function getHierarchicalPositions(agentIds: string[]): Record<string, { x: number; y: number }> {
+    const positions: Record<string, { x: number; y: number }> = {};
+
+    // Assign known positions first
+    for (const id of agentIds) {
+        if (HIERARCHY_POSITIONS[id]) {
+            positions[id] = { ...HIERARCHY_POSITIONS[id] };
+        }
+    }
+
+    // Fallback for unknown agents — place them in a row below
+    let unknownIndex = 0;
+    for (const id of agentIds) {
+        if (!positions[id]) {
+            positions[id] = {
+                x: 200 + unknownIndex * 250,
+                y: 720,
+            };
+            unknownIndex++;
+        }
+    }
+
+    return positions;
+}
+
+// ─── State Interface ────────────────────────────────────────────────────────
+
+interface ConstellationState {
+    agents: Record<string, AgentArchitecture>;
+    relationships: AgentRelationship[];
+
+    // UI state
+    selectedAgentId: string | null;
+    drawerOpen: boolean;
+    drawerTab: 'overview' | 'doctrine' | 'files' | 'build' | 'relationships';
+    isLoading: boolean;
+    isSaving: boolean;
+    error: string | null;
+    syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+
+    // Doctrine lazy loading
+    doctrineLoaded: Record<string, boolean>;
+    doctrineLoadingId: string | null;
+
+    // CEO config (visual-only apex node)
+    ceoConfig: { name: string; title: string; subtitle: string };
+
+    // Agent Zero chat
+    zeroChatOpen: boolean;
+    zeroChatTargetAgent: string | null;
+
+    // Actions
+    initialize: () => Promise<void>;
+    loadAgentFiles: (agentId: string) => Promise<void>;
+    loadAllAgents: () => Promise<void>;
+    saveAgentFiles: (agentId: string) => Promise<void>;
+    saveAllDirtyAgents: () => Promise<void>;
+
+    // Doctrine-specific actions
+    loadDoctrine: (agentId: string) => Promise<void>;
+    saveDoctrine: (agentId: string) => Promise<void>;
+
+    // Edit actions — these stage changes locally
+    updateAgentField: <K extends keyof AgentArchitecture>(agentId: string, field: K, value: AgentArchitecture[K]) => void;
+    updateAgentFileContent: (agentId: string, fileName: string, content: string) => void;
+    markFileDirty: (agentId: string, fileName: string) => void;
+
+    // UI actions
+    selectAgent: (agentId: string | null) => void;
+    openDrawer: (agentId: string, tab?: ConstellationState['drawerTab']) => void;
+    closeDrawer: () => void;
+    setDrawerTab: (tab: ConstellationState['drawerTab']) => void;
+    toggleZeroChat: (targetAgentId?: string) => void;
+
+    // Relationship actions
+    addRelationship: (rel: Omit<AgentRelationship, 'id'>) => void;
+    removeRelationship: (id: string) => void;
+    updateRelationship: (id: string, updates: Partial<AgentRelationship>) => void;
+
+    // Position
+    updateAgentPosition: (agentId: string, position: { x: number; y: number }) => void;
+
+    // CEO
+    updateCEOConfig: (field: string, value: string) => void;
+
+    // Derived
+    getDirtyAgents: () => string[];
+    hasUnsavedChanges: () => boolean;
 }
 
 export const useConstellationStore = create<ConstellationState>((set, get) => ({
-    activeId: null,
-    activeName: null,
-    setActiveConstellation: (id, name) => set({ activeId: id, activeName: name }),
-    nodes: [],
-    edges: [],
-    
-    onNodesChange: (changes: NodeChange[]) => {
-        const state = get();
-        const removeChanges = changes.filter(c => c.type === 'remove');
-        if (removeChanges.length > 0) {
-            let nextNodes = [...state.nodes];
-            // Process unparenting for Group deletions
-            removeChanges.forEach(change => {
-                const nodeToDelete = state.nodes.find(n => n.id === change.id);
-                if (nodeToDelete && nodeToDelete.type === 'group') {
-                    nextNodes = nextNodes.map(child => {
-                        if (child.parentId === change.id) {
-                            return { 
-                                ...child, 
-                                parentId: undefined, 
-                                extent: undefined,
-                                draggable: true,
-                                position: {
-                                    x: child.position.x + nodeToDelete.position.x,
-                                    y: child.position.y + nodeToDelete.position.y
-                                }
-                            } as Node;
-                        }
-                        return child;
-                    });
-                }
-            });
-            const finalNodes = applyNodeChanges(changes, nextNodes);
-            set({ nodes: finalNodes });
-            
-            // Auto resize parents if child was removed
-            removeChanges.forEach(change => {
-                const nodeToDelete = state.nodes.find(n => n.id === change.id);
-                if (nodeToDelete && nodeToDelete.parentId) {
-                    get().autoResizeGroup(nodeToDelete.parentId);
-                }
-            });
+    agents: {},
+    relationships: DEFAULT_RELATIONSHIPS,
+    selectedAgentId: null,
+    drawerOpen: false,
+    drawerTab: 'overview',
+    isLoading: false,
+    isSaving: false,
+    error: null,
+    syncStatus: 'idle',
+    doctrineLoaded: {},
+    doctrineLoadingId: null,
+    ceoConfig: { name: 'Gilang', title: 'Founder & CEO', subtitle: 'NERV. Center' },
+    zeroChatOpen: false,
+    zeroChatTargetAgent: null,
+
+    // ─── Initialize ─────────────────────────────────────────────────────
+
+    initialize: async () => {
+        set({ isLoading: true, error: null, syncStatus: 'syncing' });
+
+        const gw = getGateway();
+
+        // Step 1: Get real agent list from the capabilities store or config
+        let agentIds: string[] = [];
+        const capStore = useOpenClawCapabilitiesStore.getState();
+
+        if (capStore.agents.length > 0) {
+            // Already fetched — use the real agent IDs
+            agentIds = capStore.agents.map(a => a.id);
         } else {
-            set({ nodes: applyNodeChanges(changes, state.nodes) });
+            // Try to fetch config to get agent list
+            if (gw.isConnected) {
+                try {
+                    await capStore.fetchAll();
+                    const freshState = useOpenClawCapabilitiesStore.getState();
+                    agentIds = freshState.agents.map(a => a.id);
+                } catch (err) {
+                    console.warn('[Constellation] Could not fetch capabilities, using defaults');
+                }
+            }
+        }
+
+        // Fallback to defaults if gateway isn't connected
+        if (agentIds.length === 0) {
+            agentIds = Object.keys(AGENT_DEFAULTS);
+        }
+
+        // Step 2: Create empty agents with hierarchical positions
+        const positions = getHierarchicalPositions(agentIds);
+        const agents: Record<string, AgentArchitecture> = {};
+        for (const id of agentIds) {
+            agents[id] = {
+                ...createEmptyAgent(id),
+                position: positions[id] || { x: 400, y: 400 },
+            };
+        }
+
+        // Also build relationships based on actual agent IDs
+        // (filter out any default relationships that reference non-existent agents)
+        const validRels = DEFAULT_RELATIONSHIPS.filter(
+            r => agentIds.includes(r.sourceAgentId) && agentIds.includes(r.targetAgentId)
+        );
+
+        set({ agents, relationships: validRels, doctrineLoaded: {} });
+
+        // Step 3: Load real files from gateway
+        if (gw.isConnected) {
+            await get().loadAllAgents();
+        } else {
+            set({ isLoading: false, syncStatus: 'idle' });
         }
     },
-    
-    onEdgesChange: (changes: EdgeChange[]) => {
-        set({
-            edges: applyEdgeChanges(changes, get().edges),
-        });
+
+    // ─── Load Files ─────────────────────────────────────────────────────
+
+    loadAgentFiles: async (agentId: string) => {
+        const gw = getGateway();
+        if (!gw.isConnected) {
+            console.warn(`[Constellation] Gateway not connected, can't load ${agentId}`);
+            return;
+        }
+
+        try {
+            // 1. List workspace files (same API as CoreFilesPanel)
+            const listRes = await gw.request('agents.files.list', { agentId });
+            const fileList: Array<{ name: string; size: number; modified: number }> =
+                listRes?.files ?? (Array.isArray(listRes) ? listRes : []);
+
+            console.log(`[Constellation] ${agentId}: found ${fileList.length} files:`,
+                fileList.map(f => f.name));
+
+            // 2. Fetch content for each .md file EXCEPT doctrine files (those are lazy-loaded)
+            const doctrineNames = DOCTRINE_FILE_NAMES.map(n => n.toLowerCase());
+            const mdFiles = fileList.filter(f => f.name.endsWith('.md'));
+            const nonDoctrineFiles = mdFiles.filter(
+                f => !doctrineNames.includes(f.name.toLowerCase())
+            );
+
+            const fileContents: Record<string, string> = {};
+            const agentFiles: AgentFile[] = [];
+
+            for (const file of nonDoctrineFiles) {
+                try {
+                    const res = await gw.request('agents.files.get', { agentId, name: file.name });
+
+                    // Defensively extract content (same logic as capabilities store)
+                    let content = '';
+                    if (typeof res === 'string') {
+                        content = res;
+                    } else if (res && typeof res === 'object') {
+                        content = res.content ?? res.text ?? res.body ?? res.data ?? '';
+                        if (!content && res.file && typeof res.file === 'object') {
+                            content = res.file.content ?? res.file.text ?? '';
+                        }
+                    }
+
+                    fileContents[file.name] = content;
+                    agentFiles.push({
+                        name: file.name,
+                        content,
+                        size: file.size ?? content.length,
+                        modified: file.modified ?? 0,
+                        isDirty: false,
+                        draftContent: null,
+                    });
+                } catch (e) {
+                    console.warn(`[Constellation] Failed to load ${file.name} for ${agentId}:`, e);
+                }
+            }
+
+            // Add doctrine files as placeholders (content empty, will be lazy-loaded)
+            const doctrineInWorkspace = mdFiles.filter(
+                f => doctrineNames.includes(f.name.toLowerCase())
+            );
+            for (const file of doctrineInWorkspace) {
+                agentFiles.push({
+                    name: file.name,
+                    content: '',
+                    size: file.size ?? 0,
+                    modified: file.modified ?? 0,
+                    isDirty: false,
+                    draftContent: null,
+                });
+            }
+
+            // Add non-md files for reference
+            for (const file of fileList.filter(f => !f.name.endsWith('.md'))) {
+                agentFiles.push({
+                    name: file.name,
+                    content: '',
+                    size: file.size ?? 0,
+                    modified: file.modified ?? 0,
+                    isDirty: false,
+                    draftContent: null,
+                });
+            }
+
+            // 3. Parse into structured data (skip doctrine — lazy loaded)
+            const parsed = parseAgentFiles(agentId, fileContents, true);
+
+            // 4. Merge into existing agent — only override with non-empty parsed values
+            const { agents } = get();
+            const existing = agents[agentId] || createEmptyAgent(agentId);
+
+            // Helper: merge only non-empty string/array fields from parsed into existing
+            function mergeLayer<T extends Record<string, any>>(base: T, patch: Partial<T>): T {
+                const result = { ...base };
+                for (const [k, v] of Object.entries(patch)) {
+                    if (v === undefined || v === null) continue;
+                    if (typeof v === 'string' && v.trim() === '') continue;
+                    if (Array.isArray(v) && v.length === 0) continue;
+                    (result as any)[k] = v;
+                }
+                return result;
+            }
+
+            const updated: AgentArchitecture = {
+                ...existing,
+                files: agentFiles,
+                roleCharter: mergeLayer(existing.roleCharter, parsed.roleCharter || {}),
+                boundaries: mergeLayer(existing.boundaries, parsed.boundaries || {}),
+                doctrine: mergeLayer(existing.doctrine, parsed.doctrine || {}),
+                operationalProtocol: mergeLayer(existing.operationalProtocol, parsed.operationalProtocol || {}),
+                memoryPolicy: mergeLayer(existing.memoryPolicy, parsed.memoryPolicy || {}),
+                characterLayer: mergeLayer(existing.characterLayer, parsed.characterLayer || {}),
+                identityCard: mergeLayer(existing.identityCard, parsed.identityCard || {}),
+                userContext: mergeLayer(existing.userContext, parsed.userContext || {}),
+                toolGuide: mergeLayer(existing.toolGuide, parsed.toolGuide || {}),
+                heartbeat: mergeLayer(existing.heartbeat, parsed.heartbeat || {}),
+            };
+
+            // 5. Override top-level fields from parsed identity card
+            // This ensures the node header shows the correct name/codename/role
+            if (parsed.identityCard?.codename) updated.codename = parsed.identityCard.codename;
+            if (parsed.identityCard?.role) updated.executiveRole = parsed.identityCard.role;
+            if (parsed.identityCard?.name) updated.name = parsed.identityCard.name;
+
+            // 6. Calculate build score
+            updated.buildScore = calculateBuildScore(updated);
+
+            console.log(`[Constellation] ${agentId}: name="${updated.name}" codename="${updated.codename}" role="${updated.executiveRole}" mission="${updated.roleCharter.mission?.slice(0, 50)}…"`);
+            set({ agents: { ...agents, [agentId]: updated } });
+        } catch (err: any) {
+            console.error(`[Constellation] loadAgentFiles(${agentId}) failed:`, err);
+        }
     },
-    
-    onConnect: (connection: Connection) => {
-        set({
-            edges: addEdge(connection, get().edges),
-        });
-    },
-    
-    setNodes: (nodes: Node[]) => set({ nodes }),
-    setEdges: (edges: Edge[]) => set({ edges }),
-    
-    updateNodeData: (id: string, data: any) => {
-        set({
-            nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...data } } : n)
-        });
-    },
 
-    copiedNodes: [],
-    copySelected: () => {
-        const selected = get().nodes.filter(n => n.selected);
-        set({ copiedNodes: selected });
-    },
-    pasteCopied: () => {
-        const state = get();
-        if (state.copiedNodes.length === 0) return;
-        
-        const newNodes = state.copiedNodes.map(node => ({
-            ...node,
-            id: `${node.type}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            position: { x: node.position.x + 40, y: node.position.y + 40 },
-            selected: true,
-            parentId: undefined 
-        }));
+    loadAllAgents: async () => {
+        set({ isLoading: true, syncStatus: 'syncing', error: null });
+        const agentIds = Object.keys(get().agents);
 
-        const unselectedNodes = state.nodes.map(n => ({ ...n, selected: false }));
-        set({ nodes: [...unselectedNodes, ...newNodes] });
-    },
-    
-    deleteSelected: () => {
-        const state = get();
-        const selectedNodes = state.nodes.filter(n => n.selected);
-        if (selectedNodes.length === 0) return;
-        const changes: NodeChange[] = selectedNodes.map(n => ({ type: 'remove', id: n.id }));
-        state.onNodesChange(changes);
+        try {
+            for (const id of agentIds) {
+                await get().loadAgentFiles(id);
+            }
+            set({ isLoading: false, syncStatus: 'synced' });
+        } catch (err: any) {
+            set({ isLoading: false, syncStatus: 'error', error: err?.message });
+        }
     },
 
-    autoResizeGroup: (groupId: string) => {
-        const state = get();
-        // Wait for next tick so DOM measures are registered if needed
-        setTimeout(() => {
-            const currentChildren = get().nodes.filter(n => n.parentId === groupId);
-            if (currentChildren.length === 0) return;
+    // ─── Doctrine Lazy Loading ──────────────────────────────────────────
 
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            currentChildren.forEach(n => {
-                const w = n.measured?.width || 200;
-                const h = n.measured?.height || 80;
-                if (n.position.x < minX) minX = n.position.x;
-                if (n.position.y < minY) minY = n.position.y;
-                if (n.position.x + w > maxX) maxX = n.position.x + w;
-                if (n.position.y + h > maxY) maxY = n.position.y + h;
-            });
+    loadDoctrine: async (agentId: string) => {
+        const gw = getGateway();
+        if (!gw.isConnected) {
+            console.warn(`[Constellation] Gateway not connected, can't load doctrine for ${agentId}`);
+            return;
+        }
 
-            const padding = 40;
-            const minAllowedWidth = 250;
-            const minAllowedHeight = 150;
+        const { doctrineLoaded } = get();
+        if (doctrineLoaded[agentId]) return; // Already loaded
 
-            const rawWidth = maxX - minX;
-            const rawHeight = maxY - minY;
+        set({ doctrineLoadingId: agentId });
 
-            const newWidth = Math.max(minAllowedWidth, rawWidth + padding * 2);
-            const newHeight = Math.max(minAllowedHeight, rawHeight + padding * 2);
+        try {
+            const { agents } = get();
+            const agent = agents[agentId];
+            if (!agent) return;
 
-            const targetPaddingX = (newWidth - rawWidth) / 2;
-            const targetPaddingY = (newHeight - rawHeight) / 2;
+            // Find doctrine files in the agent's file list
+            const doctrineNames = DOCTRINE_FILE_NAMES.map(n => n.toLowerCase());
+            const doctrineFiles = agent.files.filter(
+                f => doctrineNames.includes(f.name.toLowerCase())
+            );
 
-            const dx = minX - targetPaddingX;
-            const dy = minY - targetPaddingY;
+            if (doctrineFiles.length === 0) {
+                console.log(`[Constellation] No doctrine files found for ${agentId}`);
+                set({
+                    doctrineLoaded: { ...get().doctrineLoaded, [agentId]: true },
+                    doctrineLoadingId: null,
+                });
+                return;
+            }
+
+            // Fetch doctrine file content
+            const fileContents: Record<string, string> = {};
+            const updatedFiles = [...agent.files];
+
+            for (const file of doctrineFiles) {
+                try {
+                    const res = await gw.request('agents.files.get', { agentId, name: file.name });
+
+                    let content = '';
+                    if (typeof res === 'string') {
+                        content = res;
+                    } else if (res && typeof res === 'object') {
+                        content = res.content ?? res.text ?? res.body ?? res.data ?? '';
+                        if (!content && res.file && typeof res.file === 'object') {
+                            content = res.file.content ?? res.file.text ?? '';
+                        }
+                    }
+
+                    fileContents[file.name] = content;
+
+                    // Update file content in the files array
+                    const idx = updatedFiles.findIndex(f => f.name === file.name);
+                    if (idx >= 0) {
+                        updatedFiles[idx] = { ...updatedFiles[idx], content, size: content.length };
+                    }
+
+                    console.log(`[Constellation] Loaded doctrine ${file.name} for ${agentId}: ${content.length} chars`);
+                } catch (e) {
+                    console.warn(`[Constellation] Failed to load doctrine ${file.name} for ${agentId}:`, e);
+                }
+            }
+
+            // Parse doctrine content
+            let parsedDoctrine = agent.doctrine;
+            for (const [fileName, content] of Object.entries(fileContents)) {
+                const parsed = parseDoctrineMd(content);
+                if (Object.keys(parsed).length > 0) {
+                    parsedDoctrine = {
+                        ...parsedDoctrine,
+                        ...parsed,
+                    };
+                }
+            }
+
+            // Update agent
+            const updated = {
+                ...agent,
+                files: updatedFiles,
+                doctrine: parsedDoctrine,
+            };
+            updated.buildScore = calculateBuildScore(updated);
 
             set({
-                nodes: get().nodes.map(n => {
-                    if (n.id === groupId) {
-                        return { 
-                            ...n, 
-                            position: {
-                                x: n.position.x + dx,
-                                y: n.position.y + dy
-                            },
-                            style: { ...n.style, width: newWidth, height: newHeight } 
-                        };
-                    }
-                    if (n.parentId === groupId) {
-                        return {
-                            ...n,
-                            position: {
-                                x: n.position.x - dx,
-                                y: n.position.y - dy
-                            }
-                        };
-                    }
-                    return n;
-                })
+                agents: { ...get().agents, [agentId]: updated },
+                doctrineLoaded: { ...get().doctrineLoaded, [agentId]: true },
+                doctrineLoadingId: null,
             });
-        }, 50);
+        } catch (err: any) {
+            console.error(`[Constellation] loadDoctrine(${agentId}) failed:`, err);
+            set({ doctrineLoadingId: null });
+        }
     },
-    
-    addNode: (node: Node) => {
-        set({ nodes: [...get().nodes, node] });
-    },
 
-    groupNodes: (nodeIds: string[]) => {
-        const state = get();
-        const nodesToGroup = state.nodes.filter(n => nodeIds.includes(n.id) && n.type === 'attachment');
-        if (nodesToGroup.length === 0) return;
+    saveDoctrine: async (agentId: string) => {
+        const gw = getGateway();
+        if (!gw.isConnected) {
+            set({ error: 'Not connected to OpenClaw Gateway' });
+            return;
+        }
 
-        // Calculate bounding box
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        nodesToGroup.forEach(n => {
-            const x = n.position.x;
-            const y = n.position.y;
-            const w = n.measured?.width || 200;
-            const h = n.measured?.height || 80;
-            
-            if (x < minX) minX = x;
-            if (y < minY) minY = y;
-            if (x + w > maxX) maxX = x + w;
-            if (y + h > maxY) maxY = y + h;
-        });
+        const { agents } = get();
+        const agent = agents[agentId];
+        if (!agent) return;
 
-        // Add some padding
-        const padding = 40;
-        minX -= padding;
-        minY -= padding;
-        maxX += padding;
-        maxY += padding;
-        
-        const width = maxX - minX;
-        const height = maxY - minY;
+        set({ isSaving: true, error: null });
 
-        const groupId = `group-${uuidv4()}`;
-        
-        const newGroupNode: Node = {
-            id: groupId,
-            type: 'group',
-            position: { x: minX, y: minY },
-            style: { width, height },
-            data: { title: 'Knowledge Group' },
-            zIndex: -1,
-        };
+        try {
+            // Serialize doctrine to markdown
+            const { serializeDoctrineMd } = await import('@/lib/constellation/markdownSerializer');
+            const doctrineContent = serializeDoctrineMd(agent.doctrine, agent.name, agent.codename);
+            const fileName = `${agent.codename}.md`;
 
-        const updatedNodes = state.nodes.map(n => {
-            if (nodeIds.includes(n.id)) {
-                return {
-                    ...n,
-                    parentId: groupId,
-                    extent: 'parent',
-                    draggable: false, // Lock dragging for inner nodes so they move as a group
-                    position: {
-                        x: n.position.x - minX,
-                        y: n.position.y - minY
-                    }
-                } as Node;
+            // Write via gateway
+            await gw.request('agents.files.set', {
+                agentId,
+                name: fileName,
+                content: doctrineContent,
+            });
+
+            console.log(`[Constellation] Saved doctrine ${fileName} for ${agentId}`);
+
+            // Update local file content
+            const updatedFiles = agent.files.map(f =>
+                f.name === fileName
+                    ? { ...f, content: doctrineContent, size: doctrineContent.length, isDirty: false, draftContent: null }
+                    : f
+            );
+
+            // If the file didn't exist, add it
+            if (!updatedFiles.some(f => f.name === fileName)) {
+                updatedFiles.push({
+                    name: fileName,
+                    content: doctrineContent,
+                    size: doctrineContent.length,
+                    modified: Date.now(),
+                    isDirty: false,
+                    draftContent: null,
+                });
             }
-            return n;
-        });
 
-        // React Flow requires parent nodes to appear before their children in the node array
-        set({ nodes: [newGroupNode, ...updatedNodes] });
+            set({
+                agents: { ...get().agents, [agentId]: { ...agent, files: updatedFiles } },
+                isSaving: false,
+            });
+        } catch (err: any) {
+            console.error(`[Constellation] saveDoctrine(${agentId}) failed:`, err);
+            set({ isSaving: false, error: err?.message || 'Failed to save doctrine' });
+        }
     },
 
-    spawnChat: (sourceId: string, position: { x: number, y: number }) => {
-        const state = get();
-        const uniqueId = uuidv4();
-        const chatId = `chat-${uniqueId}`;
-        
-        const newChatNode: Node = {
-            id: chatId,
-            type: 'chat',
-            position,
-            data: { messages: [] },
-        };
+    // ─── Save Files ─────────────────────────────────────────────────────
 
-        const newEdge: Edge = {
-            id: `edge-${sourceId}-${chatId}`,
-            source: sourceId,
-            target: chatId,
-            animated: true,
-            style: { stroke: 'var(--accent-base)', strokeWidth: 2 },
-        };
+    saveAgentFiles: async (agentId: string) => {
+        const gw = getGateway();
+        if (!gw.isConnected) {
+            set({ error: 'Not connected to OpenClaw Gateway' });
+            return;
+        }
 
-        set({
-            nodes: [...state.nodes, newChatNode],
-            edges: [...state.edges, newEdge]
-        });
-    },
+        const { agents } = get();
+        const agent = agents[agentId];
+        if (!agent) return;
 
-    updateChatMessages: (nodeId: string, messages: any[]) => {
-        set({
-            nodes: get().nodes.map(n => {
-                if (n.id === nodeId) {
-                    return { ...n, data: { ...n.data, messages } };
+        set({ isSaving: true, error: null });
+
+        try {
+            // Serialize structured data to markdown files
+            const filesToWrite = serializeAgentToFiles(agent);
+
+            // Also include any directly-edited file drafts (from the Files tab)
+            for (const file of agent.files) {
+                if (file.isDirty && file.draftContent !== null) {
+                    filesToWrite[file.name] = file.draftContent;
                 }
-                return n;
-            })
-        });
-    },
+            }
 
-    getAggregatedContext: (nodeId: string): { textContext: string, attachments: any[] } => {
-        const state = get();
-        
-        const visited = new Set<string>();
-        let textContext = "";
-        const attachments: any[] = [];
+            console.log(`[Constellation] Saving ${agentId}:`, Object.keys(filesToWrite));
 
-        const traverse = (currentId: string) => {
-            if (visited.has(currentId)) return;
-            visited.add(currentId);
-
-            const node = state.nodes.find(n => n.id === currentId);
-            if (!node) return;
-
-            // If it's an attachment, add its content
-            if (node.type === 'attachment') {
-                const isImage = (node.data.fileType as string)?.startsWith('image/') || node.data.type === 'image';
-                
-                if (isImage && typeof node.data.imageUrl === 'string') {
-                    const mimeMatch = node.data.imageUrl.match(/^data:([^;]+);/);
-                    let actualMimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-
-                    // Deep clamp to only OpenClaw-supported image formats
-                    const supportedFormats = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-                    if (!supportedFormats.includes(actualMimeType)) {
-                        actualMimeType = 'image/jpeg'; // Fallback to safe format
-                    }
-
-                    attachments.push({
-                        name: node.data.title || 'image',
-                        type: actualMimeType,
-                        size: typeof node.data.summary === 'string' ? parseFloat(node.data.summary.replace(/[^\d.-]/g, '')) * 1024 : 0, 
-                        url: node.data.imageUrl
+            // Write each file to gateway (same API as CoreFilesPanel saveFile)
+            for (const [fileName, content] of Object.entries(filesToWrite)) {
+                try {
+                    await gw.request('agents.files.set', {
+                        agentId,
+                        name: fileName,
+                        content,
                     });
-                } else if (node.data.content) {
-                    // It's a document/text/markdown
-                    // Send it as JSON string injected natively into the text context.
-                    // DO NOT push it to multi-modal `attachments` array because 
-                    // OpenClaw Vision API stricty crashes on `application/json` MIME formats.
-                    
-                    const jsonContent = JSON.stringify({
-                        title: node.data.title || 'Untitled',
-                        content: node.data.content
-                    }, null, 2);
-
-                    textContext += `\n--- Document: ${node.data.title || 'Untitled'} (JSON Encoded) ---\n${jsonContent}\n`;
+                    console.log(`[Constellation] Saved ${fileName} for ${agentId}`);
+                } catch (e) {
+                    console.error(`[Constellation] Failed to save ${fileName} for ${agentId}:`, e);
+                    throw e;
                 }
             }
 
-            // If it's a group, traverse its children
-            if (node.type === 'group') {
-                const children = state.nodes.filter(n => n.parentId === currentId);
-                children.forEach(child => traverse(child.id));
-            }
+            // Mark all files as clean and update their content
+            const updatedFiles = agent.files.map(f => ({
+                ...f,
+                isDirty: false,
+                draftContent: null,
+                content: filesToWrite[f.name] ?? f.content,
+            }));
 
-            // For any node, find incoming edges and traverse to their sources (Knowledge Spider Net)
-            const incomingEdges = state.edges.filter(e => e.target === currentId);
-            incomingEdges.forEach(edge => traverse(edge.source));
+            set({
+                agents: {
+                    ...get().agents,
+                    [agentId]: { ...agent, files: updatedFiles },
+                },
+                isSaving: false,
+            });
+
+            // Reload to confirm the save took effect
+            await get().loadAgentFiles(agentId);
+        } catch (err: any) {
+            console.error(`[Constellation] saveAgentFiles(${agentId}) failed:`, err);
+            set({ isSaving: false, error: err?.message || 'Failed to save agent files' });
+        }
+    },
+
+    saveAllDirtyAgents: async () => {
+        const dirtyIds = get().getDirtyAgents();
+        for (const id of dirtyIds) {
+            await get().saveAgentFiles(id);
+        }
+    },
+
+    // ─── Edit Actions ───────────────────────────────────────────────────
+    // These modify the structured data locally AND mark the corresponding file as dirty.
+
+    updateAgentField: (agentId, field, value) => {
+        const { agents } = get();
+        const agent = agents[agentId];
+        if (!agent) return;
+
+        const updated = { ...agent, [field]: value };
+        updated.buildScore = calculateBuildScore(updated);
+
+        // Mark the corresponding file as dirty based on which field was updated
+        const dirtyFileMap: Record<string, string> = {
+            roleCharter: 'AGENTS.md',
+            boundaries: 'AGENTS.md',
+            operationalProtocol: 'AGENTS.md',
+            characterLayer: 'SOUL.md',
+            memoryPolicy: 'MEMORY.md',
+            doctrine: `${agent.codename}.md`,
         };
 
-        // Start traversal from this chat node
-        traverse(nodeId);
+        const dirtyFileName = dirtyFileMap[field as string];
+        if (dirtyFileName) {
+            updated.files = updated.files.map(f =>
+                f.name === dirtyFileName ? { ...f, isDirty: true } : f
+            );
 
-        return { textContext: textContext.trim(), attachments };
-    }
+            // If the file doesn't exist yet, add it as dirty
+            if (!updated.files.some(f => f.name === dirtyFileName)) {
+                updated.files.push({
+                    name: dirtyFileName,
+                    content: '',
+                    size: 0,
+                    modified: Date.now(),
+                    isDirty: true,
+                    draftContent: null,
+                });
+            }
+        }
+
+        set({ agents: { ...agents, [agentId]: updated } });
+    },
+
+    updateAgentFileContent: (agentId, fileName, content) => {
+        const { agents } = get();
+        const agent = agents[agentId];
+        if (!agent) return;
+
+        const updatedFiles = agent.files.map(f =>
+            f.name === fileName
+                ? { ...f, draftContent: content, isDirty: content !== f.content }
+                : f
+        );
+
+        set({
+            agents: { ...agents, [agentId]: { ...agent, files: updatedFiles } },
+        });
+    },
+
+    markFileDirty: (agentId, fileName) => {
+        const { agents } = get();
+        const agent = agents[agentId];
+        if (!agent) return;
+
+        const updatedFiles = agent.files.map(f =>
+            f.name === fileName ? { ...f, isDirty: true } : f
+        );
+
+        set({ agents: { ...agents, [agentId]: { ...agent, files: updatedFiles } } });
+    },
+
+    // ─── UI Actions ─────────────────────────────────────────────────────
+
+    selectAgent: (agentId) => set({ selectedAgentId: agentId }),
+
+    openDrawer: (agentId, tab = 'overview') => set({
+        selectedAgentId: agentId,
+        drawerOpen: true,
+        drawerTab: tab,
+    }),
+
+    closeDrawer: () => set({ drawerOpen: false }),
+    setDrawerTab: (tab) => set({ drawerTab: tab }),
+
+    toggleZeroChat: (targetAgentId) => {
+        const { zeroChatOpen } = get();
+        set({
+            zeroChatOpen: !zeroChatOpen,
+            zeroChatTargetAgent: targetAgentId || get().zeroChatTargetAgent,
+        });
+    },
+
+    // ─── Relationship Actions ───────────────────────────────────────────
+
+    addRelationship: (rel) => {
+        const id = `rel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        set({ relationships: [...get().relationships, { ...rel, id }] });
+    },
+
+    removeRelationship: (id) => {
+        set({ relationships: get().relationships.filter(r => r.id !== id) });
+    },
+
+    updateRelationship: (id, updates) => {
+        set({
+            relationships: get().relationships.map(r =>
+                r.id === id ? { ...r, ...updates } : r
+            ),
+        });
+    },
+
+    // ─── Position ───────────────────────────────────────────────────────
+
+    updateAgentPosition: (agentId, position) => {
+        const { agents } = get();
+        const agent = agents[agentId];
+        if (!agent) return;
+
+        set({ agents: { ...agents, [agentId]: { ...agent, position } } });
+    },
+    // ─── CEO Config ─────────────────────────────────────────────────────
+
+    updateCEOConfig: (field, value) => {
+        const { ceoConfig } = get();
+        set({ ceoConfig: { ...ceoConfig, [field]: value } });
+    },
+
+    // ─── Derived ────────────────────────────────────────────────────────
+
+    getDirtyAgents: () => {
+        const { agents } = get();
+        return Object.entries(agents)
+            .filter(([_, agent]) => agent.files.some(f => f.isDirty))
+            .map(([id]) => id);
+    },
+
+    hasUnsavedChanges: () => {
+        return get().getDirtyAgents().length > 0;
+    },
 }));

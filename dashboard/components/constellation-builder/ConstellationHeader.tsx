@@ -1,191 +1,110 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Save, FolderOpen, Network, Loader2, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useConstellationStore } from "@/store/useConstellationStore";
-import { toast } from "sonner";
+// ConstellationHeader.tsx — Rewritten for Agent Architecture Canvas.
+// Shows title, sync status, refresh button, and Agent Zero chat toggle.
+
+import { RefreshCw, Zap, Bot, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { useConstellationStore } from '@/store/useConstellationStore';
 
 export function ConstellationHeader() {
-    const { activeId, activeName, nodes, edges, setActiveConstellation, setNodes, setEdges } = useConstellationStore();
-    
-    const [isSaveOpen, setIsSaveOpen] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveName, setSaveName] = useState(activeName || "");
-    const [saveDesc, setSaveDesc] = useState("");
+    const {
+        syncStatus,
+        isLoading,
+        isSaving,
+        loadAllAgents,
+        saveAllDirtyAgents,
+        hasUnsavedChanges,
+        getDirtyAgents,
+        toggleZeroChat,
+        zeroChatOpen,
+    } = useConstellationStore();
 
-    const [isLoadOpen, setIsLoadOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [savedList, setSavedList] = useState<any[]>([]);
+    const dirty = hasUnsavedChanges();
+    const dirtyCount = getDirtyAgents().length;
 
-    useEffect(() => {
-        if (isSaveOpen && activeName) setSaveName(activeName);
-    }, [isSaveOpen, activeName]);
-
-    useEffect(() => {
-        if (isLoadOpen) {
-            setIsLoading(true);
-            fetch('/api/constellation/list')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.constellations) setSavedList(data.constellations);
-                })
-                .finally(() => setIsLoading(false));
-        }
-    }, [isLoadOpen]);
-
-    const handleSave = async () => {
-        if (!saveName.trim()) return;
-        setIsSaving(true);
-        try {
-            const res = await fetch('/api/constellation/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: activeId,
-                    name: saveName.trim(),
-                    description: saveDesc.trim(),
-                    nodes,
-                    edges
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setActiveConstellation(data.id, saveName.trim());
-                toast.success("Constellation saved!");
-                setIsSaveOpen(false);
-            } else {
-                toast.error(data.error || "Failed to save.");
-            }
-        } catch (e) {
-            toast.error("An error occurred while saving.");
-        } finally {
-            setIsSaving(false);
-        }
+    const statusConfig = {
+        idle: { icon: <Zap className="size-3" />, text: 'Idle', color: 'text-white/30' },
+        syncing: { icon: <RefreshCw className="size-3 animate-spin" />, text: 'Syncing...', color: 'text-amber-400/70' },
+        synced: { icon: <CheckCircle className="size-3" />, text: 'Synced', color: 'text-emerald-400/70' },
+        error: { icon: <AlertCircle className="size-3" />, text: 'Error', color: 'text-red-400/70' },
     };
 
-    const handleLoad = async (id: string) => {
-        setIsLoading(true);
-        try {
-            const res = await fetch(`/api/constellation/get?id=${id}`);
-            const data = await res.json();
-            if (data.constellation) {
-                const c = data.constellation;
-                setNodes(c.nodes || []);
-                setEdges(c.edges || []);
-                setActiveConstellation(c.id, c.name);
-                toast.success(`Loaded ${c.name}`);
-                setIsLoadOpen(false);
-            } else {
-                toast.error("Failed to load.");
-            }
-        } catch (e) {
-            toast.error("Error loading constellation.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
-        e.stopPropagation();
-        if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-        
-        try {
-            const res = await fetch(`/api/constellation/delete?id=${id}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                setSavedList(prev => prev.filter(c => c.id !== id));
-                toast.success(`Deleted ${name}`);
-            } else {
-                toast.error(data.error || "Failed to delete.");
-            }
-        } catch (error) {
-            toast.error("Error deleting constellation.");
-        }
-    };
+    const status = statusConfig[syncStatus];
 
     return (
-        <div className="absolute top-4 left-4 z-50 flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsLoadOpen(true)}>
-                <FolderOpen className="w-4 h-4" />
-                Load Constellation
-            </Button>
-            <Button variant="default" size="sm" className="gap-2 bg-accent-base text-black hover:bg-accent-hover" onClick={() => setIsSaveOpen(true)}>
-                <Save className="w-4 h-4" />
-                Save Constellation
-            </Button>
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-3">
+            {/* Left: Title + Status */}
+            <div className="flex items-center gap-4">
+                <div>
+                    <h1 className="text-sm font-bold font-mono tracking-wider text-white/90">
+                        AGENT ARCHITECTURE
+                    </h1>
+                    <p className="text-[10px] font-mono text-white/30 mt-0.5">
+                        Visual bridge to OpenClaw agent configuration
+                    </p>
+                </div>
 
-            <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Save Constellation</DialogTitle>
-                        <DialogDescription>Save your current knowledge spider net structure.</DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4 py-4">
-                        <Input 
-                            placeholder="Constellation Name" 
-                            value={saveName} 
-                            onChange={(e) => setSaveName(e.target.value)} 
-                        />
-                        <Textarea 
-                            placeholder="Description (Optional)" 
-                            value={saveDesc} 
-                            onChange={(e) => setSaveDesc(e.target.value)} 
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsSaveOpen(false)}>Cancel</Button>
-                        <Button 
-                            className="bg-accent-base text-black hover:bg-accent-hover" 
-                            onClick={handleSave}
-                            disabled={isSaving || !saveName.trim()}
-                        >
-                            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            {activeId ? "Update" : "Save as New"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                {/* Sync status */}
+                <div className={`flex items-center gap-1.5 text-[10px] font-mono ${status.color}`}>
+                    {status.icon}
+                    <span>{status.text}</span>
+                </div>
+            </div>
 
-            <Dialog open={isLoadOpen} onOpenChange={setIsLoadOpen}>
-                <DialogContent className="max-w-xl">
-                    <DialogHeader>
-                        <DialogTitle>Load Constellation</DialogTitle>
-                        <DialogDescription>Select a previously saved knowledge spider net to jump back in.</DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-2 py-4 max-h-[400px] overflow-y-auto">
-                        {isLoading && savedList.length === 0 ? (
-                            <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                        ) : savedList.length === 0 ? (
-                            <div className="text-center p-8 text-muted-foreground">No saved constellations found.</div>
-                        ) : (
-                            savedList.map((c) => (
-                                <div key={c.id} className="group flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-accent-base/50 hover:bg-accent-base/5 cursor-pointer transition-colors" onClick={() => handleLoad(c.id)}>
-                                    <div className="flex flex-col">
-                                        <span className="font-semibold text-foreground">{c.name}</span>
-                                        <span className="text-xs text-muted-foreground">{c.nodesCount} nodes • Last updated: {new Date(c.updatedAt).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-muted-foreground hover:text-red-500 mr-1"
-                                            onClick={(e) => handleDelete(e, c.id, c.name)}
-                                            title="Delete constellation"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="text-muted-foreground group-hover:text-accent-base">Load</Button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2">
+                {/* Dirty indicator */}
+                {dirty && (
+                    <span className="text-[10px] font-mono text-amber-400/60 mr-2 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400/60 animate-pulse" />
+                        {dirtyCount} agent{dirtyCount > 1 ? 's' : ''} unsaved
+                    </span>
+                )}
+
+                {/* Save button */}
+                {dirty && (
+                    <button
+                        onClick={() => saveAllDirtyAgents()}
+                        disabled={isSaving}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold tracking-wider
+                            rounded-sm border transition-all duration-300 active:scale-95
+                            bg-[#FF6D29]/10 border-[#FF6D29]/30 text-[#FF6D29]
+                            hover:bg-[#FF6D29]/20 hover:border-[#FF6D29]/50
+                            disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Save className={`size-3 ${isSaving ? 'animate-spin' : ''}`} />
+                        {isSaving ? 'SAVING...' : 'SAVE ALL'}
+                    </button>
+                )}
+
+                {/* Refresh */}
+                <button
+                    onClick={() => loadAllAgents()}
+                    disabled={isLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold tracking-wider
+                        rounded-sm border border-white/10 text-white/50
+                        bg-white/5 hover:bg-white/8 hover:text-white/80
+                        transition-all duration-300 active:scale-95
+                        disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <RefreshCw className={`size-3 ${isLoading ? 'animate-spin' : ''}`} />
+                    REFRESH
+                </button>
+
+                {/* Agent Zero Chat Toggle */}
+                <button
+                    onClick={() => toggleZeroChat()}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold tracking-wider
+                        rounded-sm border transition-all duration-300 active:scale-95
+                        ${zeroChatOpen
+                            ? 'bg-[#38bdf8]/15 border-[#38bdf8]/40 text-[#38bdf8]'
+                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/8 hover:text-white/80'
+                        }`}
+                >
+                    <Bot className="size-3" />
+                    ZERO
+                </button>
+            </div>
         </div>
     );
 }

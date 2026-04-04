@@ -99,6 +99,7 @@ interface OpenClawCapabilitiesState {
     globalSkills: OpenClawSkill[];
     perAgentTools: Record<string, OpenClawTool[]>;
     perAgentSkills: Record<string, OpenClawSkill[]>;
+    perAgentSkillStatusesCache: Record<string, any[]>;
 
     // Skill management
     skillGroups: SkillGroup[];
@@ -170,6 +171,7 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
     globalSkills: [],
     perAgentTools: {},
     perAgentSkills: {},
+    perAgentSkillStatusesCache: {},
 
     skillGroups: [],
 
@@ -261,28 +263,50 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
                 },
             };
             const globalSkills = deriveGlobalSkillState(skillStatuses, skillConfig);
+            const globalSkillKeys = new Set(skillStatuses.map(s => s.key));
             console.log('[Capabilities] Global skills:', globalSkills.length, 'enabled:', globalSkills.filter(s => s.enabled).length);
 
-            // 8. Derive per-agent states
+            // 8. Derive per-agent states — fetch agent-specific skill statuses
             const perAgentTools: Record<string, OpenClawTool[]> = {};
             const perAgentSkills: Record<string, OpenClawSkill[]> = {};
+            const perAgentSkillStatusesCache: Record<string, any[]> = {};
 
             const agentsList = config?.agents?.list || config?.agents;
             if (Array.isArray(agentsList)) {
-                for (const agent of agentsList) {
-                    const agentId = agent.id || agent.agentId;
-                    if (!agentId) continue;
+                // Fetch per-agent skill statuses in parallel
+                const agentSkillFetches = agentsList
+                    .filter((a: any) => a.id || a.agentId)
+                    .map(async (agent: any) => {
+                        const agentId = agent.id || agent.agentId;
+                        try {
+                            const agentSkillsRes = await gw.request('skills.status', { agentId });
+                            const agentSkillStatuses = parseSkillStatuses(agentSkillsRes);
+                            console.log(`[Capabilities] Agent ${agentId} skills:`, agentSkillStatuses.length);
+                            return { agentId, agent, statuses: agentSkillStatuses };
+                        } catch (e) {
+                            console.warn(`[Capabilities] skills.status(${agentId}) failed, falling back to global:`, e);
+                            return { agentId, agent, statuses: null };
+                        }
+                    });
 
+                const agentResults = await Promise.all(agentSkillFetches);
+
+                for (const { agentId, agent, statuses } of agentResults) {
                     perAgentTools[agentId] = derivePerAgentToolState(
                         catalogTools,
                         agent,
                         globalTools
                     );
 
+                    // Use agent-specific statuses if available, fall back to global
+                    const effectiveStatuses = statuses ?? skillStatuses;
+                    perAgentSkillStatusesCache[agentId] = effectiveStatuses;
+
                     perAgentSkills[agentId] = derivePerAgentSkillState(
-                        skillStatuses,
+                        effectiveStatuses,
                         skillConfig,
-                        agentId
+                        agentId,
+                        globalSkillKeys
                     );
                 }
             }
@@ -321,6 +345,7 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
                 hasUnsavedChanges: false,
                 catalogToolsCache: catalogTools,
                 skillStatusesCache: skillStatuses,
+                perAgentSkillStatusesCache,
                 skillGroups,
                 isLoading: false,
                 error: null,
@@ -389,7 +414,9 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
                 const agentId = agent.id || agent.agentId;
                 if (!agentId) continue;
                 perAgentTools[agentId] = derivePerAgentToolState(s.catalogToolsCache, agent, globalTools);
-                perAgentSkills[agentId] = derivePerAgentSkillState(s.skillStatusesCache, skillConfig, agentId);
+                const agentStatuses = s.perAgentSkillStatusesCache[agentId] ?? s.skillStatusesCache;
+                const globalSkillKeys = new Set(s.skillStatusesCache.map((sk: any) => sk.key));
+                perAgentSkills[agentId] = derivePerAgentSkillState(agentStatuses, skillConfig, agentId, globalSkillKeys);
             }
         }
 
@@ -417,7 +444,9 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
                 const agentId = agent.id || agent.agentId;
                 if (!agentId) continue;
                 perAgentTools[agentId] = derivePerAgentToolState(s.catalogToolsCache, agent, globalTools);
-                perAgentSkills[agentId] = derivePerAgentSkillState(s.skillStatusesCache, skillConfig, agentId);
+                const agentStatuses = s.perAgentSkillStatusesCache[agentId] ?? s.skillStatusesCache;
+                const globalSkillKeys = new Set(s.skillStatusesCache.map((sk: any) => sk.key));
+                perAgentSkills[agentId] = derivePerAgentSkillState(agentStatuses, skillConfig, agentId, globalSkillKeys);
             }
         }
 

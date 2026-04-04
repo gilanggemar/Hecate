@@ -250,6 +250,7 @@ export function CapabilitiesClient() {
                                             togglingItems={togglingItems}
                                             onToggle={handleSkillToggle}
                                             onExpand={() => setIsSkillsModalOpen(true)}
+                                            isPerAgent={activeTab === 'per-agent'}
                                         />
                                     </div>
 

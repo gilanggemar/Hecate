@@ -43,7 +43,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="nerv-app-shell">
                 <TopRightUserMenu />
                 <ShellFrame>
-                    <main className="nerv-content-viewport">
+                    <main className={`nerv-content-viewport${pathname === '/dashboard/constellation' ? ' nerv-content-fullbleed' : ''}`}>
                         <ClientShell>
                             <Suspense fallback={
                                 <div className="flex items-center justify-center h-full w-full">

@@ -1384,6 +1384,12 @@ time,
   position: relative;
 }
 
+/* Fullbleed mode — removes content padding so canvas fills the shell area */
+.nerv-content-viewport.nerv-content-fullbleed {
+  padding: 0;
+  overflow: hidden;
+}
+
 /* ─── Dock Blur Backdrop ─── */
 
 

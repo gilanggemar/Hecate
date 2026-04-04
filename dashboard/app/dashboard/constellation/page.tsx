@@ -5,11 +5,9 @@ import { ConstellationCanvas } from "@/components/constellation-builder/Constell
 
 export default function ConstellationPage() {
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden">
+        <div className="relative h-full w-full overflow-hidden">
             <ConstellationHeader />
-            <div className="flex-1 relative">
-                <ConstellationCanvas />
-            </div>
+            <ConstellationCanvas />
         </div>
     );
 }

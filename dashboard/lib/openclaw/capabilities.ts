@@ -141,12 +141,18 @@ export function deriveGlobalSkillState(
 
 /**
  * Derive per-agent skill state.
- * Checks skills.entries.<key>.agents array for per-agent scoping.
+ * Compares per-agent skill statuses against global skill keys to determine
+ * which are shared (inherited) vs agent-local.
+ * @param skillStatuses - skills returned by `skills.status({ agentId })` for this agent
+ * @param config - parsed config with skill entries
+ * @param agentId - the agent ID
+ * @param globalSkillKeys - Set of skill keys from the global `skills.status({})` call
  */
 export function derivePerAgentSkillState(
     skillStatuses: Array<{ key: string; name: string; description?: string; eligible: boolean; missingRequirements?: string[] }>,
     config: { skills?: { entries?: Record<string, { enabled?: boolean; agents?: string[] }> } },
-    agentId: string
+    agentId: string,
+    globalSkillKeys?: Set<string>
 ): OpenClawSkill[] {
     const entries = config.skills?.entries ?? {};
 
@@ -154,7 +160,7 @@ export function derivePerAgentSkillState(
         const entry = entries[skill.key];
         const isGloballyEnabled = entry?.enabled !== false;
 
-        // If the skill has an agents array, check if this agent is in it
+        // If the skill has an agents array in config, check if this agent is in it
         if (entry?.agents && Array.isArray(entry.agents)) {
             return {
                 ...skill,
@@ -163,11 +169,13 @@ export function derivePerAgentSkillState(
             };
         }
 
-        // No agents array = available to all agents (inherit global state)
+        // Determine if this is a local skill by checking if it exists in the global set
+        const isLocal = globalSkillKeys ? !globalSkillKeys.has(skill.key) : false;
+
         return {
             ...skill,
             enabled: isGloballyEnabled,
-            inherited: true,
+            inherited: !isLocal,
         };
     });
 }
