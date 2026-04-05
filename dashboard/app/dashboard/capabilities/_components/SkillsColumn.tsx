@@ -68,33 +68,7 @@ export function SkillsColumn({ skills, togglingItems, onToggle, onExpand, isPerA
                         </>
                     )}
 
-                    {/* Filter toggle — always visible in per-agent */}
-                    {isPerAgent && (
-                        <div className="flex items-center rounded-md border border-white/[0.08] overflow-hidden shrink-0 ml-1">
-                            {([
-                                { id: 'all' as SkillFilter, label: 'All' },
-                                { id: 'shared' as SkillFilter, label: 'Shared' },
-                                { id: 'local' as SkillFilter, label: 'Local' },
-                            ]).map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setFilter(tab.id)}
-                                    className={cn(
-                                        'px-2 py-0.5 text-[10px] font-mono transition-all',
-                                        filter === tab.id
-                                            ? tab.id === 'local'
-                                                ? 'bg-amber-500/15 text-amber-400/90 font-bold'
-                                                : tab.id === 'shared'
-                                                    ? 'bg-blue-500/10 text-blue-400/80 font-bold'
-                                                    : 'bg-white/8 text-white/80 font-bold'
-                                            : 'text-white/25 hover:text-white/50 hover:bg-white/3'
-                                    )}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+
                 </div>
 
                 {onExpand && (

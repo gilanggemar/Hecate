@@ -103,6 +103,7 @@ interface OpenClawCapabilitiesState {
 
     // Skill management
     skillGroups: SkillGroup[];
+    _installedSkillsMeta: Record<string, { key: string; name: string; description?: string; source?: string; sourceUrl?: string; enabled: boolean }>;
 
     // Raw config cache (for patching)
     rawConfig: any | null;
@@ -145,9 +146,12 @@ interface OpenClawCapabilitiesState {
 
     // Skill management actions
     installSkill: (skill: { key: string; name: string; description?: string; source: 'github' | 'skill.sh' | 'manual'; sourceUrl?: string; content?: string; compatibilityNote?: string }) => void;
+    installPerAgentSkill: (agentId: string, skill: { key: string; name: string; description?: string; source: 'github' | 'skill.sh' | 'manual'; sourceUrl?: string; content?: string; compatibilityNote?: string }) => void;
     deleteSkill: (skillKey: string) => void;
     renameSkill: (skillKey: string, newName: string) => void;
     setSkillTags: (skillKey: string, tags: string[]) => void;
+    batchDeploySkills: (agentId: string, skills: any[], githubUrl: string) => void;
+    handleInstallConfirmation: (agentId: string, installedKeys: string[]) => void;
     createSkillGroup: (name: string) => void;
     renameSkillGroup: (groupId: string, name: string) => void;
     deleteSkillGroup: (groupId: string) => void;
@@ -160,6 +164,61 @@ interface OpenClawCapabilitiesState {
     resetFileDraft: () => void;
     clearFileSelection: () => void;
 }
+
+// ─── Helper: Send GitHub URL to agent so THEY clone and install ──────────────
+async function _sendInstallCommand(gw: any, agentId: string, githubUrl: string, skills: any[] = []) {
+    try {
+        const sessionKey = `agent:${agentId}:main`;
+        const idempotencyKey = `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        
+        const skillNames = skills?.length ? skills.map(s => s.name || s.key).join(', ') : 'Unknown Skill';
+        const skillDesc = skills?.length ? skills.map(s => s.description).filter(Boolean).join(' | ') : '';
+
+        const message = `Install this skill from GitHub into your skills directory. Git clone it and make sure all files are properly accessible.
+Repo: ${githubUrl}
+
+If the skills weren't originally made for OpenClaw, then read it and figure it out. Make it work.
+
+After cloning, you must update your documentation. A new workspace skill has been installed for this agent.
+
+Inputs:
+- agent workspace: \`./\`
+- tools file: \`TOOLS.md\`
+- skill name: \`${skillNames}\`
+- skill file: (the files you just cloned)
+- optional installer summary: \`${skillDesc}\`
+
+Task:
+Update your agent-local \`TOOLS.md\` so its skill guide remains current and cumulative.
+
+Instructions:
+1. Read the current \`TOOLS.md\` before editing.
+2. Read the skill files before writing the skill entry.
+3. Edit only this agent’s own \`TOOLS.md\`.
+4. Continue the existing skill guide if present; if none exists, create a small local skill guide section.
+5. Only document workspace-local or agent-specific skills unless \`TOOLS.md\` explicitly requires a broader catalog.
+6. Add or revise the skill entry in this exact format:
+
+\`- **[skill_name]** — one-sentence description. Use for: primary use cases. Avoid when: obvious boundary or non-fit.\`
+
+7. Keep the entry concise, specific, action-oriented, and consistent with the existing file style.
+8. If the new skill overlaps with an existing one, clarify the distinction and prefer the more specific skill.
+9. Preserve all other \`TOOLS.md\` content, including persona rules, tool rules, formatting, and existing sections.
+10. Make the smallest precise edit possible; do not replace the whole file unless necessary.
+
+When done, reply with:
+[SKILLS_INSTALLED]
+repo: ${githubUrl}
+skills: (list the skill folder names, comma separated)
+[/SKILLS_INSTALLED]`;
+
+        await gw.request('chat.send', { sessionKey, message, idempotencyKey });
+        console.log(`[Capabilities] ✓ Sent install command for ${githubUrl} to agent ${agentId}`);
+    } catch (err: any) {
+        console.error(`[Capabilities] Failed to send install command to ${agentId}:`, err?.message || JSON.stringify(err));
+    }
+}
+
 
 export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((set, get) => ({
     // Initial state
@@ -174,6 +233,12 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
     perAgentSkillStatusesCache: {},
 
     skillGroups: [],
+    _installedSkillsMeta: (() => {
+        try {
+            const stored = typeof window !== 'undefined' ? localStorage.getItem('nerv_installed_skills') : null;
+            return stored ? JSON.parse(stored) : {};
+        } catch { return {}; }
+    })(),
 
     rawConfig: null,
     draftConfig: null,
@@ -331,10 +396,31 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
                 });
             };
 
+            // Merge locally-installed skill metadata ONLY into per-agent caches
+            // (not global — global should only reflect what the gateway reports)
+            const installedMeta = get()._installedSkillsMeta || {};
+            for (const [key, meta] of Object.entries(installedMeta)) {
+                const m = meta as any;
+                const targetAgentId = m.agentId;
+                if (!targetAgentId) continue; // Skip global entries — they're ghost data
+
+                // Add to the specific agent's cache only
+                const agentCache = perAgentSkillStatusesCache[targetAgentId] || [];
+                if (!agentCache.some((s: any) => s.key === key)) {
+                    perAgentSkillStatusesCache[targetAgentId] = [
+                        ...agentCache,
+                        { key, name: m.name || key, description: m.description || '', eligible: true },
+                    ];
+                }
+            }
+
+            // Re-derive with clean data (no localStorage pollution)
+            const finalGlobalSkills = deriveGlobalSkillState(skillStatuses, skillConfig);
+
             set({
                 agents,
                 globalTools,
-                globalSkills: enrichSkills(globalSkills),
+                globalSkills: enrichSkills(finalGlobalSkills),
                 perAgentTools,
                 perAgentSkills: Object.fromEntries(
                     Object.entries(perAgentSkills).map(([k, v]) => [k, enrichSkills(v)])
@@ -371,15 +457,59 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
         set({ isApplying: true, error: null });
 
         try {
+            // Deep clone and strip UI-only fields (content, compatibilityNote) from plugin entries
+            // before sending to the gateway — these are large blobs that don't belong in the config file
+            const cleanConfig = JSON.parse(JSON.stringify(draftConfig));
+
+            // Strip from global plugins.entries — only `enabled`, `env`, `config`, `apiKey` are valid
+            if (cleanConfig.plugins?.entries) {
+                for (const [key, entry] of Object.entries(cleanConfig.plugins.entries) as [string, any][]) {
+                    // Keep only gateway-valid keys
+                    cleanConfig.plugins.entries[key] = {
+                        ...(entry.enabled !== undefined ? { enabled: entry.enabled } : {}),
+                        ...(entry.env ? { env: entry.env } : {}),
+                        ...(entry.config ? { config: entry.config } : {}),
+                        ...(entry.apiKey ? { apiKey: entry.apiKey } : {}),
+                    };
+                }
+            }
+
+            // Strip `plugins` from agent objects — gateway schema doesn't allow it at agent level
+            const agentsList = cleanConfig.agents?.list || cleanConfig.agents;
+            if (Array.isArray(agentsList)) {
+                for (const agent of agentsList) {
+                    delete agent.plugins;
+                }
+            }
+
+            // Strip dashboard-only installed skills from plugins.entries
+            // These exist only in _installedSkillsMeta and would cause config.patch to fail
+            const installedMeta = get()._installedSkillsMeta || {};
+            if (cleanConfig.plugins?.entries) {
+                for (const key of Object.keys(installedMeta)) {
+                    delete cleanConfig.plugins.entries[key];
+                }
+                // Remove plugins.entries entirely if empty
+                if (Object.keys(cleanConfig.plugins.entries).length === 0) {
+                    delete cleanConfig.plugins.entries;
+                }
+                // Remove plugins entirely if empty
+                if (cleanConfig.plugins && Object.keys(cleanConfig.plugins).length === 0) {
+                    delete cleanConfig.plugins;
+                }
+            }
+
+            console.log('[Capabilities] Sending config.patch, size:', JSON.stringify(cleanConfig).length);
+
             await gw.request('config.patch', {
-                raw: JSON.stringify(draftConfig),
+                raw: JSON.stringify(cleanConfig),
                 baseHash: configHash,
             });
 
             // Re-fetch to confirm changes
             await get().fetchAll();
         } catch (err: any) {
-            console.error('[Capabilities] applyChanges failed:', err);
+            console.error('[Capabilities] applyChanges failed:', err, JSON.stringify(err));
             set({ error: errMsg(err, 'Failed to apply configuration changes'), isApplying: false });
         }
     },
@@ -400,7 +530,14 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
         
         // Re-run derivations
         const s = get();
-        const skillConfig = { skills: { entries: draftConfig?.plugins?.entries ?? draftConfig?.skills?.entries ?? {} } };
+        const skillConfig = { skills: { entries: { ...(draftConfig?.plugins?.entries ?? draftConfig?.skills?.entries ?? {}) } } };
+        // Merge dashboard-installed skills so they derive as enabled
+        const installedMeta1 = get()._installedSkillsMeta || {};
+        for (const [key, meta] of Object.entries(installedMeta1)) {
+            if (!skillConfig.skills.entries[key]) {
+                skillConfig.skills.entries[key] = { enabled: (meta as any).enabled !== false };
+            }
+        }
         
         const globalTools = deriveGlobalToolState(s.catalogToolsCache, draftConfig);
         const globalSkills = deriveGlobalSkillState(s.skillStatusesCache, skillConfig);
@@ -430,7 +567,14 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
         const draftConfig = s.draftConfig;
         if (!draftConfig) return;
 
-        const skillConfig = { skills: { entries: draftConfig?.plugins?.entries ?? draftConfig?.skills?.entries ?? {} } };
+        const skillConfig = { skills: { entries: { ...(draftConfig?.plugins?.entries ?? draftConfig?.skills?.entries ?? {}) } } };
+        // Merge dashboard-installed skills so they derive as enabled
+        const installedMeta2 = (s as any)._installedSkillsMeta || {};
+        for (const [key, meta] of Object.entries(installedMeta2)) {
+            if (!skillConfig.skills.entries[key]) {
+                skillConfig.skills.entries[key] = { enabled: (meta as any).enabled !== false };
+            }
+        }
         
         const globalTools = deriveGlobalToolState(s.catalogToolsCache, draftConfig);
         const globalSkills = deriveGlobalSkillState(s.skillStatusesCache, skillConfig);
@@ -681,46 +825,108 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
     // ─── Skill Management Actions ───────────────────────────────────────
 
     installSkill: (skill) => {
-        const { draftConfig, skillStatusesCache, _rederiveLocalState } = get() as any;
-        if (!draftConfig) return;
+        const { skillStatusesCache, _installedSkillsMeta, _rederiveLocalState } = get() as any;
 
-        if (!draftConfig.plugins) draftConfig.plugins = {};
-        if (!draftConfig.plugins.entries) draftConfig.plugins.entries = {};
-
-        // Add the skill entry to draft config
-        draftConfig.plugins.entries[skill.key] = {
-            enabled: true,
-            source: skill.source,
-            sourceUrl: skill.sourceUrl || undefined,
-            name: skill.name,
-            description: skill.description || undefined,
-            tags: [],
-            ...(skill.content ? { content: skill.content } : {}),
-            ...(skill.compatibilityNote ? { compatibilityNote: skill.compatibilityNote } : {}),
+        // Persist to localStorage for UI tracking (no gateway calls)
+        const updatedMeta = {
+            ..._installedSkillsMeta,
+            [skill.key]: {
+                key: skill.key,
+                name: skill.name,
+                description: skill.description,
+                source: skill.source,
+                sourceUrl: skill.sourceUrl,
+                enabled: true,
+            },
         };
+        try { localStorage.setItem('nerv_installed_skills', JSON.stringify(updatedMeta)); } catch {}
 
-        // Also add to skillStatusesCache so _rederiveLocalState picks it up
+        // Update UI cache
         const alreadyInCache = skillStatusesCache.some((s: any) => s.key === skill.key);
         if (!alreadyInCache) {
             set({
                 skillStatusesCache: [
                     ...skillStatusesCache,
-                    {
-                        key: skill.key,
-                        name: skill.name,
-                        description: skill.description,
-                        eligible: true,
-                    },
+                    { key: skill.key, name: skill.name, description: skill.description, eligible: true },
                 ],
             });
         }
 
-        set({ draftConfig });
+        set({ _installedSkillsMeta: updatedMeta });
         _rederiveLocalState();
     },
 
+    installPerAgentSkill: (agentId, skill) => {
+        const { skillStatusesCache, perAgentSkillStatusesCache, _installedSkillsMeta, _rederiveLocalState } = get() as any;
+
+        // Persist to localStorage (no gateway calls — use batchDeploySkills after)
+        const updatedMeta = {
+            ..._installedSkillsMeta,
+            [skill.key]: {
+                key: skill.key,
+                name: skill.name,
+                description: skill.description,
+                source: skill.source,
+                sourceUrl: skill.sourceUrl,
+                enabled: true,
+                agentId,
+            },
+        };
+        try { localStorage.setItem('nerv_installed_skills', JSON.stringify(updatedMeta)); } catch {}
+
+        // Update UI caches
+        const alreadyInGlobalCache = skillStatusesCache.some((s: any) => s.key === skill.key);
+        if (!alreadyInGlobalCache) {
+            set({
+                skillStatusesCache: [
+                    ...skillStatusesCache,
+                    { key: skill.key, name: skill.name, description: skill.description, eligible: true },
+                ],
+            });
+        }
+
+        const agentCache = perAgentSkillStatusesCache[agentId] || [];
+        const alreadyInAgentCache = agentCache.some((s: any) => s.key === skill.key);
+        if (!alreadyInAgentCache) {
+            set({
+                perAgentSkillStatusesCache: {
+                    ...perAgentSkillStatusesCache,
+                    [agentId]: [
+                        ...agentCache,
+                        { key: skill.key, name: skill.name, description: skill.description, eligible: true },
+                    ],
+                },
+            });
+        }
+
+        set({ _installedSkillsMeta: updatedMeta });
+        _rederiveLocalState();
+    },
+
+    batchDeploySkills: (agentId: string, _skills: any[], githubUrl: string) => {
+        const gw = getGateway();
+        if (!gw.isConnected || !githubUrl) return;
+        _sendInstallCommand(gw, agentId, githubUrl, _skills);
+    },
+
+    // ─── Process agent's install confirmation ────────────────────────────
+    handleInstallConfirmation: (agentId: string, installedKeys: string[]) => {
+        const { _installedSkillsMeta, _rederiveLocalState } = get() as any;
+
+        const updatedMeta = { ..._installedSkillsMeta };
+        for (const key of installedKeys) {
+            if (updatedMeta[key]) {
+                updatedMeta[key] = { ...updatedMeta[key], confirmed: true };
+            }
+        }
+        try { localStorage.setItem('nerv_installed_skills', JSON.stringify(updatedMeta)); } catch {}
+        set({ _installedSkillsMeta: updatedMeta });
+        _rederiveLocalState();
+        console.log(`[Capabilities] ✓ Agent ${agentId} confirmed installation of: ${installedKeys.join(', ')}`);
+    },
+
     deleteSkill: (skillKey) => {
-        const { draftConfig, skillStatusesCache, _rederiveLocalState } = get() as any;
+        const { draftConfig, skillStatusesCache, _installedSkillsMeta, _rederiveLocalState } = get() as any;
         if (!draftConfig) return;
 
         // Remove from plugins.entries
@@ -728,10 +934,16 @@ export const useOpenClawCapabilitiesStore = create<OpenClawCapabilitiesState>((s
             delete draftConfig.plugins.entries[skillKey];
         }
 
+        // Remove from _installedSkillsMeta + localStorage
+        const updatedMeta = { ..._installedSkillsMeta };
+        delete updatedMeta[skillKey];
+        try { localStorage.setItem('nerv_installed_skills', JSON.stringify(updatedMeta)); } catch {}
+
         // Remove from cache
         set({
             draftConfig,
             skillStatusesCache: skillStatusesCache.filter((s: any) => s.key !== skillKey),
+            _installedSkillsMeta: updatedMeta,
         });
         _rederiveLocalState();
     },

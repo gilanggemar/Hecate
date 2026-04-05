@@ -454,7 +454,7 @@ export function useOpenClawGateway() {
             }
             return await gw.request("exec.approval.resolve", {
                 id: approvalId,
-                approved,
+                decision: approved ? "allow-once" : "deny",
                 idempotencyKey: crypto.randomUUID(),
             });
         },

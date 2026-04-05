@@ -184,13 +184,30 @@ function SkillRow({ skill, isToggling, onToggle, onRename, onDelete, onManageTag
 
 // ─── Install Panel ───────────────────────────────────────────────────────────
 
-function InstallPanel({ onClose }: { onClose: () => void }) {
+interface InstallPanelProps {
+    onClose: () => void;
+    activeTab: 'per-agent' | 'global' | 'core-files';
+    selectedAgentId: string | null;
+}
+
+function InstallPanel({ onClose, activeTab, selectedAgentId }: InstallPanelProps) {
     const [url, setUrl] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [dragOver, setDragOver] = useState(false);
     const installSkill = useOpenClawCapabilitiesStore(s => s.installSkill);
+    const installPerAgentSkill = useOpenClawCapabilitiesStore(s => s.installPerAgentSkill);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    const isPerAgent = activeTab === 'per-agent' && !!selectedAgentId;
+
+    const doInstall = (skill: Parameters<typeof installSkill>[0]) => {
+        if (isPerAgent && selectedAgentId) {
+            installPerAgentSkill(selectedAgentId, skill);
+        } else {
+            installSkill(skill);
+        }
+    };
 
     const handleUrlInstall = async () => {
         if (!url.trim()) return;
@@ -199,36 +216,66 @@ function InstallPanel({ onClose }: { onClose: () => void }) {
 
         try {
             const source = detectSource(url);
-            let fetchUrl = url;
 
-            // Convert GitHub repo URL to raw content
-            if (source === 'github') {
-                fetchUrl = url
-                    .replace('github.com', 'raw.githubusercontent.com')
-                    .replace('/blob/', '/');
-            }
-
+            // Send original URL to the API — it handles GitHub repo detection internally
             const res = await fetch('/api/skill-fetch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: fetchUrl }),
+                body: JSON.stringify({ url: url.trim() }),
             });
 
-            if (!res.ok) throw new Error(`Failed to fetch skill: ${res.statusText}`);
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                throw new Error(errBody.error || `Failed to fetch skill: ${res.statusText}`);
+            }
             const data = await res.json();
 
-            // Derive key from URL or filename
-            const urlParts = url.split('/').filter(Boolean);
-            const key = urlParts[urlParts.length - 1]?.replace(/\.(md|txt|zip)$/i, '') || `skill-${Date.now()}`;
-            const name = key.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            // Handle multi-skill repos (e.g. marketingskills with skills/*/SKILL.md)
+            if (data.multiSkill && Array.isArray(data.skills)) {
+                let installed = 0;
+                const installedSkills: any[] = [];
+                for (const skill of data.skills) {
+                    if (!skill || !skill.key) continue;
+                    const isNonOpenClaw = /claude|anthropic|cursor|windsurf|copilot/i.test(skill.content || '');
+                    const skillData = {
+                        key: skill.key,
+                        name: skill.name || skill.key,
+                        description: skill.description || `From ${data.repoName}`,
+                        source,
+                        sourceUrl: data.repoUrl || url,
+                        content: skill.content,
+                        compatibilityNote: isNonOpenClaw
+                            ? `This skill was originally authored for a different AI assistant.`
+                            : undefined,
+                    };
+                    doInstall(skillData);
+                    installedSkills.push(skillData);
+                    installed++;
+                }
 
-            // Check if skill is non-OpenClaw (e.g. mentions Claude, Anthropic, etc.)
+                // Send JUST the GitHub URL to the agent — agent clones & installs itself
+                if (isPerAgent && selectedAgentId) {
+                    const batchDeploy = useOpenClawCapabilitiesStore.getState().batchDeploySkills;
+                    batchDeploy(selectedAgentId, installedSkills, url.trim());
+                }
+
+                setUrl('');
+                onClose();
+                return;
+            }
+
+            // Single skill
+            const urlParts = url.split('/').filter(Boolean);
+            const fallbackKey = urlParts[urlParts.length - 1]?.replace(/\.(md|txt|zip|git)$/i, '') || `skill-${Date.now()}`;
+            const key = data.key || fallbackKey.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            const name = data.name || key.replace(/[-_]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+
             const isNonOpenClaw = /claude|anthropic|cursor|windsurf|copilot/i.test(data.content || '');
             const compatibilityNote = isNonOpenClaw
                 ? `This skill was originally authored for a different AI assistant. The OpenClaw agent should adapt its instructions to work within the OpenClaw framework.`
                 : undefined;
 
-            installSkill({
+            doInstall({
                 key,
                 name,
                 description: data.description || `Installed from ${sourceLabel(source)}`,
@@ -237,6 +284,12 @@ function InstallPanel({ onClose }: { onClose: () => void }) {
                 content: data.content,
                 compatibilityNote,
             });
+
+            // Send the GitHub URL to the agent
+            if (isPerAgent && selectedAgentId) {
+                const batchDeploy = useOpenClawCapabilitiesStore.getState().batchDeploySkills;
+                batchDeploy(selectedAgentId, [], url.trim());
+            }
 
             setUrl('');
             onClose();
@@ -260,7 +313,7 @@ function InstallPanel({ onClose }: { onClose: () => void }) {
 
             const isNonOpenClaw = /claude|anthropic|cursor|windsurf|copilot/i.test(content);
 
-            installSkill({
+            doInstall({
                 key,
                 name,
                 description: `Manually uploaded from ${file.name}`,
@@ -288,7 +341,19 @@ function InstallPanel({ onClose }: { onClose: () => void }) {
         >
             <div className="p-4 rounded-md border border-white/[0.08] bg-white/[0.02] space-y-3">
                 <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-white/70 uppercase tracking-wider">Install New Skill</h4>
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-white/70 uppercase tracking-wider">Install New Skill</h4>
+                        {isPerAgent && (
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-orange-400/70 bg-orange-500/10 px-1.5 py-0.5 rounded-md border border-orange-500/20">
+                                → {selectedAgentId} only
+                            </span>
+                        )}
+                        {!isPerAgent && (
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400/70 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                                global
+                            </span>
+                        )}
+                    </div>
                     <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors">
                         <X className="size-3.5" />
                     </button>
@@ -484,6 +549,7 @@ export function SkillsManagerModal({
     } = useOpenClawCapabilitiesStore();
 
     const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState<'all' | 'shared' | 'local'>('all');
     const [sortBy, setSortBy] = useState<SortKey>('name');
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
     const [showInstall, setShowInstall] = useState(false);
@@ -499,6 +565,12 @@ export function SkillsManagerModal({
     // Filter + sort skills
     const displaySkills = useMemo(() => {
         let filtered = skills;
+
+        // Apply shared/local filter
+        if (activeTab === 'per-agent') {
+            if (filter === 'shared') filtered = filtered.filter(s => s.inherited);
+            if (filter === 'local') filtered = filtered.filter(s => !s.inherited);
+        }
 
         // Group filter
         if (selectedGroup) {
@@ -516,7 +588,7 @@ export function SkillsManagerModal({
         }
 
         return sortSkills(filtered, sortBy);
-    }, [skills, search, sortBy, selectedGroup]);
+    }, [skills, search, sortBy, selectedGroup, filter, activeTab]);
 
     const enabledCount = skills.filter(s => s.enabled).length;
     const eligibleCount = skills.filter(s => s.eligible).length;
@@ -535,15 +607,15 @@ export function SkillsManagerModal({
     return (
         <>
             <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex flex-col bg-[#080706]"
+                initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98, y: 10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="fixed inset-0 z-[14] flex flex-col overflow-hidden bg-[#080706]/90 backdrop-blur-2xl"
             >
                 {/* ═══ HEADER ═══ */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between pl-10 pr-8 py-5 border-b border-white/[0.06] bg-white/[0.02] pt-8">
                     <div className="flex items-center gap-3">
-                        <Sparkles className="size-5 text-violet-400/70" />
                         <div>
                             <h2 className="text-base font-bold text-white/95 tracking-tight">Skills Manager</h2>
                             <p className="text-[11px] font-mono text-white/30 mt-0.5">
@@ -574,9 +646,9 @@ export function SkillsManagerModal({
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* ═══ LEFT SIDEBAR — Groups ═══ */}
-                    <div className="w-56 border-r border-white/[0.06] flex flex-col">
-                        <div className="px-3 py-3 border-b border-white/[0.04]">
-                            <p className="text-[10px] font-mono uppercase tracking-wider text-white/25 mb-2">Groups</p>
+                    <div className="w-72 border-r border-white/[0.06] flex flex-col pl-[10px]">
+                        <div className="px-3 pt-4 pb-1">
+                            <p className="text-xs font-mono font-semibold uppercase tracking-widest text-white/40">Groups</p>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
                             {/* All Skills */}
@@ -665,7 +737,38 @@ export function SkillsManagerModal({
                     {/* ═══ MAIN CONTENT ═══ */}
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {/* Toolbar */}
-                        <div className="flex items-center gap-3 px-5 py-3 border-b border-white/[0.04]">
+                        <div className="flex items-center gap-3 px-5 py-3 border-b border-white/[0.04] bg-white/[0.01]">
+                            {/* Filter Tabs */}
+                            {activeTab === 'per-agent' && (
+                                <>
+                                    <div className="flex items-center rounded-md border border-white/[0.08] overflow-hidden shrink-0 bg-black/20">
+                                        {([
+                                            { id: 'all', label: 'All' },
+                                            { id: 'shared', label: 'Shared' },
+                                            { id: 'local', label: 'Local' },
+                                        ] as const).map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setFilter(tab.id)}
+                                                className={cn(
+                                                    'px-3 py-1.5 text-xs font-mono transition-all',
+                                                    filter === tab.id
+                                                        ? tab.id === 'local'
+                                                            ? 'bg-amber-500/15 text-amber-400/90 font-bold'
+                                                            : tab.id === 'shared'
+                                                                ? 'bg-blue-500/10 text-blue-400/80 font-bold'
+                                                                : 'bg-white/10 text-white/90 font-bold'
+                                                        : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                                                )}
+                                            >
+                                                {tab.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="h-4 w-[1px] bg-white/[0.08]" />
+                                </>
+                            )}
+                            
                             {/* Search */}
                             <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                                 <Search className="size-3.5 text-white/25" />
@@ -733,13 +836,17 @@ export function SkillsManagerModal({
                         <AnimatePresence>
                             {showInstall && (
                                 <div className="px-5 pt-3">
-                                    <InstallPanel onClose={() => setShowInstall(false)} />
+                                    <InstallPanel
+                                        onClose={() => setShowInstall(false)}
+                                        activeTab={activeTab}
+                                        selectedAgentId={selectedAgentId}
+                                    />
                                 </div>
                             )}
                         </AnimatePresence>
 
                         {/* Skills List */}
-                        <div className="flex-1 overflow-y-auto px-5 py-2 scrollbar-thin">
+                        <div className="flex-1 overflow-y-auto px-5 pt-2 pb-32 scrollbar-thin">
                             <AnimatePresence mode="popLayout">
                                 {displaySkills.length === 0 ? (
                                     <motion.div

@@ -755,6 +755,19 @@ export function useSocket() {
                     if (activeTask && activeTask.status !== 'FAILED') {
                         taskStore.updateTaskStatus(activeTask.id, 'DONE');
                     }
+
+                    // Detect [SKILLS_INSTALLED] confirmation from agent
+                    const finalContent = useSocketStore.getState().chatMessages.find(m => m.id === `reply-${runId}`)?.content || '';
+                    const skillsMatch = finalContent.match(/\[SKILLS_INSTALLED\][\s\S]*?skills:\s*(.+?)[\s\S]*?\[\/SKILLS_INSTALLED\]/);
+                    if (skillsMatch) {
+                        const keys = skillsMatch[1].split(',').map((k: string) => k.trim()).filter(Boolean);
+                        if (keys.length > 0) {
+                            try {
+                                const { useOpenClawCapabilitiesStore } = require('@/stores/useOpenClawCapabilitiesStore');
+                                useOpenClawCapabilitiesStore.getState().handleInstallConfirmation(finalAgentId, keys);
+                            } catch (e) { console.warn('[Skills] Could not process install confirmation:', e); }
+                        }
+                    }
                 }
             }
 

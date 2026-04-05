@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getChartData } from '@/lib/telemetry/logger';
-import { getAuthUserId } from '@/lib/auth';
 
 // GET /api/telemetry/chart-data — time-series data for charts
+// No auth required — internal operational telemetry.
 export async function GET(request: Request) {
-    const userId = await getAuthUserId();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-
     try {
         const { searchParams } = new URL(request.url);
         const range = searchParams.get('range') || '24h';
