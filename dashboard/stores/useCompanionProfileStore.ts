@@ -3,6 +3,7 @@
 // Stored in Supabase companion_profiles table — not OpenClaw.
 
 import { create } from 'zustand';
+import { mapAgentToCompanion, isCompanionSectionsEmpty } from '@/lib/companion/agentToCompanionMapper';
 
 // ─── Section Types ──────────────────────────────────────────────────────────
 
@@ -204,6 +205,7 @@ interface CompanionProfileState {
 
     loadProfile: (agentId: string) => Promise<void>;
     saveProfile: (agentId: string, agentName?: string) => Promise<void>;
+    syncFromAgent: (agentId: string) => Promise<boolean>;
     updateField: (agentId: string, sectionKey: keyof CompanionSections, fieldKey: string, value: string) => void;
     isDirty: (agentId: string) => boolean;
     getCompiledMarkdown: (agentId: string, agentName?: string) => string;
@@ -236,9 +238,12 @@ export const useCompanionProfileStore = create<CompanionProfileState>((set, get)
                 }
                 : { agentId, sections: { ...EMPTY_SECTIONS } };
 
+            // Draft sections for the editor (no auto-populate — user must explicitly sync)
+            const draftSections = JSON.parse(JSON.stringify(profile.sections)) as CompanionSections;
+
             set(s => ({
                 profiles: { ...s.profiles, [agentId]: profile },
-                drafts: { ...s.drafts, [agentId]: JSON.parse(JSON.stringify(profile.sections)) },
+                drafts: { ...s.drafts, [agentId]: draftSections },
                 isLoading: { ...s.isLoading, [agentId]: false },
             }));
         } catch (err: any) {
@@ -316,6 +321,35 @@ export const useCompanionProfileStore = create<CompanionProfileState>((set, get)
         const draft = get().drafts[agentId];
         if (!draft) return '';
         return compileSectionsToMarkdown(draft, agentName);
+    },
+
+    syncFromAgent: async (agentId: string): Promise<boolean> => {
+        try {
+            // Fetch and parse agent files directly from the OpenClaw Gateway
+            // This works regardless of whether the constellation store is initialized
+            const { fetchAndParseAgentFiles } = await import('@/lib/companion/agentToCompanionMapper');
+            const agentArch = await fetchAndParseAgentFiles(agentId);
+
+            if (!agentArch) {
+                console.warn(`[CompanionProfileStore] No agent data found for "${agentId}" to sync from`);
+                return false;
+            }
+
+            const mapped = mapAgentToCompanion(agentArch);
+            set(s => ({
+                drafts: { ...s.drafts, [agentId]: mapped },
+            }));
+
+            // Auto-save to Supabase so it persists across refreshes
+            const agentName = agentArch.name || agentId;
+            await get().saveProfile(agentId, agentName);
+
+            console.log(`[CompanionProfileStore] Synced & saved companion for "${agentId}" from agent files`);
+            return true;
+        } catch (err) {
+            console.error('[CompanionProfileStore] syncFromAgent failed:', err);
+            return false;
+        }
     },
 
     getDraft: (agentId) => {

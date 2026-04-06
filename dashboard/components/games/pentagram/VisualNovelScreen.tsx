@@ -16,7 +16,8 @@ export function VisualNovelScreen() {
         customScenes, customChoices, isSyncing, loadCustomScenarioData,
         addCustomSceneNode, addCustomChoice, deleteCustomScene, deleteCustomChoice,
         editScene, editChoice,
-        customInteractConfigs, loadInteractConfigs
+        customInteractConfigs, loadInteractConfigs,
+        isDialogHidden
     } = usePentagramStore();
 
     useEffect(() => {
@@ -213,10 +214,6 @@ export function VisualNovelScreen() {
             {/* Top Bar - Minimalist Data */}
             <div className="absolute top-14 left-0 right-0 px-6 py-4 flex justify-between items-start z-20 pointer-events-none">
                 <div>
-                    <div className="text-[10px] text-white/40 tracking-[0.2em]">{scene.arcTitle}</div>
-                    <div className={cn("text-xs tracking-widest uppercase font-semibold mt-1", titleColor)}>
-                        {scene.chapterTitle} // {scene.sceneTitle}
-                    </div>
                     {/* Back Button explicitly placed under Chapter headers */}
                     {history.length > 0 && (
                         <div className="mt-4 pointer-events-auto">
@@ -232,11 +229,8 @@ export function VisualNovelScreen() {
                 </div>
 
                 <div className="flex flex-col items-end gap-1 text-[10px] font-mono opacity-50">
-                    <span className="flex items-center gap-2 text-emerald-500">
-                        {isSyncing && <Loader2 className="w-3 h-3 animate-spin"/>}
-                        SYS_HEALTH: {gameState.COMPANY_health}%
-                    </span>
-                    <span className="text-rose-500">ENTROPY: {gameState.CORRUPTION}%</span>
+                    {/* Stats removed out of request */}
+                    {isSyncing && <span className="flex items-center gap-2 text-emerald-500"><Loader2 className="w-3 h-3 animate-spin"/></span>}
                 </div>
             </div>
 
@@ -284,7 +278,10 @@ export function VisualNovelScreen() {
 
                 {/* Dialog & Choices Container */}
                 <div 
-                    className="w-full relative z-10"
+                    className={cn(
+                        "w-full relative z-10 transition-opacity duration-300",
+                        isDialogHidden ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
+                    )}
                     style={{
                         transform: `translate(${activeDialogTransform.x}%, ${activeDialogTransform.y}%) scale(${activeDialogTransform.scale / 100})`,
                         transformOrigin: 'bottom center'

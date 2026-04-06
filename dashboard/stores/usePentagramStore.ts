@@ -45,6 +45,7 @@ export interface PentagramStore {
     globalDialogTransform: DialogTransform;
     customSceneDialogTransforms: Record<string, DialogTransform>;
     dialogTransformPresets: Record<string, DialogTransform>;
+    isDialogHidden: boolean;
     
     // Auth & DB state
     saveId: string | null;
@@ -71,6 +72,8 @@ export interface PentagramStore {
     updateSceneDialogTransform: (sceneId: string, key: keyof DialogTransform, value: number) => void;
     saveDialogTransformPreset: (name: string, transform: DialogTransform) => void;
     deleteDialogTransformPreset: (name: string) => void;
+    
+    setIsDialogHidden: (val: boolean) => void;
     
     // Debug actions
     updateVariable: (key: keyof PentagramState, value: number) => void;
@@ -121,6 +124,7 @@ export const usePentagramStore = create<PentagramStore>()(
                 "Bottom Left": { scale: 80, x: -70, y: 20 },
                 "Bottom Right": { scale: 80, x: 70, y: 20 }
             },
+            isDialogHidden: false,
             
             saveId: null,
             isSaving: false,
@@ -328,6 +332,8 @@ export const usePentagramStore = create<PentagramStore>()(
                     return { dialogTransformPresets: newPresets };
                 });
             },
+
+            setIsDialogHidden: (val) => set({ isDialogHidden: val }),
 
             updateVariable: (key, value) => {
                 set(state => ({

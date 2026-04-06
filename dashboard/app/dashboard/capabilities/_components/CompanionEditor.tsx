@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookOpen, Eye, Brain, MessageCircle, Globe, Flame, Sparkles, Terminal,
     ChevronDown, ChevronRight, Maximize2, Save, Loader2, RotateCcw, Heart,
-    CheckCircle2
+    CheckCircle2, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCompanionProfileStore, type CompanionSections, EMPTY_SECTIONS } from '@/stores/useCompanionProfileStore';
@@ -134,6 +134,7 @@ export function CompanionEditor({ agentId, agentName }: CompanionEditorProps) {
     const {
         loadProfile,
         saveProfile,
+        syncFromAgent,
         updateField,
         isDirty,
         getDraft,
@@ -151,6 +152,9 @@ export function CompanionEditor({ agentId, agentName }: CompanionEditorProps) {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
     const [expandedField, setExpandedField] = useState<{ sectionKey: string; fieldKey: string; label: string } | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncSuccess, setSyncSuccess] = useState(false);
+    const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
 
     // Load profile on mount
     useEffect(() => {
@@ -165,6 +169,36 @@ export function CompanionEditor({ agentId, agentName }: CompanionEditorProps) {
         await saveProfile(agentId, agentName);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
+    };
+
+    const profileHasContent = (): boolean => {
+        if (!draft) return false;
+        for (const sectionKey of Object.keys(draft) as (keyof typeof draft)[]) {
+            const section = draft[sectionKey] as Record<string, string>;
+            for (const val of Object.values(section)) {
+                if (val && val.trim().length > 0) return true;
+            }
+        }
+        return false;
+    };
+
+    const handleSyncFromAgent = () => {
+        if (profileHasContent()) {
+            setShowOverwriteConfirm(true);
+            return;
+        }
+        executeSyncFromAgent();
+    };
+
+    const executeSyncFromAgent = async () => {
+        setShowOverwriteConfirm(false);
+        setIsSyncing(true);
+        const ok = await syncFromAgent(agentId);
+        setIsSyncing(false);
+        if (ok) {
+            setSyncSuccess(true);
+            setTimeout(() => setSyncSuccess(false), 2500);
+        }
     };
 
     const handleExpandField = (sectionKey: string, fieldKey: string, label: string) => {
@@ -213,6 +247,22 @@ export function CompanionEditor({ agentId, agentName }: CompanionEditorProps) {
                         <span className="text-[10px] font-mono text-amber-400/70">Unsaved changes</span>
                     )}
                     <button
+                        onClick={handleSyncFromAgent}
+                        disabled={isSyncing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-mono transition-all
+                            bg-violet-500/10 text-violet-400/80 border border-violet-500/20 hover:bg-violet-500/20 hover:text-violet-300"
+                        title="Auto-fill from agent's OpenClaw persona files (SOUL.md, IDENTITY.md, etc.)"
+                    >
+                        {isSyncing ? (
+                            <Loader2 className="size-3 animate-spin" />
+                        ) : syncSuccess ? (
+                            <CheckCircle2 className="size-3 text-emerald-400" />
+                        ) : (
+                            <RefreshCw className="size-3" />
+                        )}
+                        {isSyncing ? 'Syncing…' : syncSuccess ? 'Synced' : 'Sync from Agent'}
+                    </button>
+                    <button
                         onClick={handleSave}
                         disabled={!dirty || isSaving}
                         className={cn(
@@ -233,6 +283,37 @@ export function CompanionEditor({ agentId, agentName }: CompanionEditorProps) {
                     </button>
                 </div>
             </div>
+
+            {/* Overwrite Confirmation Dialog */}
+            {showOverwriteConfirm && (
+                <div className="mx-4 px-4 py-3 rounded-md border border-amber-500/30 bg-amber-500/5 backdrop-blur-sm">
+                    <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="size-4 text-amber-400 mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                            <p className="text-xs font-semibold text-amber-300/90 mb-1">Overwrite Companion Profile?</p>
+                            <p className="text-[11px] text-white/50 leading-relaxed">
+                                Syncing from agent will <span className="text-amber-400/80 font-medium">overwrite all existing companion data</span> with
+                                content mapped from the agent's OpenClaw files (SOUL.md, IDENTITY.md, AGENTS.md, etc.).
+                                This action cannot be undone.
+                            </p>
+                            <div className="flex items-center gap-2 mt-2.5">
+                                <button
+                                    onClick={executeSyncFromAgent}
+                                    className="px-3 py-1 rounded-sm text-[11px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-all"
+                                >
+                                    Yes, overwrite
+                                </button>
+                                <button
+                                    onClick={() => setShowOverwriteConfirm(false)}
+                                    className="px-3 py-1 rounded-sm text-[11px] font-mono bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Error */}
             {error && (

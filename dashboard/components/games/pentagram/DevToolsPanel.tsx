@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { PENTAGRAM_SCENES } from "@/lib/games/pentagram/scenarioData";
 import { PentagramCropModal } from "./PentagramCropModal";
+import { AGENT_ROSTER } from "@/lib/agentRoster";
 
 export function DevToolsPanel() {
     const { 
@@ -39,6 +40,8 @@ export function DevToolsPanel() {
         dialogTransformPresets,
         saveDialogTransformPreset,
         deleteDialogTransformPreset,
+        isDialogHidden,
+        setIsDialogHidden,
         customScenes,
         deleteCustomScene,
         editScene
@@ -54,6 +57,7 @@ export function DevToolsPanel() {
 
     // Asset Gallery state
     const [assets, setAssets] = useState<{name: string, url: string}[]>([]);
+    const [agentGalleries, setAgentGalleries] = useState<Record<string, { id: number, imageData: string }[]>>({});
 
     const fetchAssets = useCallback(async () => {
         try {
@@ -69,6 +73,25 @@ export function DevToolsPanel() {
 
     useEffect(() => {
         fetchAssets();
+
+        const fetchGalleries = async () => {
+            const temp: Record<string, any[]> = {};
+            for (const agent of AGENT_ROSTER) {
+                try {
+                    const res = await fetch(`/api/agents/hero?agentId=${agent.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.images) {
+                            temp[agent.id] = data.images;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch gallery for agent", agent.id, e);
+                }
+            }
+            setAgentGalleries(temp);
+        };
+        fetchGalleries();
     }, [fetchAssets]);
 
     // Dynamic slider handler
@@ -270,19 +293,43 @@ export function DevToolsPanel() {
                             )}
                         </div>
 
-                        {assets.filter(a => a.name.startsWith('hero')).length > 0 && (
+                        {(AGENT_ROSTER.length > 0 || assets.filter(a => a.name.startsWith('hero_')).length > 0) && (
                             <div className="relative mt-2">
                                 <select 
-                                    className="w-full bg-black/40 border border-white/10 rounded p-2 text-xs text-white/70 font-mono focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer"
+                                    className="w-full bg-black/40 border border-white/10 rounded p-2 text-xs text-white/70 font-mono focus:outline-none focus:border-amber-500/50 appearance-none cursor-pointer"
                                     onChange={(e) => {
                                         if (e.target.value) setCustomHeroUrl(e.target.value);
                                     }}
                                     value={customHeroUrl || ""}
                                 >
                                     <option value="">-- Or Pick Existing Hero --</option>
-                                    {assets.filter(a => a.name.startsWith('hero')).map(a => (
-                                        <option key={a.url} value={a.url}>{a.name.replace('hero_', '').substring(0, 16)}...</option>
-                                    ))}
+                                    <optgroup label="System Heroes (Avatars)">
+                                        {AGENT_ROSTER.map(a => (
+                                            <option key={`avatar-${a.id}`} value={a.avatar}>{a.name} (Avatar)</option>
+                                        ))}
+                                    </optgroup>
+
+                                    {AGENT_ROSTER.map(agent => {
+                                        const images = agentGalleries[agent.id];
+                                        if (!images || images.length === 0) return null;
+                                        return (
+                                            <optgroup key={`gallery-${agent.id}`} label={`${agent.name} Gallery`}>
+                                                {images.map((img, i) => (
+                                                    <option key={`gallery-${agent.id}-${img.id}`} value={img.imageData}>
+                                                        {agent.name} - Image {i + 1}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        );
+                                    })}
+
+                                    {assets.filter(a => a.name.startsWith('hero_')).length > 0 && (
+                                        <optgroup label="Uploaded Heroes">
+                                            {assets.filter(a => a.name.startsWith('hero_')).map(a => (
+                                                <option key={a.url} value={a.url}>{a.name.replace('hero_', '').substring(0, 16)}...</option>
+                                            ))}
+                                        </optgroup>
+                                    )}
                                 </select>
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                     <Activity className="w-3 h-3 text-white/30" />
@@ -511,12 +558,24 @@ export function DevToolsPanel() {
                                                 [BIND DIALOG IN SCENE]
                                             </button>
                                         )}
+                                        
+                                        <button 
+                                            onClick={() => setIsDialogHidden(!isDialogHidden)}
+                                            className={`text-[10px] font-mono w-full text-center border p-1 rounded mt-2 transition-colors ${
+                                                isDialogHidden 
+                                                    ? 'text-rose-500 hover:text-rose-400 border-rose-500/20 bg-rose-500/5' 
+                                                    : 'text-zinc-400 hover:text-white border-white/10 bg-black hover:bg-neutral-900'
+                                            }`}
+                                        >
+                                            {isDialogHidden ? '[SHOW DIALOG]' : '[HIDE DIALOG]'}
+                                        </button>
                                     </>
                                 );
                             })()}
                         </div>
                     </div>
                 </div>
+
 
                 {/* Scenario Navigation / Graph */}
                 <div className="space-y-3">
@@ -547,6 +606,41 @@ export function DevToolsPanel() {
                             </optgroup>
                         )}
                     </select>
+
+                    {/* Quick-delete list for custom scenes */}
+                    {Object.keys(customScenes).filter(id => !PENTAGRAM_SCENES[id]).length > 0 && (
+                        <div className="space-y-1 mt-2">
+                            <span className="text-[9px] uppercase font-mono text-white/30 tracking-wider">Custom Scenes</span>
+                            {Object.entries(customScenes)
+                                .filter(([id]) => !PENTAGRAM_SCENES[id])
+                                .map(([id, scene]) => (
+                                    <div key={id} className="flex items-center gap-1.5 group">
+                                        <button
+                                            onClick={() => jumpToScene(id)}
+                                            className={`flex-1 text-left text-[10px] font-mono px-2 py-1 rounded truncate transition-all ${
+                                                id === currentSceneId
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                    : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                                            }`}
+                                        >
+                                            {scene.sceneTitle || id}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (window.confirm(`Delete scene "${scene.sceneTitle || id}"?`)) {
+                                                    deleteCustomScene(id);
+                                                    if (currentSceneId === id) jumpToScene("P_START");
+                                                }
+                                            }}
+                                            className="p-1 opacity-0 group-hover:opacity-100 text-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all"
+                                            title="Delete scene"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                        </div>
+                    )}
 
                     {customScenes[currentSceneId] && (
                         <div className="flex items-center gap-2">

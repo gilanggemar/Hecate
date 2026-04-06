@@ -3,7 +3,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize from 'rehype-sanitize';
+
 import { Check, Copy } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -117,7 +117,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({ content }: 
         <div className="message-content w-full min-w-0 break-words font-normal">
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight, rehypeSanitize]}
+                rehypePlugins={[rehypeHighlight]}
                 components={{
                     // Code (both inline and block)
                     code: CodeBlock as any,
@@ -168,13 +168,22 @@ export const MessageRenderer = React.memo(function MessageRenderer({ content }: 
 
                     // Unordered lists
                     ul: ({ children }) => (
-                        <ul className="mb-3 ml-6 list-disc space-y-0.5 marker:text-muted-foreground/80 last:mb-0">{children}</ul>
+                        <ul className="mb-3 ml-6 list-disc list-outside space-y-0.5 marker:text-muted-foreground/80 last:mb-0">{children}</ul>
                     ),
 
-                    // Ordered lists
-                    ol: ({ children }) => (
-                        <ol className="mb-3 ml-6 list-decimal space-y-0.5 marker:text-muted-foreground/80 last:mb-0">{children}</ol>
-                    ),
+                    // Ordered lists — preserve start attribute for correct numbering
+                    ol: ({ node, children, ...props }: any) => {
+                        const startAttr = node?.properties?.start;
+                        return (
+                            <ol
+                                className="mb-3 ml-6 list-decimal list-outside space-y-0.5 marker:text-muted-foreground/80 last:mb-0"
+                                start={startAttr ?? undefined}
+                                {...props}
+                            >
+                                {children}
+                            </ol>
+                        );
+                    },
 
                     // List items
                     li: ({ children }) => (

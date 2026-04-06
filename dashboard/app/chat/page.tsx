@@ -743,6 +743,20 @@ export default function ChatPage() {
                 const companionStore = useCompanionProfileStore.getState();
                 const systemPrompt = companionStore.getCompiledMarkdown(capturedAgentId, capturedAgentName);
 
+                // If companion profile is empty, warn the user instead of proceeding
+                if (!systemPrompt.trim()) {
+                    addToStore({
+                        id: `companion-warning-${Date.now()}`,
+                        role: 'assistant',
+                        content: `⚠️ **Companion profile is empty.**\n\nYour COMPANION.md for **${capturedAgentName}** has no persona data yet. Without it, companion mode won't have any personality context.\n\n**To fix this:**\n1. Go to **Capabilities → Core Files**\n2. Select the agent and click **COMPANION.md**\n3. Click **"Sync from Agent"** to auto-populate the persona from their OpenClaw files (SOUL.md, IDENTITY.md, etc.)\n4. Come back here and try again!`,
+                        timestamp: new Date().toLocaleTimeString(),
+                        agentId: capturedAgentId,
+                        sessionKey: sessionKey,
+                        _sortTime: Date.now(),
+                    } as any);
+                    return;
+                }
+
                 // Build history from visible messages (last 20 for context)
                 const history = visibleMessages.slice(-20).map(m => ({
                     role: m.role as 'user' | 'assistant',
@@ -805,6 +819,7 @@ export default function ChatPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             agent_id: capturedAgentId,
+                            agent_name: capturedAgentName,
                             model_ref: companionModelRef,
                             system_prompt: systemPrompt,
                             messages: history,
@@ -1322,6 +1337,39 @@ export default function ChatPage() {
                                                                     );
                                                                 })()}
                                                             </div>
+                                                            {/* ─── Usage Metrics Bar (assistant only, non-streaming) ─── */}
+                                                            {!isUser && !msg.streaming && msg.content && (() => {
+                                                                const modelStore = useOpenClawModelStore.getState();
+                                                                const agentKey = selectedAgentId || '';
+                                                                const modelRef = modelStore.activeModels?.primary?.[agentKey]
+                                                                    || modelStore.defaults?.primary
+                                                                    || '';
+                                                                // Extract just the model name (after the slash)
+                                                                const modelName = modelRef.includes('/') ? modelRef.split('/').pop() : modelRef;
+                                                                // Shorten long model names for display
+                                                                const shortModel = modelName
+                                                                    ? modelName.replace(/^claude-/, 'c-').replace(/^gpt-/, 'gpt-').replace(/-20\d{6}$/, '')
+                                                                    : null;
+
+                                                                const contentLen = msg.content.length;
+                                                                const estTokens = Math.ceil(contentLen / 4);
+                                                                const fmtTokens = estTokens >= 1000 ? `${(estTokens / 1000).toFixed(1)}k` : `${estTokens}`;
+                                                                const fmtChars = contentLen >= 1000 ? `${(contentLen / 1000).toFixed(1)}k` : `${contentLen}`;
+
+                                                                return (
+                                                                    <div className="flex items-center gap-2 mt-1 px-1 text-[10px] text-white/25 font-mono select-none">
+                                                                        <span title="Estimated output tokens (~4 chars/token)">↓{fmtTokens}</span>
+                                                                        <span className="text-white/10">·</span>
+                                                                        <span title="Response size (characters)">R{fmtChars}</span>
+                                                                        {shortModel && (
+                                                                            <>
+                                                                                <span className="text-white/10">·</span>
+                                                                                <span title={`Model: ${modelRef}`} className="text-white/20">{shortModel}</span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                             {/* Hover toolbar — Edit & Branch */}
                                                             <div className="absolute -top-7 right-0 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 flex items-center gap-0.5 px-1 py-0.5 rounded-lg z-10" style={{ background: 'var(--popover)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
                                                                 <button onClick={() => handleCopyMessage(msg.content, msg.id)} className="p-1 rounded hover:bg-white/10 transition-colors" title="Copy message">
