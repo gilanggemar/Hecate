@@ -635,7 +635,7 @@ export function useSocket() {
             const mappedAgentId = startId ? runIdToAgent.current.get(startId) : null;
             const sessionAgentId = p.sessionKey ? agentIdFromSessionKey(p.sessionKey) : null;
             const finalAgentId = p.agentId ?? p.message?.agentId ?? mappedAgentId ?? sessionAgentId ?? 'ivy';
-            const finalSessionKey = p.sessionKey || (startId && runIdToSessionKey.current?.get(startId)) || `agent:${finalAgentId}:main`;
+            const finalSessionKey = p.sessionKey || (startId && runIdToSessionKey.current?.get(startId)) || `agent:${finalAgentId}:nchat`;
 
             if (routeToSummit && runId && contentChunk) {
                 const existing = useSocketStore.getState().summitMessages.find(m => m.runId === runId);
@@ -929,7 +929,7 @@ export function useSocket() {
                         }
                     } else {
                         const mapAgentId = runIdToAgent.current.get(runId) || 'ivy';
-                        const sessionKey = p.sessionKey || `agent:${mapAgentId}:main`;
+                        const sessionKey = p.sessionKey || `agent:${mapAgentId}:nchat`;
                         const newMsg = {
                             id: routeToSummit ? crypto.randomUUID() : `reply-${runId}`,
                             runId: routeToSummit ? runId : undefined,

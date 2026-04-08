@@ -714,6 +714,8 @@ export default function ChatPage() {
                 _sortTime: Date.now(),
             } as any);
 
+            setPendingAgentResponse(true);
+
             // ── Check companion mode ──
             const isCompanion = useCompanionModeStore.getState().isCompanionMode(capturedAgentId);
 
@@ -896,6 +898,7 @@ export default function ChatPage() {
         } else {
             a0ModeIndicatorsRef.current.set(finalMessage, modeIndicators);
             dispatchMessage(capturedAgentId, finalMessage, sessionKey, base64Attachments.length > 0 ? base64Attachments : undefined);
+            setPendingAgentResponse(true);
         }
 
         // ── BACKGROUND: file upload, conversation creation, DB persistence ──
@@ -1011,13 +1014,50 @@ export default function ChatPage() {
         return { isAgentProcessing: processing, activeRunId: runId };
     }, [openClawActiveRuns, selectedAgentId]);
 
+    // ─── Optimistic thinking state & overlap prevention ─────────────────────
+    const [pendingAgentResponse, setPendingAgentResponse] = useState(false);
+
+    // Check if there's a streaming assistant message with real content (not just <thinking> tags)
+    const hasStreamingAssistantContent = useMemo(() => {
+        return visibleMessages.some(msg => {
+            if (msg.role !== 'assistant' || !msg.streaming) return false;
+            const content = (msg.content || '').trim();
+            if (!content) return false;
+            // Strip thinking tags — if real text remains, response has arrived
+            const stripped = content
+                .replace(/<thinking[\s>][\s\S]*?<\/thinking>/gi, '')
+                .replace(/<thinking[\s>][\s\S]*$/gi, '')
+                .replace(/<\/thinking>/gi, '')
+                .replace(/<thinking\s*$/gi, '')
+                .trim();
+            return stripped.length > 0;
+        });
+    }, [visibleMessages]);
+
+    // Clear optimistic flag once real processing kicks in or content arrives
+    useEffect(() => {
+        if (isAgentProcessing || hasStreamingAssistantContent) {
+            setPendingAgentResponse(false);
+        }
+    }, [isAgentProcessing, hasStreamingAssistantContent]);
+
+    // Auto-clear safety net (30s timeout)
+    useEffect(() => {
+        if (!pendingAgentResponse) return;
+        const t = setTimeout(() => setPendingAgentResponse(false), 30000);
+        return () => clearTimeout(t);
+    }, [pendingAgentResponse]);
+
+    // Final condition: show thinking while processing or pending, hide once real content streams
+    const showThinkingPlaceholder = (isAgentProcessing || pendingAgentResponse) && !hasStreamingAssistantContent;
+
     // Scroll to bottom when thinking placeholder appears
     useEffect(() => {
-        if (isAgentProcessing) {
+        if (showThinkingPlaceholder) {
             const t = setTimeout(scrollToBottom, 80);
             return () => clearTimeout(t);
         }
-    }, [isAgentProcessing]);
+    }, [showThinkingPlaceholder]);
 
     // Handle selecting a conversation from the sidebar — syncs companion mode toggle
     const handleSelectConversation = useCallback(async (conversationId: string | undefined) => {
@@ -1457,7 +1497,7 @@ export default function ChatPage() {
                                         );
                                     })}
                                     {/* ═══ THINKING PLACEHOLDER — shows while agent is processing ═══ */}
-                                    {isAgentProcessing && (
+                                    {showThinkingPlaceholder && (
                                         <div className="flex w-full justify-start nerv-chat-bubble-enter mt-[12px]">
                                             <div className="flex-shrink-0 mr-[12px] w-[42px] flex flex-col justify-start items-center relative mt-[5px]">
                                                 <AgentAvatar agentId={selectedAgentId!} name={selectedAgentName} width={42} height={56} />
@@ -1591,11 +1631,11 @@ export default function ChatPage() {
                             <div
                                 className={cn(
                                     "bg-background border shadow-sm rounded-md transition-all relative",
-                                    isAgentProcessing
+                                    showThinkingPlaceholder
                                         ? "border-orange-500/60"
                                         : "border-border"
                                 )}
-                                style={isAgentProcessing ? {
+                                style={showThinkingPlaceholder ? {
                                     animation: 'nervProcessingGlow 2s ease-in-out infinite',
                                     boxShadow: '0 0 15px rgba(249, 115, 22, 0.15), 0 0 30px rgba(249, 115, 22, 0.08), inset 0 0 8px rgba(249, 115, 22, 0.03)',
                                 } : undefined}

@@ -93,7 +93,8 @@ export function useChatRouter() {
             if (!matchesAgent) return false;
             
             if (m.sessionKey) {
-                return m.sessionKey.endsWith(`:${sessionType}`);
+                // Accept the requested session type AND :main (fallback for race conditions)
+                return m.sessionKey.endsWith(`:${sessionType}`) || m.sessionKey.endsWith(':main');
             }
             
             return true;
