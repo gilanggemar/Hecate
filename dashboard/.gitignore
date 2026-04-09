@@ -40,3 +40,16 @@ update_workflow.mjs
 remote_openclaw.json
 docker_openclaw.json
 chat_lines.txt
+
+# Additional diagnostic/utility scripts
+test-usage-rpc.mjs
+test-login.js
+
+# Build logs
+*.log
+
+# Database files
+*.db
+
+# Temp directory
+.tmp/

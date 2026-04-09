@@ -4,6 +4,24 @@ import { ToolCallData } from '@/components/ToolNodeCard';
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'FAILED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export interface ExecutionStep {
+    id: string;
+    text: string;
+    order: number;
+}
+
+export interface TaskGoal {
+    id: string;
+    type: 'budget' | 'stack' | 'legal' | 'deadline' | 'custom';
+    label: string;
+}
+
+export interface TaskConstraint {
+    id: string;
+    type: 'budget' | 'stack' | 'legal' | 'deadline' | 'custom';
+    label: string;
+}
+
 export interface Task {
     id: string;
     title: string;
@@ -18,6 +36,12 @@ export interface Task {
     tokens?: number;
     updatedAt: number;
     timestamp: string;
+    // Task Card fields
+    executionPlan?: ExecutionStep[];
+    systemPrompt?: string;
+    goals?: TaskGoal[];
+    constraints?: TaskConstraint[];
+    source?: 'handoff' | 'manual' | 'summit';
 }
 
 interface TaskState {

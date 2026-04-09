@@ -517,48 +517,107 @@ html {
 }
 
 /* ─── Page Loading Indicator ─── */
-.nerv-page-loading-indicator {
+.nerv-page-loader {
   position: fixed;
-  bottom: 28px;
-  left: 28px;
+  bottom: 24px;
+  left: 24px;
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 18px 10px 14px;
-  border-radius: 50px;
-  background: oklch(0.11 0.005 0 / 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid oklch(1 0 0 / 0.10);
+  gap: 16px;
+  width: 220px;
+  height: 100px;
+  padding: 16px 20px;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse 120% 80% at 20% 50%, oklch(0.75 0.18 55 / 0.06), transparent 60%),
+    oklch(0.09 0.005 0 / 0.88);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid oklch(0.75 0.18 55 / 0.12);
   box-shadow:
-    0 4px 24px oklch(0 0 0 / 0.3),
-    0 0 0 1px oklch(0.75 0.18 55 / 0.08),
-    inset 0 1px 0 oklch(1 0 0 / 0.05);
+    0 8px 40px oklch(0 0 0 / 0.4),
+    0 2px 8px oklch(0 0 0 / 0.2),
+    0 0 0 1px oklch(0.75 0.18 55 / 0.06),
+    inset 0 1px 0 oklch(1 0 0 / 0.04);
   pointer-events: none;
+  overflow: hidden;
 }
 
-.nerv-page-loading-indicator__orb {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent-base);
-  box-shadow: 0 0 10px var(--accent-base), 0 0 4px var(--accent-base);
-  animation: nerv-loading-pulse 1.5s ease-in-out infinite;
+/* Orbital ring container */
+.nerv-page-loader__ring-wrap {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  position: relative;
 }
 
-.nerv-page-loading-indicator__spinner {
-  width: 14px;
-  height: 14px;
-  color: var(--accent-base);
-  animation: spin 1s linear infinite;
+.nerv-page-loader__ring {
+  width: 100%;
+  height: 100%;
 }
 
-.nerv-page-loading-indicator__text {
+/* Primary arc — clockwise */
+.nerv-page-loader__arc--primary {
+  transform-origin: 40px 40px;
+  animation: nerv-orbit-cw 2.4s linear infinite;
+}
+
+/* Secondary arc — counter-clockwise */
+.nerv-page-loader__arc--secondary {
+  transform-origin: 40px 40px;
+  animation: nerv-orbit-ccw 3.2s linear infinite;
+}
+
+/* Glowing core */
+.nerv-page-loader__core {
+  fill: oklch(0.78 0.18 55);
+  filter: drop-shadow(0 0 6px oklch(0.78 0.18 55 / 0.7)) drop-shadow(0 0 12px oklch(0.78 0.18 55 / 0.3));
+  animation: nerv-core-pulse 2s ease-in-out infinite;
+}
+
+/* Info text block */
+.nerv-page-loader__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nerv-page-loader__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.18 55);
+}
+
+.nerv-page-loader__status {
   font-size: 12px;
-  font-weight: 500;
-  color: oklch(0.9 0 0);
+  font-weight: 400;
+  color: oklch(0.75 0 0);
   letter-spacing: -0.01em;
+  animation: nerv-text-fade 2s ease-in-out infinite;
+}
+
+@keyframes nerv-orbit-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes nerv-orbit-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes nerv-core-pulse {
+  0%, 100% { r: 3; opacity: 1; }
+  50%      { r: 4; opacity: 0.7; }
+}
+
+@keyframes nerv-text-fade {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
 
 /* ─── Chat Bubble Slide-Up Animation ─── */
@@ -575,11 +634,6 @@ html {
 
 .nerv-chat-bubble-enter {
   animation: nerv-chat-slide-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-}
-
-@keyframes nerv-loading-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
 }
 
 @keyframes nervProcessingGlow {

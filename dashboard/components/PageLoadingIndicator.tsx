@@ -3,12 +3,11 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
 
 /**
- * PageLoadingIndicator — Glassmorphic bottom-left overlay that shows
- * during Next.js page transitions. Persists until the page is truly idle
- * (requestIdleCallback fires after pathname change).
+ * PageLoadingIndicator — Premium glassmorphic loading overlay
+ * positioned in the bottom-left of the viewport. Features
+ * animated orbital arcs and a glowing NERV pulse.
  */
 export function PageLoadingIndicator() {
     const pathname = usePathname();
@@ -16,27 +15,21 @@ export function PageLoadingIndicator() {
     const prevPathRef = useRef(pathname);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // When a navigation starts (click on a link), show indicator
     const startLoading = useCallback(() => {
         setIsLoading(true);
-        // Safety: auto-hide after 12 seconds max
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => setIsLoading(false), 12000);
     }, []);
 
-    // When navigation completes AND page is idle, hide indicator
     const finishLoading = useCallback(() => {
-        // Wait for browser to be idle (page has finished rendering)
         if (typeof window !== "undefined" && "requestIdleCallback" in window) {
             (window as any).requestIdleCallback(() => {
-                // Add a small delay to ensure paint is complete
                 setTimeout(() => {
                     setIsLoading(false);
                     if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 }, 150);
             }, { timeout: 3000 });
         } else {
-            // Fallback: wait 800ms after pathname change
             setTimeout(() => {
                 setIsLoading(false);
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -44,7 +37,6 @@ export function PageLoadingIndicator() {
         }
     }, []);
 
-    // Detect pathname change → page finished navigating, wait for idle
     useEffect(() => {
         if (pathname !== prevPathRef.current) {
             prevPathRef.current = pathname;
@@ -52,27 +44,21 @@ export function PageLoadingIndicator() {
         }
     }, [pathname, finishLoading]);
 
-    // Intercept link clicks to detect navigation start
     useEffect(() => {
         const handleClick = (e: MouseEvent) => {
             const anchor = (e.target as HTMLElement)?.closest?.("a");
             if (!anchor) return;
-
             const href = anchor.getAttribute("href");
             if (!href || href.startsWith("http") || href.startsWith("#") || href.startsWith("mailto:")) return;
             if (anchor.target === "_blank") return;
-
-            // Only show if navigating to a different page
             if (href !== pathname && !href.startsWith(pathname + "#")) {
                 startLoading();
             }
         };
-
         document.addEventListener("click", handleClick, true);
         return () => document.removeEventListener("click", handleClick, true);
     }, [pathname, startLoading]);
 
-    // Cleanup
     useEffect(() => {
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -83,17 +69,71 @@ export function PageLoadingIndicator() {
         <AnimatePresence>
             {isLoading && (
                 <motion.div
-                    initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 20, scale: 0.92 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-                    className="nerv-page-loading-indicator"
+                    exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                    transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+                    className="nerv-page-loader"
                 >
-                    <div className="nerv-page-loading-indicator__orb" />
-                    <Loader2 className="nerv-page-loading-indicator__spinner" />
-                    <span className="nerv-page-loading-indicator__text">
-                        Loading…
-                    </span>
+                    {/* Animated SVG orbital ring */}
+                    <div className="nerv-page-loader__ring-wrap">
+                        <svg
+                            className="nerv-page-loader__ring"
+                            viewBox="0 0 80 80"
+                            fill="none"
+                        >
+                            {/* Outer orbit track */}
+                            <circle
+                                cx="40" cy="40" r="34"
+                                stroke="oklch(0.75 0.18 55 / 0.08)"
+                                strokeWidth="1"
+                            />
+                            {/* Inner orbit track */}
+                            <circle
+                                cx="40" cy="40" r="24"
+                                stroke="oklch(0.75 0.18 55 / 0.05)"
+                                strokeWidth="0.5"
+                            />
+                            {/* Sweeping arc — primary */}
+                            <circle
+                                cx="40" cy="40" r="34"
+                                stroke="url(#nerv-loader-grad)"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeDasharray="50 164"
+                                className="nerv-page-loader__arc nerv-page-loader__arc--primary"
+                            />
+                            {/* Sweeping arc — secondary (counter-rotate) */}
+                            <circle
+                                cx="40" cy="40" r="24"
+                                stroke="url(#nerv-loader-grad2)"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeDasharray="30 121"
+                                className="nerv-page-loader__arc nerv-page-loader__arc--secondary"
+                            />
+                            {/* Center glow dot */}
+                            <circle
+                                cx="40" cy="40" r="3"
+                                className="nerv-page-loader__core"
+                            />
+                            <defs>
+                                <linearGradient id="nerv-loader-grad" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="oklch(0.78 0.18 55)" stopOpacity="1" />
+                                    <stop offset="100%" stopColor="oklch(0.78 0.18 55)" stopOpacity="0" />
+                                </linearGradient>
+                                <linearGradient id="nerv-loader-grad2" x1="80" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="oklch(0.72 0.14 30)" stopOpacity="0.8" />
+                                    <stop offset="100%" stopColor="oklch(0.72 0.14 30)" stopOpacity="0" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+
+                    {/* Text block */}
+                    <div className="nerv-page-loader__info">
+                        <span className="nerv-page-loader__status">Loading module…</span>
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>

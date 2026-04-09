@@ -3,8 +3,6 @@
 import { useState, useMemo } from 'react';
 import { Calendar, Clock, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -17,6 +15,30 @@ import { format } from 'date-fns';
 import { useSchedulerStore, type SchedulerEvent } from '@/store/useSchedulerStore';
 import { useAvailableAgents } from '@/hooks/useAvailableAgents';
 import { useTaskStore } from '@/lib/useTaskStore';
+
+// ─── Shared input/textarea style to match project panel ─────────────────────
+
+const fieldStyle: React.CSSProperties = {
+    width: '100%',
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    fontSize: 12,
+    color: 'var(--popover-foreground)',
+    fontFamily: 'inherit',
+};
+
+const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    color: 'var(--muted-foreground)',
+    marginBottom: 3,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+};
 
 // ─── Day-of-week toggle (reused) ────────────────────────────────────────────
 
@@ -140,33 +162,43 @@ export function CreateEventModal() {
                 setCreateModalOpen(open);
             }}
         >
-            <DialogContent className="nerv-glass-3 max-w-lg">
+            <DialogContent
+                className="max-w-md gap-2 p-4"
+                style={{
+                    background: 'var(--popover)',
+                    border: '1px solid var(--border)',
+                }}
+            >
                 <DialogHeader>
-                    <DialogTitle className="nerv-h2">Create Event</DialogTitle>
+                    <DialogTitle style={{ fontSize: 16, fontWeight: 600 }}>Create Event</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {/* Title */}
-                    <div>
-                        <label className="nerv-caption mb-1 block">Title *</label>
-                        <Input
+                    <div style={{ padding: '6px 0' }}>
+                        <label style={labelStyle}>Title *</label>
+                        <input
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Event title..."
-                            className="bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]"
+                            style={{ ...fieldStyle, fontWeight: 500 }}
+                            autoFocus
                         />
                     </div>
 
                     {/* Agent */}
-                    <div>
-                        <label className="nerv-caption mb-1 block">Agent *</label>
+                    <div style={{ padding: '6px 0' }}>
+                        <label style={labelStyle}>Agent *</label>
                         <Select value={agentId} onValueChange={setAgentId}>
-                            <SelectTrigger className="bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]">
+                            <SelectTrigger
+                                className="shadow-none h-7 px-2.5 text-xs w-fit rounded-md"
+                                style={{ color: 'var(--popover-foreground)', background: 'transparent', border: '1px solid var(--border)' }}
+                            >
                                 <SelectValue placeholder="Select agent..." />
                             </SelectTrigger>
-                            <SelectContent className="nerv-glass-3">
+                            <SelectContent className="text-xs" style={{ background: 'var(--popover)', border: '1px solid var(--border)' }}>
                                 {agentList.map((agent) => (
-                                    <SelectItem key={agent.id} value={agent.id}>
+                                    <SelectItem key={agent.id} value={agent.id} className="text-xs">
                                         {agent.name}
                                     </SelectItem>
                                 ))}
@@ -175,80 +207,89 @@ export function CreateEventModal() {
                     </div>
 
                     {/* Description */}
-                    <div>
-                        <label className="nerv-caption mb-1 block">Description</label>
-                        <Textarea
+                    <div style={{ padding: '6px 0' }}>
+                        <label style={labelStyle}>Description</label>
+                        <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Optional description..."
-                            className="bg-white/[0.04] border-white/[0.06] min-h-[60px] resize-none text-[var(--text-primary)]"
+                            style={{ ...fieldStyle, minHeight: 36, resize: 'none', opacity: 0.8 }}
+                            rows={2}
                         />
                     </div>
 
                     {/* Date + Time + Duration */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <label className="nerv-caption mb-1 block flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> Date *
-                            </label>
-                            <Input
-                                type="date"
-                                value={effectiveDate}
-                                onChange={(e) => setScheduledDate(e.target.value)}
-                                className="bg-white/[0.04] border-white/[0.06] text-sm text-[var(--text-primary)]"
-                            />
-                        </div>
-                        <div>
-                            <label className="nerv-caption mb-1 block flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> Time
-                            </label>
-                            <Input
-                                type="time"
-                                value={scheduledTime}
-                                onChange={(e) => setScheduledTime(e.target.value)}
-                                className="bg-white/[0.04] border-white/[0.06] text-sm text-[var(--text-primary)]"
-                            />
-                        </div>
-                        <div>
-                            <label className="nerv-caption mb-1 block">Duration (min)</label>
-                            <Input
-                                type="number"
-                                value={durationMinutes}
-                                onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                                min={5}
-                                className="bg-white/[0.04] border-white/[0.06] text-sm text-[var(--text-primary)]"
-                            />
+                    <div style={{ padding: '6px 0' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                            <div>
+                                <label style={labelStyle}>
+                                    <Calendar className="w-3 h-3" /> Date *
+                                </label>
+                                <input
+                                    type="date"
+                                    value={effectiveDate}
+                                    onChange={(e) => setScheduledDate(e.target.value)}
+                                    style={{ ...fieldStyle, fontSize: 11 }}
+                                />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>
+                                    <Clock className="w-3 h-3" /> Time
+                                </label>
+                                <input
+                                    type="time"
+                                    value={scheduledTime}
+                                    onChange={(e) => setScheduledTime(e.target.value)}
+                                    style={{ ...fieldStyle, fontSize: 11 }}
+                                />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Duration (min)</label>
+                                <input
+                                    type="number"
+                                    value={durationMinutes}
+                                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                    min={5}
+                                    style={{ ...fieldStyle, fontSize: 11 }}
+                                />
+                            </div>
                         </div>
                     </div>
 
                     {/* Priority */}
-                    <div>
-                        <label className="nerv-caption mb-1 block">Priority</label>
+                    <div style={{ padding: '6px 0' }}>
+                        <label style={labelStyle}>Priority</label>
                         <Select value={priority} onValueChange={setPriority}>
-                            <SelectTrigger className="bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]">
+                            <SelectTrigger
+                                className="shadow-none h-7 px-2.5 text-xs w-fit rounded-md"
+                                style={{ color: 'var(--popover-foreground)', background: 'transparent', border: '1px solid var(--border)' }}
+                            >
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="nerv-glass-3">
-                                <SelectItem value="low">Low</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="critical">Critical</SelectItem>
+                            <SelectContent className="text-xs" style={{ background: 'var(--popover)', border: '1px solid var(--border)' }}>
+                                <SelectItem value="low" className="text-xs">Low</SelectItem>
+                                <SelectItem value="medium" className="text-xs">Medium</SelectItem>
+                                <SelectItem value="high" className="text-xs">High</SelectItem>
+                                <SelectItem value="critical" className="text-xs">Critical</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     {/* Link to task */}
                     {pendingTasks.length > 0 && (
-                        <div>
-                            <label className="nerv-caption mb-1 block">Link to Existing Task</label>
+                        <div style={{ padding: '6px 0' }}>
+                            <label style={labelStyle}>Link to Existing Task</label>
                             <Select value={linkedTaskId || '__none__'} onValueChange={handleTaskLink}>
-                                <SelectTrigger className="bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]">
+                                <SelectTrigger
+                                    className="shadow-none h-7 px-2.5 text-xs w-fit rounded-md"
+                                    style={{ color: 'var(--popover-foreground)', background: 'transparent', border: '1px solid var(--border)' }}
+                                >
                                     <SelectValue placeholder="None (standalone event)" />
                                 </SelectTrigger>
-                                <SelectContent className="nerv-glass-3">
-                                    <SelectItem value="__none__">None</SelectItem>
+                                <SelectContent className="text-xs" style={{ background: 'var(--popover)', border: '1px solid var(--border)' }}>
+                                    <SelectItem value="__none__" className="text-xs">None</SelectItem>
                                     {pendingTasks.map((task) => (
-                                        <SelectItem key={task.id} value={task.id}>
+                                        <SelectItem key={task.id} value={task.id} className="text-xs">
                                             {task.title}
                                         </SelectItem>
                                     ))}
@@ -258,41 +299,44 @@ export function CreateEventModal() {
                     )}
 
                     {/* Recurrence */}
-                    <div className="border-t border-white/[0.06] pt-3">
-                        <label className="nerv-caption mb-2 block flex items-center gap-1">
+                    <div style={{ padding: '6px 0' }}>
+                        <label style={labelStyle}>
                             <Repeat className="w-3 h-3" /> Recurrence
                         </label>
                         <Select value={recurrenceType} onValueChange={setRecurrenceType}>
-                            <SelectTrigger className="bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]">
+                            <SelectTrigger
+                                className="shadow-none h-7 px-2.5 text-xs w-fit rounded-md"
+                                style={{ color: 'var(--popover-foreground)', background: 'transparent', border: '1px solid var(--border)' }}
+                            >
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="nerv-glass-3">
-                                <SelectItem value="none">No recurrence</SelectItem>
-                                <SelectItem value="hourly">Hourly</SelectItem>
-                                <SelectItem value="daily">Daily</SelectItem>
-                                <SelectItem value="weekly">Weekly</SelectItem>
-                                <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectContent className="text-xs" style={{ background: 'var(--popover)', border: '1px solid var(--border)' }}>
+                                <SelectItem value="none" className="text-xs">No recurrence</SelectItem>
+                                <SelectItem value="hourly" className="text-xs">Hourly</SelectItem>
+                                <SelectItem value="daily" className="text-xs">Daily</SelectItem>
+                                <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
+                                <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
                             </SelectContent>
                         </Select>
 
                         {recurrenceType !== 'none' && (
-                            <div className="mt-2 space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="nerv-caption">Every</span>
-                                    <Input
+                            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Every</span>
+                                    <input
                                         type="number"
                                         value={recurrenceInterval}
                                         onChange={(e) => setRecurrenceInterval(Number(e.target.value))}
                                         min={1}
-                                        className="w-16 h-7 text-xs bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]"
+                                        style={{ ...fieldStyle, width: 40, fontSize: 11, textAlign: 'center' }}
                                     />
-                                    <span className="nerv-caption">{recurrenceLabel}</span>
+                                    <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{recurrenceLabel}</span>
                                 </div>
 
                                 {recurrenceType === 'weekly' && (
                                     <div>
-                                        <label className="nerv-caption mb-1.5 block">Days of Week</label>
-                                        <div className="flex items-center gap-1">
+                                        <label style={{ ...labelStyle, marginBottom: 6 }}>Days of Week</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                             {DAYS.map(({ value, label }) => (
                                                 <button
                                                     key={value}
@@ -305,11 +349,17 @@ export function CreateEventModal() {
                                                         );
                                                     }}
                                                     className={cn(
-                                                        'w-7 h-7 rounded-full text-xs font-medium transition-all',
+                                                        'w-6 h-6 rounded-full text-[10px] font-medium transition-all',
                                                         recurrenceDaysOfWeek.includes(value)
                                                             ? 'bg-[var(--accent-base)] text-[var(--text-on-accent)]'
-                                                            : 'bg-white/[0.06] text-[var(--text-muted)] hover:bg-white/[0.1]',
+                                                            : 'text-[var(--text-muted)] hover:text-[var(--popover-foreground)]',
                                                     )}
+                                                    style={{
+                                                        background: recurrenceDaysOfWeek.includes(value)
+                                                            ? 'var(--accent-base)'
+                                                            : 'color-mix(in srgb, var(--border) 50%, transparent)',
+                                                        border: 'none',
+                                                    }}
                                                 >
                                                     {label}
                                                 </button>
@@ -319,12 +369,12 @@ export function CreateEventModal() {
                                 )}
 
                                 <div>
-                                    <label className="nerv-caption mb-1 block">Until (optional)</label>
-                                    <Input
+                                    <label style={{ ...labelStyle, marginBottom: 3 }}>Until (optional)</label>
+                                    <input
                                         type="date"
                                         value={recurrenceEndDate}
                                         onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                                        className="h-8 text-xs bg-white/[0.04] border-white/[0.06] text-[var(--text-primary)]"
+                                        style={{ ...fieldStyle, fontSize: 11 }}
                                     />
                                 </div>
                             </div>
@@ -332,20 +382,46 @@ export function CreateEventModal() {
                     </div>
                 </div>
 
-                <DialogFooter>
-                    <Button
-                        variant="ghost"
+                {/* Footer */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingTop: 2 }}>
+                    <button
                         onClick={() => { resetForm(); setCreateModalOpen(false); }}
+                        style={{
+                            height: 28,
+                            padding: '0 14px',
+                            fontSize: 12,
+                            borderRadius: 4,
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--popover-foreground)',
+                            cursor: 'pointer',
+                            transition: 'background 120ms',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                         Cancel
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         onClick={handleSubmit}
-                        className="bg-[var(--accent-base)] hover:bg-[var(--accent-hover)] text-[var(--text-on-accent)]"
+                        style={{
+                            height: 28,
+                            padding: '0 14px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            borderRadius: 4,
+                            border: 'none',
+                            background: 'var(--accent-base)',
+                            color: 'white',
+                            cursor: 'pointer',
+                            transition: 'background 120ms',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent-base)')}
                     >
                         Create Event
-                    </Button>
-                </DialogFooter>
+                    </button>
+                </div>
             </DialogContent>
         </Dialog>
     );

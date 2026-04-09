@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { X, Trash2, RefreshCw } from "lucide-react";
 import { useWorkflowBuilderStore } from "@/store/useWorkflowBuilderStore";
 import { useAvailableAgents } from "@/hooks/useAvailableAgents";
+import { useTaskStore } from "@/lib/useTaskStore";
 import { NODE_ACCENTS } from "./nodes/nodeStyles";
 import type { Node as RFNode } from "@xyflow/react";
 
@@ -245,6 +246,7 @@ export default function NodeConfigPanel() {
                         {type === "note" && <NoteConfigForm data={data} update={update} />}
                         {type === "checkpoint" && <CheckpointConfigForm data={data} update={update} />}
                         {type === "convergence" && <ConvergenceConfigForm data={data} update={update} />}
+                        {type === "task_call" && <TaskCallConfigForm data={data} update={update} agents={availableAgents} />}
                     </div>
 
                     {/* RIGHT PANE: Current Node Output */}
@@ -1119,6 +1121,143 @@ function ConvergenceConfigForm({ data, update }: { data: any; update: (k: string
                     <option value="wait_all">Wait for all incoming paths</option>
                     <option value="first_arrives">Trigger on first arrived path</option>
                 </select>
+            </FormField>
+        </>
+    );
+}
+
+function TaskCallConfigForm({ data, update, agents }: { data: any; update: (k: string, v: any) => void; agents: any[] }) {
+    const tasks = useTaskStore((s) => s.tasks);
+    const hasFetched = useTaskStore((s) => s.hasFetched);
+    const fetchTasks = useTaskStore((s) => s.fetchTasks);
+
+    // Ensure tasks are loaded
+    React.useEffect(() => {
+        if (!hasFetched) fetchTasks();
+    }, [hasFetched, fetchTasks]);
+
+    // Filter tasks for the selected agent
+    const selectedAgentId = data.agentId || "";
+    const agentTasks = React.useMemo(() => {
+        if (!selectedAgentId) return [];
+        return tasks.filter((t) => {
+            const tAgent = t.agentId || "";
+            return tAgent === selectedAgentId;
+        });
+    }, [tasks, selectedAgentId]);
+
+    return (
+        <>
+            <FormField label="Agent">
+                <select
+                    value={selectedAgentId}
+                    onChange={(e) => {
+                        const agent = agents.find((a: any) => a.id === e.target.value);
+                        update("agentId", e.target.value);
+                        update("agentName", agent?.name || e.target.value);
+                        // Reset task selection when agent changes
+                        update("taskId", "");
+                        update("taskTitle", "");
+                    }}
+                    style={inputStyle}
+                >
+                    <option value="">Select an agent…</option>
+                    {agents.map((a: any) => (
+                        <option key={a.id} value={a.id}>
+                            {a.name || a.id}
+                        </option>
+                    ))}
+                </select>
+            </FormField>
+
+            <FormField label="Task">
+                {!selectedAgentId ? (
+                    <select disabled style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }}>
+                        <option value="">Select an agent first…</option>
+                    </select>
+                ) : agentTasks.length === 0 ? (
+                    <>
+                        <select disabled style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }}>
+                            <option value="">No tasks found for this agent</option>
+                        </select>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.3 }}>
+                            Create tasks for this agent in the agent panel first.
+                        </div>
+                    </>
+                ) : (
+                    <select
+                        value={data.taskId || ""}
+                        onChange={(e) => {
+                            const task = agentTasks.find((t) => t.id === e.target.value);
+                            update("taskId", e.target.value);
+                            update("taskTitle", task?.title || "");
+                        }}
+                        style={inputStyle}
+                    >
+                        <option value="">Select a task…</option>
+                        {agentTasks.map((t) => (
+                            <option key={t.id} value={t.id}>
+                                {t.title || t.id}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </FormField>
+
+            {data.taskId && (
+                <div style={{
+                    padding: "8px 10px", borderRadius: 8,
+                    background: "oklch(0.08 0.005 0 / 0.6)",
+                    border: "1px solid oklch(1 0 0 / 0.06)",
+                    display: "flex", flexDirection: "column", gap: 3,
+                }}>
+                    {(() => {
+                        const selectedTask = agentTasks.find((t) => t.id === data.taskId);
+                        if (!selectedTask) return null;
+                        return (
+                            <>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)" }}>
+                                    {selectedTask.title}
+                                </div>
+                                {selectedTask.description && (
+                                    <div style={{ fontSize: 9, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                                        {selectedTask.description}
+                                    </div>
+                                )}
+                                <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                    <span style={{
+                                        fontSize: 8, fontWeight: 600, textTransform: "uppercase",
+                                        padding: "1px 5px", borderRadius: 3,
+                                        background: selectedTask.status === "DONE" ? "oklch(0.72 0.14 145 / 0.15)" : "oklch(0.75 0.18 55 / 0.15)",
+                                        color: selectedTask.status === "DONE" ? "oklch(0.72 0.14 145)" : "oklch(0.75 0.18 55)",
+                                    }}>
+                                        {selectedTask.status}
+                                    </span>
+                                    <span style={{
+                                        fontSize: 8, fontWeight: 600, textTransform: "uppercase",
+                                        padding: "1px 5px", borderRadius: 3,
+                                        background: "oklch(1 0 0 / 0.05)",
+                                        color: "var(--text-muted)",
+                                    }}>
+                                        {selectedTask.priority}
+                                    </span>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </div>
+            )}
+
+            <FormField label="System Prompt Override (Optional)">
+                <textarea
+                    value={data.systemPromptOverride || ""}
+                    onChange={(e) => update("systemPromptOverride", e.target.value)}
+                    placeholder="Leave empty to use the agent's default behavior.\nAdd instructions here to adjust how the agent executes this task..."
+                    style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
+                />
+                <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.3 }}>
+                    When empty, the agent runs the task as configured. When filled, this prompt overrides the agent's default system behavior for this execution only.
+                </div>
             </FormField>
         </>
     );

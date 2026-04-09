@@ -30,6 +30,7 @@ export function PromptChunkPill({ chunk }: Props) {
             tabIndex={0}
             draggable
             onDragStart={handleDragStart}
+            onMouseDown={(e) => { e.preventDefault(); }} // Prevent stealing focus/caret from input
             onClick={handleInsert}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleInsert(); }}
             className="group relative flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer select-none transition-all duration-150 hover:scale-[1.03]"
@@ -42,11 +43,6 @@ export function PromptChunkPill({ chunk }: Props) {
             title={`Click to insert "${chunk.name}" • Drag to place in input`}
             aria-label={`Prompt chunk: ${chunk.name}`}
         >
-            {/* Color dot */}
-            <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: chunk.color }}
-            />
 
             {/* Name */}
             <span className="text-xs font-medium truncate max-w-[80px]">

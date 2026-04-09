@@ -107,20 +107,55 @@ export const ChatInputWithChunks = forwardRef<HTMLDivElement, ChatInputWithChunk
 
                 localDivRef.current.focus();
 
-                const html = `<span class="chunk-token inline-block mx-0.5 align-middle select-none cursor-grab active:cursor-grabbing" contenteditable="false" draggable="true" data-id="${chunk.id}" data-name="${chunk.name}"></span>\u200B`;
+                // Build the chunk span element directly
+                const span = document.createElement('span');
+                span.className = 'chunk-token inline-block mx-0.5 align-middle select-none cursor-grab active:cursor-grabbing';
+                span.contentEditable = 'false';
+                span.draggable = true;
+                span.setAttribute('data-id', chunk.id);
+                span.setAttribute('data-name', chunk.name);
 
-                // If there's an active selection range, insert it there. Otherwise it usually inserts at end.
-                if (window.getSelection()?.rangeCount === 0) {
-                    // Force insertion at end if totally unfocused
-                    const range = document.createRange();
-                    range.selectNodeContents(localDivRef.current);
-                    range.collapse(false);
-                    const sel = window.getSelection();
-                    sel?.removeAllRanges();
-                    sel?.addRange(range);
+                const spacer = document.createTextNode('\u200B');
+
+                const sel = window.getSelection();
+                let range: Range | null = null;
+
+                // Use existing caret position if available
+                if (sel && sel.rangeCount > 0) {
+                    range = sel.getRangeAt(0);
+                    // Verify the range is inside our input
+                    if (!localDivRef.current.contains(range.commonAncestorContainer)) {
+                        range = null;
+                    }
                 }
 
-                document.execCommand('insertHTML', false, html);
+                if (range) {
+                    // Insert at the current caret position
+                    range.collapse(false);
+                    range.insertNode(spacer);
+                    range.insertNode(span);
+
+                    // Move caret to after the spacer
+                    const newRange = document.createRange();
+                    newRange.setStartAfter(spacer);
+                    newRange.collapse(true);
+                    sel!.removeAllRanges();
+                    sel!.addRange(newRange);
+                } else {
+                    // Fallback: append to end
+                    localDivRef.current.appendChild(span);
+                    localDivRef.current.appendChild(spacer);
+
+                    // Move caret to after spacer
+                    if (sel) {
+                        const newRange = document.createRange();
+                        newRange.setStartAfter(spacer);
+                        newRange.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(newRange);
+                    }
+                }
+
                 handleInput();
             };
 
@@ -235,6 +270,7 @@ export const ChatInputWithChunks = forwardRef<HTMLDivElement, ChatInputWithChunk
 
         const handleDrop = (e: React.DragEvent) => {
             e.preventDefault();
+            e.stopPropagation();
 
             if (disabled) return;
 
@@ -250,9 +286,11 @@ export const ChatInputWithChunks = forwardRef<HTMLDivElement, ChatInputWithChunk
             const chunk = chunks.find(c => c.id === chunkId);
             if (!chunk) return;
 
-            localDivRef.current?.focus();
+            if (!localDivRef.current) return;
+            localDivRef.current.focus();
 
-            let range;
+            // Get precise caret position from drop coordinates
+            let range: Range | null = null;
             if (document.caretRangeFromPoint) {
                 range = document.caretRangeFromPoint(e.clientX, e.clientY);
             } else if ((e as any).rangeParent) {
@@ -260,15 +298,7 @@ export const ChatInputWithChunks = forwardRef<HTMLDivElement, ChatInputWithChunk
                 range.setStart((e as any).rangeParent, (e as any).rangeOffset);
             }
 
-            if (range) {
-                const sel = window.getSelection();
-                if (sel) {
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                }
-            }
-
-            // If it's an internal move, destroy the original node
+            // If it's an internal move, remove the original node first
             if (isInternal && localDivRef.current) {
                 const draggingNode = localDivRef.current.querySelector('.is-dragging');
                 if (draggingNode) {
@@ -276,8 +306,38 @@ export const ChatInputWithChunks = forwardRef<HTMLDivElement, ChatInputWithChunk
                 }
             }
 
-            const html = `<span class="chunk-token inline-block mx-0.5 align-middle select-none cursor-grab active:cursor-grabbing" contenteditable="false" draggable="true" data-id="${chunk.id}" data-name="${chunk.name}"></span>\u200B`;
-            document.execCommand('insertHTML', false, html);
+            // Build the chunk span element directly
+            const span = document.createElement('span');
+            span.className = 'chunk-token inline-block mx-0.5 align-middle select-none cursor-grab active:cursor-grabbing';
+            span.contentEditable = 'false';
+            span.draggable = true;
+            span.setAttribute('data-id', chunk.id);
+            span.setAttribute('data-name', chunk.name);
+
+            // Create a zero-width space after the chunk for caret positioning
+            const spacer = document.createTextNode('\u200B');
+
+            if (range) {
+                // Insert at the precise caret position using DOM APIs
+                range.collapse(true);
+                range.insertNode(spacer);
+                range.insertNode(span);
+
+                // Move caret to after the spacer
+                const sel = window.getSelection();
+                if (sel) {
+                    const newRange = document.createRange();
+                    newRange.setStartAfter(spacer);
+                    newRange.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                }
+            } else {
+                // Fallback: append to end
+                localDivRef.current.appendChild(span);
+                localDivRef.current.appendChild(spacer);
+            }
+
             handleInput();
         };
 

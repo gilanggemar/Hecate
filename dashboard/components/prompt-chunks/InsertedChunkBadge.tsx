@@ -37,10 +37,6 @@ export function InsertedChunkBadge({ chunk, expanded, onDoubleClick }: Props) {
             }}
             title={`Prompt Chunk: ${chunk.name}\nDouble-click to preview content`}
         >
-            <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: chunk.color }}
-            />
             <span className="truncate">{chunk.name}</span>
         </span>
     );

@@ -3,28 +3,20 @@ import { db } from '@/lib/db';
 import { getAuthUserId } from '@/lib/auth';
 
 /**
- * GET /api/projects?agent_id={agentId}
- * List user's projects, optionally filtered by agent.
+ * GET /api/projects
+ * List all user's projects (shared across all agents).
  */
 export async function GET(request: Request) {
     const userId = await getAuthUserId();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { searchParams } = new URL(request.url);
-        const agentId = searchParams.get('agent_id');
-
-        let query = db
+        const { data, error } = await db
             .from('projects')
             .select('*, project_files(id, file_name, file_type, file_size)')
             .eq('user_id', userId)
             .order('updated_at', { ascending: false });
 
-        if (agentId) {
-            query = query.or(`agent_id.eq.${agentId},agent_id.is.null`);
-        }
-
-        const { data, error } = await query;
         if (error) throw new Error(error.message);
 
         return NextResponse.json({ projects: data || [] });

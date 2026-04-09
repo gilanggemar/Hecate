@@ -192,7 +192,7 @@ export default function SummitPage() {
     const SPEAKER_TIMEOUT_MS = 45_000;
 
     // ── Chat-parity state ──
-    const [missionConfig, setMissionConfig] = useState<MissionConfig>({ goalText: '', goalLocked: false, constraints: [] });
+    const [missionConfig, setMissionConfig] = useState<MissionConfig>({ goalText: '', goalLocked: false, goals: [], constraints: [] });
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('off');
     const [pendingFiles, setPendingFiles] = useState<{ file: File; previewUrl?: string }[]>([]);
     const [quotedReply, setQuotedReply] = useState<{ text: string; messageId?: string } | null>(null);
@@ -702,7 +702,7 @@ export default function SummitPage() {
 
         // Build mode indicators
         const modeIndicators = {
-            hasGoal: !!missionConfig.goalText,
+            hasGoal: (missionConfig.goals || []).filter(g => g.locked).length > 0 || !!missionConfig.goalText,
             hasConstraints: missionConfig.constraints.filter(c => c.locked).length > 0,
             hasStrategy: strategyMode !== 'off',
             strategyMode: strategyMode !== 'off' ? strategyMode : undefined,

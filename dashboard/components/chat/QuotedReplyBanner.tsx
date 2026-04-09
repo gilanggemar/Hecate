@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { cn } from '@/lib/utils';
 import { X, Quote } from 'lucide-react';
 
@@ -26,14 +26,13 @@ export const QuotedReplyBanner: React.FC<QuotedReplyBannerProps> = ({
                 className
             )}
             style={{
-                background: 'var(--nerv-violet-dim)',
-                border: '1px solid var(--nerv-violet-glow)',
-                borderLeft: '3px solid var(--nerv-violet)',
+                background: 'color-mix(in srgb, rgb(234, 120, 47) 10%, transparent)',
+                border: '1px solid color-mix(in srgb, rgb(234, 120, 47) 25%, transparent)',
             }}
         >
-            <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'var(--nerv-violet)' }} />
+            <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'rgb(234, 120, 47)' }} />
             <div className="flex-1 min-w-0">
-                <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: 'var(--nerv-violet)' }}>
+                <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: 'rgb(234, 120, 47)' }}>
                     Replying to
                 </span>
                 <p

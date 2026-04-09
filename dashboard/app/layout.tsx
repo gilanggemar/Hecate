@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthInitializer } from "@/components/AuthInitializer";
 import { GlobalAssemblyOverlay } from "@/components/GlobalAssemblyOverlay";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
             {children}
           </AuthInitializer>
           <GlobalAssemblyOverlay />
+          <Toaster position="bottom-left" />
         </ThemeProvider>
       </body>
     </html>

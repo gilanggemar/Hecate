@@ -64,13 +64,20 @@ export function TaskCard({
             onClick={onClick}
             whileHover={!isDragging ? { scale: 1.02 } : undefined}
             className={cn(
-                'nerv-glass-1 transition-all duration-150 cursor-grab active:cursor-grabbing select-none',
+                'transition-all duration-150 cursor-grab active:cursor-grabbing select-none',
                 isCompact
-                    ? 'rounded-lg p-2 mb-1.5 border-l-4'
-                    : 'rounded-md p-3 mb-2 border-l-4',
+                    ? 'rounded-lg p-2 mb-1.5'
+                    : 'rounded-md p-3 mb-2',
                 isDragging && 'opacity-50 border-dashed',
             )}
-            style={{ borderLeftColor: agentColor }}
+            style={{
+                border: `1px solid oklch(0.75 0.18 55 / ${isDragging ? '0.15' : '0.12'})`,
+                background: isDragging
+                    ? 'oklch(0.12 0.01 55 / 0.5)'
+                    : 'linear-gradient(135deg, oklch(0.12 0.015 55 / 0.8) 0%, oklch(0.10 0.008 30 / 0.7) 50%, oklch(0.11 0.012 55 / 0.6) 100%)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+            }}
         >
             {/* ─── Compact mode (calendar column) ─── */}
             {isCompact ? (

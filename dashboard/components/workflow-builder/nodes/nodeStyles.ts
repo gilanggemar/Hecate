@@ -20,6 +20,7 @@ export const NODE_ACCENTS = {
     loop: 'oklch(0.70 0.15 310)',
     note: 'oklch(0.72 0.08 80)',
     checkpoint: 'oklch(0.75 0.16 350)',
+    task_call: 'oklch(0.68 0.16 265)',
     convergence: 'oklch(0.65 0.12 180)',
     // Keep group for canvas grouping
     group: 'var(--accent-ocean)',
@@ -95,6 +96,7 @@ export const NODE_CATEGORIES: NodeCategoryDef[] = [
             { type: 'agent_step', label: 'Agent Step', icon: 'Bot', description: 'Route to agent', defaultData: { label: 'Agent Step', agentId: '', task: '', responseMode: 'text', timeoutSec: 120 } },
             { type: 'formatter_step', label: 'Formatter', icon: 'Code', description: 'Template text', defaultData: { label: 'Formatter', template: '' } },
             { type: 'http_request', label: 'HTTP Request', icon: 'Globe', description: 'Call an API', defaultData: { label: 'HTTP Request', method: 'GET', url: '' } },
+            { type: 'task_call', label: 'Task', icon: 'ClipboardList', description: 'Run a saved task', defaultData: { label: 'Task', agentId: '', taskId: '', taskTitle: '', agentName: '', systemPromptOverride: '' } },
             { type: 'variable_set', label: 'Set Variable', icon: 'Wrench', description: 'Store / transform data', defaultData: { label: 'Set Variable', variableName: '', variableValue: '' } },
         ],
     },
@@ -147,4 +149,5 @@ export const NODE_INFO: Record<WfNodeType, { description: string; tips: string }
     checkpoint: { description: "Target marker for loops and cycles", tips: "Select this Checkpoint from a Loop or Approval node to jump here." },
     group: { description: "Visual container for nodes", tips: "Drag nodes inside to group them. Move the group to move all children." },
     note: { description: "Sticky note for documentation", tips: "Explain your logic to others. Doesn't affect execution." },
+    task_call: { description: "Runs a pre-configured task from an agent", tips: "Select an agent, then pick one of their saved tasks. Optionally add a system prompt to adjust behavior." },
 };

@@ -36,6 +36,7 @@ import { LoopNode } from "./nodes/LoopNode";
 import { NoteNode } from "./nodes/NoteNode";
 import { CheckpointNode } from "./nodes/CheckpointNode";
 import { ConvergenceNode } from "./nodes/ConvergenceNode";
+import { TaskCallNode } from "./nodes/TaskCallNode";
 
 import { DataEdge } from "./edges/DataEdge";
 import { ExecutingEdge } from "./edges/ExecutingEdge";
@@ -60,6 +61,7 @@ const nodeTypes: NodeTypes = {
     note: NoteNode,
     checkpoint: CheckpointNode,
     convergence: ConvergenceNode,
+    task_call: TaskCallNode,
     // V1 backward-compatible aliases
     trigger: ManualTriggerNode,
     agent: AgentStepNode,
@@ -98,6 +100,7 @@ function nodeColor(node: Node) {
         http_request: "oklch(0.72 0.16 160)",
         loop: "oklch(0.70 0.15 310)",
         note: "oklch(0.72 0.08 80)",
+        task_call: "oklch(0.68 0.16 265)",
     };
     return m[node.type || ""] || "oklch(0.5 0 0)";
 }

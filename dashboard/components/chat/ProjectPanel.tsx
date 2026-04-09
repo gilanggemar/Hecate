@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useProjectStore, Project, ProjectFile } from "@/store/useProjectStore";
 import {
-    FolderOpen, Plus, X as XIcon, Upload, FileText, Image as ImageIcon,
+    FolderOpen, Plus, Upload, FileText, Image as ImageIcon,
     Trash2, Settings2, ChevronDown, Pencil, Check, Loader2
 } from "lucide-react";
 
@@ -43,10 +43,9 @@ export function ProjectPanel({ agentId, agentName, className }: ProjectPanelProp
         return () => document.removeEventListener('keydown', handler);
     }, [showEditor]);
 
-    // Load projects on mount / agent change
     useEffect(() => {
-        loadProjects(agentId);
-    }, [agentId, loadProjects]);
+        loadProjects();
+    }, [loadProjects]);
 
     // Restore active project from localStorage
     useEffect(() => {
@@ -69,7 +68,6 @@ export function ProjectPanel({ agentId, agentName, className }: ProjectPanelProp
         setIsCreating(true);
         const id = await createProject({
             name: `New Project`,
-            agent_id: agentId,
         });
         if (id) {
             setShowEditor(true);
@@ -119,31 +117,19 @@ export function ProjectPanel({ agentId, agentName, className }: ProjectPanelProp
                         <button
                             className="flex items-center h-7 px-2.5 rounded-sm text-xs gap-1.5 border border-border/50 hover:border-border transition-all"
                             style={{
-                                color: activeProjectId ? 'var(--nerv-violet)' : 'var(--nerv-text-tertiary)',
-                                borderColor: activeProjectId ? 'color-mix(in srgb, var(--nerv-violet) 30%, transparent)' : undefined,
-                                background: activeProjectId ? 'color-mix(in srgb, var(--nerv-violet) 8%, transparent)' : 'transparent',
+                                color: activeProjectId ? 'rgb(234, 120, 47)' : 'var(--nerv-text-tertiary)',
+                                borderColor: activeProjectId ? 'rgba(234, 120, 47, 0.3)' : undefined,
+                                background: activeProjectId ? 'rgba(234, 120, 47, 0.08)' : 'transparent',
                             }}
                         >
                             <FolderOpen className="w-3 h-3" />
                             <span className="max-w-[120px] truncate">
-                                {activeProject?.name || "No Project"}
+                                {activeProject?.name || "Select Project"}
                             </span>
                             <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent side="top" sideOffset={8} align="start" className="rounded-md p-1.5 min-w-[200px]">
-                        {activeProjectId && (
-                            <>
-                                <DropdownMenuItem
-                                    className="rounded-[calc(1rem-6px)] text-xs"
-                                    onClick={() => setActiveProject(null)}
-                                >
-                                    <XIcon className="w-3.5 h-3.5 opacity-50 mr-2" />
-                                    No Project
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                            </>
-                        )}
                         {projects.map(p => (
                             <DropdownMenuItem
                                 key={p.id}
@@ -151,7 +137,7 @@ export function ProjectPanel({ agentId, agentName, className }: ProjectPanelProp
                                 onClick={() => setActiveProject(p.id)}
                             >
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <FolderOpen className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--nerv-violet)' }} />
+                                    <FolderOpen className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgb(234, 120, 47)' }} />
                                     <span className="truncate">{p.name}</span>
                                 </div>
                                 {p.id === activeProjectId && (

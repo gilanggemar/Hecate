@@ -30,7 +30,7 @@ interface ProjectState {
     isLoading: boolean;
     lastError: string | null;
 
-    loadProjects: (agentId?: string) => Promise<void>;
+    loadProjects: () => Promise<void>;
     setActiveProject: (projectId: string | null) => Promise<void>;
     createProject: (data: { name: string; description?: string; custom_instructions?: string; agent_id?: string }) => Promise<string | null>;
     updateProject: (id: string, updates: Partial<Pick<Project, 'name' | 'description' | 'custom_instructions' | 'agent_id'>>) => Promise<void>;
@@ -47,11 +47,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     isLoading: false,
     lastError: null,
 
-    loadProjects: async (agentId?: string) => {
+    loadProjects: async () => {
         set({ isLoading: true, lastError: null });
         try {
-            const params = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : '';
-            const res = await fetch(`/api/projects${params}`);
+            const res = await fetch(`/api/projects`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const { projects } = await res.json();
             set({ projects: projects || [], isLoading: false });

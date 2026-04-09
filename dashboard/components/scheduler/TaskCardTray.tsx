@@ -69,11 +69,18 @@ function DraggableWorkflowCard({ workflow }: { workflow: any }) {
             <motion.div
                 whileHover={!isDragging ? { scale: 1.02 } : undefined}
                 className={cn(
-                    'nerv-glass-1 rounded-md p-3 mb-2 border-l-4 transition-all duration-150',
+                    'rounded-md p-3 mb-2 transition-all duration-150',
                     'cursor-grab active:cursor-grabbing select-none',
                     isDragging && 'opacity-50 border-dashed',
                 )}
-                style={{ borderLeftColor: 'var(--accent-base)' }}
+                style={{
+                    border: `1px solid oklch(0.75 0.18 55 / ${isDragging ? '0.15' : '0.12'})`,
+                    background: isDragging
+                        ? 'oklch(0.12 0.01 55 / 0.5)'
+                        : 'linear-gradient(135deg, oklch(0.12 0.015 55 / 0.8) 0%, oklch(0.10 0.008 30 / 0.7) 50%, oklch(0.11 0.012 55 / 0.6) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                }}
             >
                 <div className="flex flex-col gap-1 min-w-0">
                     <div className="flex items-start justify-between gap-1.5">

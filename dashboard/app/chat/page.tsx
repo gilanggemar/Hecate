@@ -11,7 +11,7 @@ import {
     Wifi, WifiOff, ArrowDown, PanelLeftOpen, PanelLeftClose, ArrowUpRight,
     FileText, Image as ImageIcon, X as XIcon, Package, Check, Pencil,
     Target, Shield, Compass, Copy, Square, Brain, MessageSquareText, GitMerge,
-    Heart
+    Heart, Quote
 } from "lucide-react";
 import {
     IconPlus, IconPaperclip, IconCode, IconWorld, IconHistory,
@@ -58,7 +58,9 @@ import { TimelineScrubber } from "@/components/chat/TimelineScrubber";
 import { QuotedReplyBanner } from "@/components/chat/QuotedReplyBanner";
 import { StrategyModeSwitcher, StrategyMode, getStrategySystemPrompt } from "@/components/chat/StrategyModeSwitcher";
 import { NextBestActionChip } from "@/components/chat/NextBestActionChip";
-import { HandoffPacketModal } from "@/components/chat/HandoffPacketModal";
+import { TaskCardModal } from "@/components/TaskCardModal";
+import { Task, ExecutionStep } from "@/lib/useTaskStore";
+import { toast } from 'sonner';
 import { ProjectPanel } from "@/components/chat/ProjectPanel";
 import { useProjectStore } from "@/store/useProjectStore";
 import { SessionConfigDropdowns } from "@/components/chat/SessionConfigDropdowns";
@@ -100,9 +102,13 @@ const stripInjectedPrefixes = (content: string): string => {
     let cleaned = content;
     // Strip [STRATEGY: ...] prefix line
     cleaned = cleaned.replace(/^\[STRATEGY:\s*\w+\]\s*—[^\n]*\n\n/i, '');
-    // Strip [SYSTEM DIRECTIVE — MISSION GOAL] block
+    // Strip [GOAL — ACTIVE] block (new compact format)
+    cleaned = cleaned.replace(/^\[GOAL — ACTIVE\][^\n]*\n[^\n]*\n\n/i, '');
+    // Strip [CONSTRAINTS — ACTIVE] block (new compact format)
+    cleaned = cleaned.replace(/^\[CONSTRAINTS — ACTIVE\][\s\S]*?(?=\n\n\[|\n\n[^\[\n])/i, '');
+    // Strip legacy [SYSTEM DIRECTIVE — MISSION GOAL] block
     cleaned = cleaned.replace(/^\[SYSTEM DIRECTIVE — MISSION GOAL\][\s\S]*?(?=\n\n\[|\n\n[^\[\n])/i, '');
-    // Strip [SYSTEM DIRECTIVE — HARD CONSTRAINTS] block
+    // Strip legacy [SYSTEM DIRECTIVE — HARD CONSTRAINTS] block
     cleaned = cleaned.replace(/^\[SYSTEM DIRECTIVE — HARD CONSTRAINTS\][\s\S]*?(?=\n\n\[|\n\n[^\[\n])/i, '');
     // Strip legacy [MISSION GOAL] / [CONSTRAINTS] formats
     cleaned = cleaned.replace(/^\[MISSION GOAL\][^\n]*\n\n/i, '');
@@ -115,8 +121,8 @@ const stripInjectedPrefixes = (content: string): string => {
 /* ─── Detect mode indicators from message content (fallback for legacy messages) ─── */
 const detectModeIndicators = (content: string) => {
     if (!content) return null;
-    const hasGoal = /\[SYSTEM DIRECTIVE — MISSION GOAL\]/m.test(content) || /^\[MISSION GOAL\]/m.test(content);
-    const hasConstraints = /\[SYSTEM DIRECTIVE — HARD CONSTRAINTS\]/m.test(content) || /^\[CONSTRAINTS\]/m.test(content);
+    const hasGoal = /\[GOAL — ACTIVE\]/m.test(content) || /\[SYSTEM DIRECTIVE — MISSION GOAL\]/m.test(content) || /^\[MISSION GOAL\]/m.test(content);
+    const hasConstraints = /\[CONSTRAINTS — ACTIVE\]/m.test(content) || /\[SYSTEM DIRECTIVE — HARD CONSTRAINTS\]/m.test(content) || /^\[CONSTRAINTS\]/m.test(content);
     const hasStrategy = /^\[STRATEGY:/m.test(content);
     const strategyMatch = content.match(/^\[STRATEGY:\s*(\w+)\]/m);
     if (!hasGoal && !hasConstraints && !hasStrategy) return null;
@@ -241,6 +247,7 @@ export default function ChatPage() {
     const [missionConfig, setMissionConfig] = useState<MissionConfig>({
         goalText: '',
         goalLocked: false,
+        goals: [],
         constraints: [],
     });
 
@@ -250,6 +257,8 @@ export default function ChatPage() {
     const [quotedReply, setQuotedReply] = useState<{ text: string; messageId?: string } | null>(null);
     const [strategyMode, setStrategyMode] = useState<StrategyMode>('off');
     const [showHandoff, setShowHandoff] = useState(false);
+    const [handoffTaskData, setHandoffTaskData] = useState<Partial<Task> | undefined>(undefined);
+    const [isHandoffGenerating, setIsHandoffGenerating] = useState(false);
     const [nextBestAction, setNextBestAction] = useState<string | null>(null);
 
     // Track mode indicators for Agent Zero messages (keyed by message content)
@@ -299,6 +308,11 @@ export default function ChatPage() {
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        // Ignore prompt chunk drags — only show file drop overlay for actual files
+        if (e.dataTransfer.types.includes('application/x-prompt-chunk-id') ||
+            e.dataTransfer.types.includes('application/x-prompt-chunk-id-internal')) {
+            return;
+        }
         setIsDraggingOver(true);
     };
 
@@ -314,6 +328,11 @@ export default function ChatPage() {
         e.preventDefault();
         e.stopPropagation();
         setIsDraggingOver(false);
+        // Ignore prompt chunk drops — let the chat input handle them
+        if (e.dataTransfer.types.includes('application/x-prompt-chunk-id') ||
+            e.dataTransfer.types.includes('application/x-prompt-chunk-id-internal')) {
+            return;
+        }
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
             handleFilesSelected(files);
@@ -494,9 +513,13 @@ export default function ChatPage() {
             hydrated._seqNum = hydrated.sequence_number ?? 0;
             return hydrated;
         }).filter(m => {
-            // Scrub accidentally saved Handoff Packet JSONs from legacy UI loads
+            // Scrub accidentally saved Handoff / TaskCard JSONs from DB
             const rawContent = (m.content || '').trim();
-            if (m.role === 'assistant' && /^\s*\{\s*"sections"\s*:/i.test(rawContent)) {
+            if (m.role === 'assistant' && /^\s*\{\s*"(sections|title)"\s*:/i.test(rawContent)) {
+                return false;
+            }
+            // Hide handoff protocol prompts saved to DB
+            if (m.role === 'user' && rawContent.includes('[SYSTEM DIRECTIVE \u2014 HANDOFF PROTOCOL]')) {
                 return false;
             }
             return true;
@@ -532,8 +555,13 @@ export default function ChatPage() {
                  continue;
              }
 
-             // Hide background extraction runs (Handoff JSON generation) from bleeding into the visual UI
-             if (m.role === 'assistant' && /^\s*\{\s*"sections"\s*:/i.test(rawContent)) {
+             // Hide background extraction runs (Handoff / TaskCard JSON generation) from bleeding into the visual UI
+             if (m.role === 'assistant' && /^\s*\{\s*"(sections|title)"\s*:/i.test(rawContent)) {
+                 continue;
+             }
+
+             // Hide handoff protocol prompts from appearing as user messages
+             if (m.role === 'user' && rawContent.includes('[SYSTEM DIRECTIVE \u2014 HANDOFF PROTOCOL]')) {
                  continue;
              }
 
@@ -675,7 +703,7 @@ export default function ChatPage() {
         }
 
         const modeIndicators = {
-            hasGoal: !!capturedMissionConfig.goalText,
+            hasGoal: (capturedMissionConfig.goals || []).filter(g => g.locked).length > 0 || !!capturedMissionConfig.goalText,
             hasConstraints: capturedMissionConfig.constraints.filter(c => c.locked).length > 0,
             hasStrategy: capturedStrategyMode !== 'off',
             strategyMode: capturedStrategyMode !== 'off' ? capturedStrategyMode : undefined,
@@ -711,6 +739,8 @@ export default function ChatPage() {
                 streaming: false,
                 attachments: base64Attachments.length > 0 ? base64Attachments : undefined,
                 modeIndicators,
+                quotedReply: capturedQuotedReply?.text || undefined,
+                metadata: { quotedReply: capturedQuotedReply?.text || undefined, modeIndicators },
                 _sortTime: Date.now(),
             } as any);
 
@@ -1360,6 +1390,20 @@ export default function ChatPage() {
                                                                     : "bg-orange-500/35 text-white border border-orange-500/40",
                                                                 isFirstInGroup ? "rounded-[6px]" : "rounded-tr-[6px] rounded-br-[6px] rounded-bl-[6px] rounded-tl-[2px]"
                                                             )}>
+                                                                {/* Quoted Reply Indicator */}
+                                                                {isUser && (() => {
+                                                                    const quoteText = (msg as any).metadata?.quotedReply || (msg as any).quotedReply;
+                                                                    if (!quoteText) return null;
+                                                                    return (
+                                                                        <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-sm mb-1" style={{
+                                                                            background: 'color-mix(in srgb, rgb(234, 120, 47) 8%, transparent)',
+                                                                            border: '1px solid color-mix(in srgb, rgb(234, 120, 47) 20%, transparent)',
+                                                                        }}>
+                                                                            <Quote className="w-3 h-3 shrink-0 mt-0.5" style={{ color: 'rgb(234, 120, 47)' }} />
+                                                                            <p className="text-[10px] line-clamp-2" style={{ color: 'var(--nerv-text-secondary)' }}>{quoteText}</p>
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                                 {msg.attachments && msg.attachments.length > 0 && (
                                                                     <div className="flex flex-wrap gap-2">
                                                                         {msg.attachments.map((att: any, i: number) => (
@@ -1921,37 +1965,49 @@ export default function ChatPage() {
                 </div>
             )}
 
-            {/* ═══ HANDOFF PACKET MODAL ═══ */}
-            <HandoffPacketModal
+            {/* ═══ TASK CARD MODAL (Handoff) ═══ */}
+            <TaskCardModal
                 isOpen={showHandoff}
-                onClose={() => setShowHandoff(false)}
-                conversationTitle={`Chat with ${selectedAgentName}`}
-                agentName={selectedAgentName}
-                messageCount={visibleMessages.length}
-                onGenerate={async () => {
+                onClose={() => { setShowHandoff(false); setHandoffTaskData(undefined); }}
+                initialData={handoffTaskData}
+                defaultAgentId={selectedAgentId}
+                availableAgents={integratedAgents.map(a => ({ id: a.id, name: a.name }))}
+                onHandoff={(task) => {
+                    setShowHandoff(false);
+                    setHandoffTaskData(undefined);
+                    toast.success('Task handed off successfully', {
+                        description: `"${task.title}" assigned to ${selectedAgentName}`,
+                        duration: 6000,
+                        position: 'bottom-left',
+                        action: {
+                            label: 'Go to task-ops',
+                            onClick: () => router.push('/agents'),
+                        },
+                        actionButtonStyle: {
+                            background: 'rgb(234, 120, 47)',
+                            color: '#fff',
+                            border: 'none',
+                        },
+                    });
+                }}
+                autoGenerate={!handoffTaskData}
+                onAutoGenerate={async () => {
                     const resolvedConvoId = activeConversationId || storeConvoId;
                     const sk = `agent:${selectedAgentId}:nchat`;
                     const prompt = `[SYSTEM DIRECTIVE — HANDOFF PROTOCOL]
-Please analyze ONLY the conversation that occurred strictly within "Chat Workspace ID: ${resolvedConvoId}". You MUST ignore all context, messages, and memories from previous or unrelated workspaces. Generate a structured Executive Handoff Packet for this specific workspace. 
-Do not include markdown wrappers like \`\`\`json, just return raw JSON strictly matching this schema:
+Please analyze ONLY the conversation that occurred strictly within "Chat Workspace ID: ${resolvedConvoId}". You MUST ignore all context, messages, and memories from previous or unrelated workspaces.
+Generate a Task Card from this conversation. Do not include markdown wrappers like \`\`\`json, just return raw JSON strictly matching this schema:
 {
-  "sections": [
-    { "title": "Executive Summary", "content": "..." },
-    { "title": "Key Decisions Made", "content": "..." },
-    { "title": "Open Questions", "content": "..." },
-    { "title": "Next Steps", "content": "..." }
-  ],
-  "readiness": [
-    { "label": "Context Completeness", "status": "ready" }
-  ]
+  "title": "A concise task title summarizing the main objective",
+  "steps": ["Step 1 description", "Step 2 description", "Step 3 description"],
+  "systemPrompt": "Optional custom behavior instructions for the agent"
 }
-Note: For readiness status, only use "ready", "warning", or "blocked".`;
+Extract the most actionable next steps from the conversation. Be specific and practical.`;
 
-                    return new Promise(async (resolve) => {
+                    return new Promise<Partial<Task>>(async (resolve) => {
                         const gw = getGateway();
                         if (gw.isConnected) {
                             try {
-                                console.log("[Handoff] Dispatching request. Agent replying in chat stream...");
                                 const res = await gw.request('chat.send', {
                                     sessionKey: sk,
                                     message: prompt,
@@ -1962,36 +2018,43 @@ Note: For readiness status, only use "ready", "warning", or "blocked".`;
                                     const checkInterval = setInterval(() => {
                                         const msgs = useSocketStore.getState().chatMessages;
                                         const targetMsg = msgs.find(m => m.id === `reply-${res.runId}`);
-                                        
                                         if (targetMsg && !targetMsg.streaming) {
                                             clearInterval(checkInterval);
                                             try {
                                                 const jsonMatch = targetMsg.content.match(/\{[\s\S]*\}/);
                                                 if (jsonMatch) {
                                                     const parsed = JSON.parse(jsonMatch[0]);
+                                                    const steps: ExecutionStep[] = (parsed.steps || []).map((text: string, i: number) => ({
+                                                        id: `step-gen-${Date.now()}-${i}`,
+                                                        text,
+                                                        order: i,
+                                                    }));
                                                     resolve({
-                                                        sections: parsed.sections || [],
-                                                        readiness: parsed.readiness || []
+                                                        title: parsed.title || `Handoff: Chat with ${selectedAgentName}`,
+                                                        agentId: selectedAgentId,
+                                                        executionPlan: steps,
+                                                        systemPrompt: parsed.systemPrompt || '',
+                                                        source: 'handoff',
                                                     });
                                                 } else {
-                                                    console.warn("[Handoff] Failed to parse JSON from agent");
-                                                    resolve({ sections: [], readiness: [] });
+                                                    resolve({ title: '', agentId: selectedAgentId, source: 'handoff' });
                                                 }
                                             } catch (e) {
-                                                console.error("[Handoff Parse Error]", e);
-                                                resolve({ sections: [], readiness: [] });
+                                                console.error('[Handoff Parse Error]', e);
+                                                resolve({ title: '', agentId: selectedAgentId, source: 'handoff' });
                                             }
                                         }
                                     }, 500);
-                                    return; // prevent fallback resolution
+                                    return;
                                 }
                             } catch (err) {
-                                console.error("[Handoff Gen Error]", err);
+                                console.error('[Handoff Gen Error]', err);
                             }
                         }
-                        resolve({ sections: [], readiness: [] });
+                        resolve({ title: '', agentId: selectedAgentId, source: 'handoff' });
                     });
                 }}
+                mode="create"
             />
         </div>
     );

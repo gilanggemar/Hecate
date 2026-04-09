@@ -75,7 +75,7 @@ export default function WorkflowBuilderPage() {
             {/* Canvas fills the entire available height — no header row gap */}
             <div className="flex flex-col h-full">
                 {/* Canvas in Constellation-style glass frame — full height */}
-                <div className="flex-1 min-h-0 nerv-glass-2 rounded-xl overflow-hidden relative">
+                <div className="flex-1 min-h-0 overflow-hidden relative">
                     <WorkflowCanvas />
                     <CanvasToolbar />
 
