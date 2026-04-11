@@ -8,7 +8,7 @@ export interface ThemeStore {
 
 const getInitialTheme = (): 'dark' | 'light' | 'system' => {
     if (typeof window !== 'undefined') {
-        return (localStorage.getItem('nervos-theme') as 'dark' | 'light' | 'system') ?? 'dark';
+        return (localStorage.getItem('hecate-theme') as 'dark' | 'light' | 'system') ?? 'dark';
     }
     return 'dark';
 };
@@ -36,7 +36,7 @@ export const useThemeStore = create<ThemeStore>((set) => ({
         }
 
         if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('nervos-theme', theme);
+            localStorage.setItem('hecate-theme', theme);
         }
 
         set({ theme, resolvedTheme: resolved });

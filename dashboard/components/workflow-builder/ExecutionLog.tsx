@@ -128,7 +128,7 @@ export default function ExecutionLog() {
                     {/* Log entries */}
                     <div
                         ref={scrollRef}
-                        className="nerv-mono"
+                        className="hecate-mono"
                         style={{
                             flex: 1,
                             overflowY: "auto",

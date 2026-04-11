@@ -96,10 +96,10 @@ export function ShellFrame({ children }: { children: React.ReactNode }) {
     const outerRect = `M 0 0 L ${vw} 0 L ${vw} ${vh} L 0 ${vh} Z`;
 
     return (
-        <div className="nerv-shell-frame">
+        <div className="hecate-shell-frame">
             {vw > 0 && (
                 <svg
-                    className="nerv-shell-frame__svg"
+                    className="hecate-shell-frame__svg"
                     width={vw}
                     height={vh}
                     viewBox={`0 0 ${vw} ${vh}`}
@@ -109,19 +109,19 @@ export function ShellFrame({ children }: { children: React.ReactNode }) {
                     <path
                         d={`${outerRect} ${framePath}`}
                         fillRule="evenodd"
-                        className="nerv-shell-frame__fill"
+                        className="hecate-shell-frame__fill"
                         style={{ transition: 'd 0.3s cubic-bezier(0.25, 1, 0.5, 1)' }}
                     />
                     <path
                         d={framePath}
                         fill="none"
-                        className="nerv-shell-frame__path"
+                        className="hecate-shell-frame__path"
                         strokeWidth="1.5"
                         style={{ transition: 'd 0.3s cubic-bezier(0.25, 1, 0.5, 1)' }}
                     />
                 </svg>
             )}
-            <div className="nerv-shell-frame__content">
+            <div className="hecate-shell-frame__content">
                 {children}
                 {/* Radial blur overlay — wraps the dock notch */}
                 {vw > 0 && (

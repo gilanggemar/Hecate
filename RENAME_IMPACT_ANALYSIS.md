@@ -1,63 +1,143 @@
-# 🔍 NERV.OS → [NEW NAME] — Rename Impact Analysis
+# 🔍 NERV.OS → HECATE — Complete Rename Impact Analysis
+
+> **Updated**: 2026-04-12 — Full re-scan of codebase after dashboard-mcp server addition and component refactoring.
 
 ## TL;DR Verdict
 
 > [!IMPORTANT]
-> **Renaming will NOT break your app's core functionality** — but only if done correctly. The vast majority of "NERV" references are **cosmetic** (display text, CSS class names, comments). There are a small number of **functional** references that must be renamed atomically, but none of them are coupled to the name "NERV" in a way that would cause runtime failures if changed.
+> **Renaming will NOT break your app's core functionality** — but only if done correctly and progressively. The vast majority of "NERV" references are **cosmetic** (CSS class names, display text, comments). A small number of **functional** references require careful handling, but none are coupled to the name "NERV" in a way that prevents atomic renaming.
 
-The key insight: **nothing in your database, routing, or API contracts depends on the string "NERV"**. Your Supabase tables have generic names (`agents`, `conversations`, `workflows`, etc.), your API routes are generic (`/api/agents/`, `/api/chat/`), and your Next.js routing has no NERV-prefixed paths.
+The key insight: **nothing in your database schema, routing, or API contracts depends on the string "NERV"**. Your Supabase tables have generic names (`agents`, `conversations`, `workflows`, etc.), your API routes are generic (`/api/agents/`, `/api/chat/`), and your Next.js routing has no NERV-prefixed paths.
+
+**One external dependency**: The Supabase storage bucket `nerv-images` exists in Supabase and is referenced in code — renaming it requires a coordinated bucket rename + data migration OR keeping the old bucket name.
 
 ---
 
 ## Risk Matrix
 
-| Layer | Risk Level | # of Refs | Breaks if Missed? | Notes |
-|-------|-----------|-----------|-------------------|-------|
-| CSS Design System (variables) | 🟡 Medium | ~50+ vars | Yes — styling breaks | `--nerv-cyan`, `--nerv-surface-3`, etc. |
-| CSS Utility Classes | 🟡 Medium | ~100+ uses | Yes — styling breaks | `.nerv-caption`, `.nerv-glass-3`, `.nerv-dock-btn` |
-| CSS Animations/Keyframes | 🟡 Medium | ~15 | Yes — animations break | `@keyframes nerv-shimmer`, `nerv-chat-slide-in` |
-| localStorage/sessionStorage keys | 🟢 Low | ~12 keys | No — old keys just orphaned | `nerv_active_agent`, `nervos-theme`, etc. |
-| DOM Element IDs | 🟢 Low | 2 | No — only used internally | `nerv-selection-quote`, `nerv-summit-selection-quote` |
-| Environment Variables | 🔴 High | 1 critical | **Yes — encryption breaks** | `NERV_ENCRYPTION_KEY` |
+| Layer | Risk Level | # of Lines | Breaks if Missed? | Notes |
+|-------|-----------|------------|-------------------|-------|
+| CSS Design System (`globals.css`) | 🟡 Medium | **~194 lines** | Yes — styling breaks | `--nerv-cyan`, `.nerv-glass-3`, `@keyframes nerv-*` |
+| CSS Variable Usages (components) | 🟡 Medium | **~350+ lines** | Yes — styling breaks | `var(--nerv-cyan)`, `var(--nerv-surface-3)` across ~50 files |
+| CSS Class Usages (components) | 🟡 Medium | **~100+ lines** | Yes — styling breaks | `nerv-caption`, `nerv-glass-3`, `nerv-dock-btn` across ~30 files |
+| localStorage/sessionStorage keys | 🟢 Low | ~20 unique keys | No — old keys orphaned | `nerv_active_agent`, `nerv_vignette_settings`, etc. |
+| DOM Element IDs | 🟢 Low | 2 | No — only internal | `nerv-selection-quote`, `nerv-summit-selection-quote` |
+| Environment Variables | 🔴 High | 3 refs | **Yes — encryption breaks** | `NERV_ENCRYPTION_KEY` |
 | Encryption Fallback Strings | 🔴 High | 2 | **Yes — decryption breaks** | `nerv-os-default-key-change-me`, `nerv-os-provider-salt` |
-| OpenClaw Gateway Client ID | 🟡 Medium | 3 | Depends on backend | `nerv-dashboard` as client identifier |
-| Branding/Display Strings | 🟢 Low | ~25 | No — cosmetic only | "NERV.OS", "NERV", "Welcome to NERV.OS" |
-| Code Comments | 🟢 Low | ~20 | No | Just documentation |
+| Supabase Storage Bucket | 🔴 High | 3 file refs | **Yes — image uploads break** | `nerv-images` bucket in Supabase |
+| OpenClaw Gateway Client ID | 🟡 Medium | 5 | Depends on backend | `nerv-dashboard` as client ID, `nerv-workflow/0.1.0` |
+| Dashboard MCP Server | 🟡 Medium | ~20 lines | Cosmetic + tool names | `@nervos/dashboard-mcp`, `TOOL_PREFIX = "nerv"`, `NERV_USER_ID` |
+| Branding/Display Strings | 🟢 Low | ~15 | No — cosmetic only | "NERV.OS", "NERV", "Welcome to NERV.OS" |
+| Code Comments | 🟢 Low | ~15 | No | Documentation strings |
+| Component/File Names | 🟢 Low | 1 file | Import updates needed | `NervSkeleton.tsx` |
 | GitHub Repo Name | 🟡 Medium | External | Vercel redeploy needed | `gilanggemar/NERV` |
 | Vercel Project | 🟡 Medium | External | Domain/URL changes | `nerv-one.vercel.app` |
-| Documentation (`.md` files) | 🟢 Low | ~30+ | No | MAINTENANCE.md, USER_GUIDE.md, etc. |
+| Documentation Files | 🟢 Low | ~10 lines | No | MAINTENANCE.md, USER_GUIDE.md, Chat_Features_Deep_Analysis.md |
+| Implementation Plan Files | 🟢 Low | ~80 lines | No | `nerv_mcp`, `dashboard_mcp_brief.md`, `PRODUCTION_READINESS_AUDIT.md` |
+| Dev Tools Scripts | 🟢 Low | ~10 lines | No — debug only | `tools/check_ws_gateway.js`, `tools/debug_scopes.js`, etc. |
+| Architecture Docs | 🟢 Low | 3 | No | `architecture/websocket_events.md` |
 
 ---
 
-## Layer-by-Layer Breakdown
+## Progressive Rename Strategy (Safest First → Most Critical Last)
 
-### 1. 🔴 CRITICAL: Environment Variables & Encryption
+### Phase 1: 🟢 Documentation & Comments (ZERO RISK)
 
-These are the **only true danger zones**. If you rename the env var and forget to update consumers, encryption/decryption will silently fail.
+Pure text changes. Cannot break anything.
 
-#### Files affected:
-- [encryption.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/encryption.ts)
-  - `process.env.NERV_ENCRYPTION_KEY` (line 7)
-  - Fallback salt: `'nerv-os-default-key-change-me'` (line 8)
-- [crypto.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/providers/crypto.ts)
-  - `process.env.NERV_ENCRYPTION_KEY` (line 14)
-  - Fallback key: `'nerv-dev-key-do-not-use-in-prod'` (line 14)
-  - Static salt: `'nerv-os-provider-salt'` (line 11)
-- [.env.local](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/.env.local) — `NERV_ENCRYPTION_KEY` (line 32)
-
-> [!CAUTION]
-> **If you change the salt strings**, any data currently encrypted in Supabase (`connection_secrets`, `connection_profiles`) will become **permanently undecryptable**. You must either:
-> 1. Keep the old salt values (just rename the env var)
-> 2. Write a migration script to re-encrypt all existing data with the new salt
+#### Files:
+| File | Lines | What to change |
+|------|-------|---------------|
+| [RENAME_IMPACT_ANALYSIS.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/RENAME_IMPACT_ANALYSIS.md) | all | This file itself |
+| [PRODUCTION_READINESS_AUDIT.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/PRODUCTION_READINESS_AUDIT.md) | ~15 | "NERV.OS" mentions |
+| [docs/MAINTENANCE.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/docs/MAINTENANCE.md) | 3 | "NERV.OS" mentions |
+| [docs/USER_GUIDE.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/docs/USER_GUIDE.md) | 3 | "NERV.OS" / "NERV" mentions |
+| [docs/Chat_Features_Deep_Analysis.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/docs/Chat_Features_Deep_Analysis.md) | 3 | "NERV.OS" mentions |
+| [architecture/websocket_events.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/architecture/websocket_events.md) | 3 | `"nerv-dashboard"`, session keys |
+| [nerv_mcp](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/nerv_mcp) | ~80 | Entire file — rename to `hecate_mcp` |
+| [dashboard_mcp_brief.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard_mcp_brief.md) | 0 | ✅ Already clean — no NERV refs |
+| Code comments in `lib/workflow/*.ts` | 5 | Banner comments: `// NERV.OS Workflow V2` |
+| Comment in `stores/useChatStore.ts` | 1 | `// Single source of truth for ALL chat state in NERV.OS` |
 
 ---
 
-### 2. 🟡 CSS Design System — Variables & Classes
+### Phase 2: 🟢 UI Branding Strings (LOW RISK — Cosmetic Only)
 
-This is the **highest volume** of changes but **lowest risk** because it's a pure find-and-replace within a single ecosystem (`globals.css` → components).
+Display text visible to users. Zero functional impact.
+
+#### Files:
+| File | Line(s) | Current | New |
+|------|---------|---------|-----|
+| [layout.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/layout.tsx) | 21 | `title: "NERV.OS"` | `title: "Hecate"` |
+| [TopLeftBrand.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/navigation/TopLeftBrand.tsx) | 10 | `NERV` | `HECATE` |
+| [LandingClient.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/landing/LandingClient.tsx) | 16,23,37,44,106,364 | Multiple `NERV.OS` marketing copy | `Hecate` equivalents |
+| [login/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/(auth)/login/page.tsx) | 83,109,148 | `NERV.OS`, `operator@nerv.os`, `Launching NERV.OS...` | Hecate equivalents |
+| [signup/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/(auth)/signup/page.tsx) | 84,126 | `NERV.OS`, `operator@nerv.os` | Hecate equivalents |
+| [onboarding/route.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/api/onboarding/route.ts) | 34 | `'Welcome to NERV.OS'` | `'Welcome to Hecate'` |
+| [handshake/route.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/api/agents/handshake/route.ts) | 132 | `"NERV.OS Tools Handshake"` | `"Hecate Tools Handshake"` |
+| [FileList.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/dashboard/capabilities/_components/FileList.tsx) | 103 | `NERV.OS` watermark | `HECATE` |
+| [CompanionEditor.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/dashboard/capabilities/_components/CompanionEditor.tsx) | 240,421 | `"Stored in NERV.OS"` | `"Stored in Hecate"` |
+| [CoreFilesPanel.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/dashboard/capabilities/_components/CoreFilesPanel.tsx) | 181 | `"your NERV.OS dashboard"` | `"your Hecate dashboard"` |
+| [useConstellationStore.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/store/useConstellationStore.ts) | 134 | `subtitle: 'NERV. Center'` | `subtitle: 'Hecate Center'` |
+
+---
+
+### Phase 3: 🟢 Dev Tools & Test Scripts (LOW RISK — Debug Only)
+
+These are developer-facing debug scripts. They don't affect production.
+
+#### Files:
+| File | Lines | What to change |
+|------|-------|---------------|
+| [tools/check_dashboard_access.js](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/tools/check_dashboard_access.js) | 4,20,30 | `nerv-dashboard-handshake-test`, `id: 'nerv-dashboard'` |
+| [tools/check_ws_gateway.js](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/tools/check_ws_gateway.js) | 9,10,49,59 | `nerv-handshake-1`, `nerv-new-token-12345`, `nerv-list-agents` |
+| [tools/debug_scopes.js](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/tools/debug_scopes.js) | 4,5 | `nerv-debug-scopes`, `nerv-new-token-12345` |
+| [tools/upload_vercel_env.js](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/tools/upload_vercel_env.js) | 4 | Path string `NERV.OS` |
+
+---
+
+### Phase 4: 🟢 localStorage / sessionStorage Keys (LOW RISK)
+
+Renaming these means users lose saved preferences on first visit. No data loss — all persistence is in Supabase.
+
+#### Keys and their locations:
+
+| Key | Files | Usage Count |
+|-----|-------|-------------|
+| `nerv_active_agent` | `chat/page.tsx`, `AgentShowcase.tsx` | 3 |
+| `nerv_active_conversation` | `chat/page.tsx` | 3 |
+| `nerv_active_project` | `useProjectStore.ts`, `ProjectPanel.tsx` | 5 |
+| `nerv_companion_models` | `useOpenClawModelStore.ts` | 4 |
+| `nerv_installed_skills` | `useOpenClawCapabilitiesStore.ts` | 5 |
+| `nerv_escalation_topic` | `chat/page.tsx`, `summit/page.tsx` | 3 |
+| `nerv_vignette_settings` | `useVignetteStore.ts` | 1 |
+| `nerv_agent_icon_${agentId}` | `AgentIconSelector.tsx` | 2 |
+| `nerv_openclaw_device_keypair` | `openclawGateway.ts` | 1 |
+| `nerv_openclaw_device_id` | `openclawGateway.ts` | 1 |
+| `nervos-theme` | `useThemeStore.ts` | 2 |
+| `nerv-preset-store` | `usePresetStore.ts` | 1 |
+| `nerv-sessions-list` | `useSocket.ts` | 1 |
+| `nerv-scheduled-task` | `useSchedulerStore.ts` | 1 |
+
+> [!WARNING]
+> `nerv_openclaw_device_keypair` and `nerv_openclaw_device_id` store cryptographic device keys. Renaming these keys will force a re-registration of the device with OpenClaw. This is safe but users will need to re-authenticate their device.
+
+---
+
+### Phase 5: 🟢 DOM Element IDs (LOW RISK)
+
+Only 2, both for selection quote popups:
+- `nerv-selection-quote` → [chat/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/chat/page.tsx) (line 407, 1620+)
+- `nerv-summit-selection-quote` → [summit/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/summit/page.tsx) (line 497, 1502)
+
+---
+
+### Phase 6: 🟡 CSS Design System — globals.css (MEDIUM RISK — HIGH VOLUME)
+
+This is the **highest volume** change (~194 lines in one file) but is a pure, mechanical find-and-replace. Must be done atomically with Phase 7.
 
 #### CSS Custom Properties (~50 variables)
-All defined in [globals.css](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/globals.css):
+Defined in [globals.css](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/globals.css):
 ```
 --nerv-cyan, --nerv-cyan-dim, --nerv-cyan-glow, --nerv-cyan-muted
 --nerv-violet, --nerv-violet-dim, --nerv-violet-glow
@@ -74,16 +154,19 @@ Plus Tailwind v4 bridge mappings:
 --color-nerv-cyan, --color-nerv-violet, --color-nerv-warn, etc.
 ```
 
-#### CSS Utility Classes (~15 classes, ~100+ usages)
+#### CSS Utility Classes (~30 class definitions)
 ```css
 .nerv-caption, .nerv-body, .nerv-body-sm, .nerv-section, .nerv-h2
 .nerv-mono, .nerv-mono-sm, .nerv-metric-md, .nerv-section-prominent
 .nerv-glass-1, .nerv-glass-2, .nerv-glass-3
 .nerv-shell-frame, .nerv-shell-frame__svg, .nerv-shell-frame__fill, .nerv-shell-frame__path, .nerv-shell-frame__content
-.nerv-top-left, .nerv-top-right, .nerv-top-rail
+.nerv-top-left, .nerv-top-right, .nerv-top-rail, .nerv-rail-items, .nerv-rail-item, .nerv-rail-item--active
 .nerv-dock-pill, .nerv-dock-btn, .nerv-dock-btn--active, .nerv-dock-btn--blooming
 .nerv-dock-stack, .nerv-dock-anchor
+.nerv-bloom-rail, .nerv-bloom-label, .nerv-bloom-items, .nerv-bloom-tile, .nerv-bloom-tile--active, .nerv-bloom-tile__icon, .nerv-bloom-tile__label
 .nerv-chat-bubble-enter, .nerv-shimmer-text
+.nerv-avatar-btn, .nerv-user-dropdown, .nerv-dropdown-item
+.nerv-badge-text
 ```
 
 #### CSS Keyframe Animations (~12)
@@ -95,111 +178,156 @@ Plus Tailwind v4 bridge mappings:
 @keyframes nervDot1, nervDot2, nervDot3
 ```
 
-#### Files consuming these CSS tokens:
-> ~50+ component files across `components/`, `app/chat/`, `app/summit/`, `store/`
+---
+
+### Phase 7: 🟡 CSS Token & Class Usages in Components (MEDIUM RISK — MUST BE ATOMIC WITH PHASE 6)
+
+> [!IMPORTANT]
+> **Phase 6 and Phase 7 MUST be done together** in a single commit. If you rename the CSS definitions but not the usages (or vice versa), all styling breaks.
+
+#### Files consuming CSS tokens (by category):
+
+**CSS Variable References** (`var(--nerv-*)`) — ~350+ usages across ~40 files:
+
+| File | Approx. Lines |
+|------|--------------|
+| `chat/page.tsx` | ~30 |
+| `summit/page.tsx` | ~25 |
+| `TaskCardModal.tsx` | ~20 |
+| `OutputAdaptationBar.tsx` | ~15 |
+| `TimelineScrubber.tsx` | ~12 |
+| `NextBestActionChip.tsx` | ~8 |
+| `ProjectPanel.tsx` | ~8 |
+| `StrategyModeSwitcher.tsx` | ~3 |
+| `QuotedReplyBanner.tsx` | ~2 |
+| `SessionConfigDropdowns.tsx` | ~3 |
+| `ThinkingFastToggles.tsx` | ~3 |
+| `AgentCarousel.tsx` | ~1 comment |
+| `SchedulerHeader.tsx` | ~5 |
+| `SchedulerTimeline.tsx` | ~4 |
+| `TaskCard.tsx` | ~8 |
+| `TaskCardTray.tsx` | ~8 |
+| `SystemHealthBar.tsx` | ~4 |
+| ...and more across remaining component files |
+
+**CSS Class References** (`.nerv-*`) — ~100+ usages:
+
+| File | Classes Used |
+|------|-------------|
+| `navigation/ShellFrame.tsx` | `nerv-shell-frame`, `__svg`, `__fill`, `__path`, `__content` |
+| `navigation/BottomDock.tsx` | `nerv-dock-pill`, `nerv-dock-btn`, `nerv-dock-btn--active`, `nerv-dock-btn--blooming`, `nerv-dock-stack`, `nerv-dock-anchor`, `nerv-bloom-*` |
+| `navigation/TopRail.tsx` | `nerv-top-rail`, `nerv-rail-items`, `nerv-rail-item`, `nerv-rail-item--active` |
+| `navigation/TopLeftBrand.tsx` | `nerv-top-left` |
+| `navigation/TopRightUserMenu.tsx` | `nerv-avatar-btn`, `nerv-user-dropdown`, `nerv-dropdown-item` |
+| `chat/page.tsx` | `nerv-chat-bubble-enter` |
+| `summit/page.tsx` | `nerv-chat-bubble-enter` |
+| `scheduler/SchedulerHeader.tsx` | `nerv-glass-1`, `nerv-glass-2`, `nerv-h2`, `nerv-body-sm` |
+| `scheduler/TaskCardTray.tsx` | `nerv-glass-1`, `nerv-body`, `nerv-caption`, `nerv-badge-text`, `nerv-section-prominent` |
+| `scheduler/TaskCard.tsx` | `nerv-glass-3`, `nerv-body-sm`, `nerv-caption`, `nerv-mono-sm`, `nerv-body` |
+| `SystemHealthBar.tsx` | `nerv-caption` |
+| `SchedulerTimeline.tsx` | `nerv-section`, `nerv-caption`, `nerv-body-sm` |
+| `workflow-builder/ExecutionLog.tsx` | `nerv-mono` |
+| Agent showcase modals (`HeroGalleryModal`, `HeroCropModal`, `BackgroundCropModal`, `VignetteTuningModal`) | `nerv-glass-3` |
+| `SessionConfigDropdowns.tsx` | `nerv-glass-3` |
 
 ---
 
-### 3. 🟢 localStorage / sessionStorage Keys
+### Phase 8: 🟡 Dashboard MCP Server (MEDIUM RISK — Functional)
 
-These are **safe to rename** — the worst case is that users lose their previously saved preferences on the first visit after the rename. No data loss (all persisted data is in Supabase).
+The newly added `dashboard-mcp/` package contains significant NERV references that affect tool naming and server identity.
 
-| Key | File | Purpose |
-|-----|------|---------|
-| `nerv_active_agent` | chat/page.tsx, AgentShowcase.tsx | Remembers selected agent |
-| `nerv_active_conversation` | chat/page.tsx | Remembers active chat |
-| `nerv_active_project` | useProjectStore.ts, ProjectPanel.tsx | Remembers active project |
-| `nerv_companion_models` | useOpenClawModelStore.ts | Caches companion model list |
-| `nerv_installed_skills` | useOpenClawCapabilitiesStore.ts | Caches installed skills |
-| `nerv_escalation_topic` | chat/page.tsx, summit/page.tsx | Session-scoped escalation |
-| `nervos-theme` | useThemeStore.ts | Theme preference |
-
----
-
-### 4. 🟢 DOM Element IDs
-
-Only 2, both for the selection quote popup:
-- `nerv-selection-quote` → [chat/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/chat/page.tsx#L407)
-- `nerv-summit-selection-quote` → [summit/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/summit/page.tsx#L497)
-
----
-
-### 5. 🟡 OpenClaw Gateway Client Identity
-
-The dashboard identifies itself to the backend as `nerv-dashboard`:
-
-- [openclawGateway.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/openclawGateway.ts) (lines 20, 41, 486):
-  - `clientId: "nerv-dashboard"`
-  - `userAgent: "nerv-dashboard/0.1.0"`
-- [check_dashboard_access.js](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/tools/check_dashboard_access.js):
-  - `'nerv-dashboard-handshake-test'`
-  - `id: 'nerv-dashboard'`
+#### Files:
+| File | Line(s) | What to change |
+|------|---------|---------------|
+| [dashboard-mcp/package.json](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard-mcp/package.json) | 2,4,8 | `"@nervos/dashboard-mcp"` → `"@hecate/dashboard-mcp"`, description, `"nerv-mcp"` bin entry → `"hecate-mcp"` |
+| [dashboard-mcp/src/config.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard-mcp/src/config.ts) | 3,6,15,16,21,24 | `TOOL_PREFIX = "nerv"` → `"hecate"`, `NERV_USER_ID` → `HECATE_USER_ID`, `SERVER_NAME = "nerv-dashboard"` → `"hecate-dashboard"`, description text |
+| [dashboard-mcp/src/index.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard-mcp/src/index.ts) | 2 | Banner comment |
+| [dashboard-mcp/README.md](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard-mcp/README.md) | 1,3,63,65,69,111,115 | All "NERV.OS" references, config examples, env vars |
+| [dashboard-mcp/package-lock.json](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard-mcp/package-lock.json) | 2,8,17 | Auto-updates when you rebuild — **do not manually edit** |
 
 > [!WARNING]
-> If your OpenClaw backend logs, filters, or authorizes based on client ID `"nerv-dashboard"`, changing this will require a corresponding backend update. If it doesn't care about the client ID value (just uses it for logging), it's safe to change.
+> Changing `TOOL_PREFIX` from `"nerv"` to `"hecate"` will rename **all 70+ MCP tools** (e.g., `nerv_tasks_list` → `hecate_tasks_list`). Any OpenClaw agent configs referencing the old tool names will need updating. This is by design — the config was built to be a single-line change.
 
 ---
 
-### 6. 🟢 Branding / Display Strings
+### Phase 9: 🟡 OpenClaw Gateway Client Identity (MEDIUM RISK)
 
-Pure UI text — no functional impact. All the places where users see "NERV":
+The dashboard identifies itself to the OpenClaw backend.
 
-| Location | What it says |
-|----------|-------------|
-| [layout.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/layout.tsx#L21) | `title: "NERV.OS"` (page title / SEO) |
-| [TopLeftBrand.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/navigation/TopLeftBrand.tsx#L10) | `NERV` (header logo text) |
-| [LandingClient.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/landing/LandingClient.tsx#L106) | `NERV<span>.OS</span>` (hero badge) |
-| [LandingClient.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/landing/LandingClient.tsx#L16) | Multiple marketing copy mentions |
-| [AppSidebar.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/AppSidebar.tsx#L55) | `NERV.OS` (sidebar header) |
-| [AppSidebar.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/AppSidebar.tsx#L131) | `NERV-001 · v4.0.0` (version string) |
-| [DashboardSidebar.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/components/DashboardSidebar.tsx#L109) | `name: "NERV.OS"` |
-| [login/page.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/(auth)/login/page.tsx#L148) | `'Launching NERV.OS...'` |
-| [onboarding/route.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/api/onboarding/route.ts#L34) | `'Welcome to NERV.OS'` |
-| [handshake/route.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/api/agents/handshake/route.ts#L132) | `"NERV.OS Tools Handshake"` |
-| [FileList.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/dashboard/capabilities/_components/FileList.tsx#L103) | `NERV.OS` watermark |
-| [CompanionEditor.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/dashboard/capabilities/_components/CompanionEditor.tsx) | `"Stored in NERV.OS"` |
-| [CoreFilesPanel.tsx](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/dashboard/capabilities/_components/CoreFilesPanel.tsx#L181) | `"your NERV.OS dashboard"` |
+#### Files:
+| File | Line(s) | Current | New |
+|------|---------|---------|-----|
+| [openclawGateway.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/openclawGateway.ts) | 20,41 | `clientId: "nerv-dashboard"` | `clientId: "hecate-dashboard"` |
+| [openclawGateway.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/openclawGateway.ts) | 486 | `userAgent: "nerv-dashboard/0.1.0"` | `userAgent: "hecate-dashboard/0.1.0"` |
+| [openclaw-adapter.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/workflow/adapters/openclaw-adapter.ts) | 212 | `userAgent: "nerv-workflow/0.1.0"` | `userAgent: "hecate-workflow/0.1.0"` |
+| [agentZeroProxy.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/agentZeroProxy.ts) | 222 | `context_id: 'nerv-health-${Date.now()}'` | `context_id: 'hecate-health-${Date.now()}'` |
+| [useSocket.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/useSocket.ts) | 1271 | `'Emergency shutdown triggered from NERV.OS'` | `'Emergency shutdown triggered from Hecate'` |
+| [skill-fetch/route.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/api/skill-fetch/route.ts) | 91,107,339 | `'User-Agent': 'NERV-OS-Dashboard/1.0'` | `'User-Agent': 'Hecate-Dashboard/1.0'` |
+
+> [!NOTE]
+> If your OpenClaw backend logs, filters, or authorizes based on client ID `"nerv-dashboard"`, changing this requires a corresponding backend update. If the backend doesn't enforce the value, it's safe to change.
 
 ---
 
-### 7. 🟡 External Services
+### Phase 10: 🟡 Supabase Storage Bucket (MEDIUM-HIGH RISK)
+
+The code references a Supabase storage bucket named `nerv-images`.
+
+#### Files:
+| File | Line(s) | Reference |
+|------|---------|-----------|
+| [supabaseStorage.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/supabaseStorage.ts) | 3,64,68 | `const BUCKET = 'nerv-images'`, regex pattern matching |
+| [api/storage/sync/route.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/app/api/storage/sync/route.ts) | 7 | `const BUCKET = 'nerv-images'` |
+
+> [!CAUTION]
+> The bucket `nerv-images` exists in your Supabase project and contains uploaded agent hero images, backgrounds, and other assets. You have two options:
+> 1. **Keep the bucket name as-is** — just rename the code constant (NOT recommended, creates a naming inconsistency)
+> 2. **Create a new `hecate-images` bucket**, copy all files from `nerv-images`, update code, then delete old bucket — **recommended but requires a migration step**
+
+---
+
+### Phase 11: 🔴 Environment Variables & Encryption (CRITICAL — DO LAST)
+
+These are the **true danger zones**. Must be handled with extreme care.
+
+#### Files:
+| File | Line(s) | Reference |
+|------|---------|-----------|
+| [encryption.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/encryption.ts) | 5,7,8 | `process.env.NERV_ENCRYPTION_KEY`, fallback: `'nerv-os-default-key-change-me'` |
+| [crypto.ts](file:///d:/AI%20Model/2-Antigravity%20Projects/NERV.OS/dashboard/lib/providers/crypto.ts) | 11,14 | `process.env.NERV_ENCRYPTION_KEY`, salt: `'nerv-os-provider-salt'`, fallback: `'nerv-dev-key-do-not-use-in-prod'` |
+
+> [!CAUTION]
+> **ENCRYPTION SALT STRATEGY — CRITICAL DECISION**:
+> - ✅ **SAFE**: Rename `NERV_ENCRYPTION_KEY` → `HECATE_ENCRYPTION_KEY` in code + `.env.local` + Vercel env vars
+> - ⚠️ **KEEP THE SALT VALUES UNCHANGED**: `'nerv-os-default-key-change-me'` and `'nerv-os-provider-salt'` — these are used to derive encryption keys for data already stored in Supabase
+> - ❌ **DANGEROUS**: If you change the salt strings, any data currently encrypted in Supabase (`connection_secrets`, `connection_profiles`) becomes **permanently undecryptable** unless you write a re-encryption migration
+
+---
+
+### Phase 12: 🟢 Component/File Renames (LOW RISK — Optional)
+
+| Current File | New Name | Impact |
+|-------------|----------|--------|
+| `components/NervSkeleton.tsx` | `components/HecateSkeleton.tsx` | Interface `NervSkeletonProps` → `HecateSkeletonProps`, export `NervSkeleton` → `HecateSkeleton`. Need to update all import sites. |
+
+---
+
+### Phase 13: 🟡 External Services (AFTER ALL CODE CHANGES)
 
 #### GitHub Repository
 - Currently: `gilanggemar/NERV`
-- Renaming the repo on GitHub will change the remote URL
-- GitHub auto-redirects old URLs, so existing clones continue to work
-- But Vercel's Git integration needs to be pointed at the new repo name
+- Rename on GitHub → redirects old URLs automatically
+- Update Vercel Git integration to point to new repo name
 
 #### Vercel Deployment
-- Currently hosted at: `nerv-one.vercel.app`
-- The Vercel project name can be updated in Vercel Dashboard → Settings
-- If you have a custom domain, the Vercel subdomain doesn't matter
+- Currently: `nerv-one.vercel.app`
+- Update project name in Vercel Dashboard → Settings
+- Update `NERV_ENCRYPTION_KEY` → `HECATE_ENCRYPTION_KEY` in Vercel env vars
 
 #### Supabase
-- ✅ **No NERV references in the database schema** — all table names are generic
-- ✅ No stored procedures, functions, or triggers reference "NERV"
-- The project itself in Supabase dashboard might be named "NERV" but that's just a label
-
----
-
-### 8. 🟢 Component & File Names
-
-| File | Rename? |
-|------|---------|
-| `NervSkeleton.tsx` | Optional — component name, no functional impact |
-| `NervSkeleton` (interface/export) | Would need import updates if renamed |
-| `components/logo.tsx` | Already generic — no NERV reference |
-
----
-
-### 9. 🟢 Documentation Files
-
-These are purely informational:
-- `docs/MAINTENANCE.md` — ~5 mentions
-- `docs/USER_GUIDE.md` — ~3 mentions  
-- `docs/Chat_Features_Deep_Analysis.md` — ~4 mentions
-- `PRODUCTION_READINESS_AUDIT.md` — ~15 mentions
-- `dashboard/README.md` — likely mentions
+- ✅ **No NERV references in database schema**
+- Project label in Supabase dashboard can be renamed (cosmetic only)
+- Storage bucket `nerv-images` — see Phase 10
 
 ---
 
@@ -211,59 +339,45 @@ These are purely informational:
 4. **Authentication** — Supabase auth is name-agnostic
 5. **WebSocket connections** — URL-based, not name-based
 6. **Build system** — `package.json` name is just `"dashboard"`
+7. **Middleware** — No NERV references
 
 ---
 
-## Recommended Execution Strategy
+## Changes Since Previous Analysis
 
-> [!TIP]
-> This can be done safely as a **single atomic commit** with a global find-and-replace, executed in this order:
+The following items are **NEW** since the last analysis (2026-04-11):
 
-### Phase 1: Decide on internal prefix
-Pick a new internal prefix for CSS variables, classes, animations, and storage keys. For example, if the new name is "AEON", you'd use:
-- CSS vars: `--aeon-cyan` instead of `--nerv-cyan`
-- Classes: `.aeon-caption` instead of `.nerv-caption`
-- Storage: `aeon_active_agent` instead of `nerv_active_agent`
-
-### Phase 2: Core changes (in order)
-1. **globals.css** — Rename all `--nerv-*` variables and `.nerv-*` classes and `nerv-*` keyframes
-2. **All components** — Update all CSS variable references (`var(--nerv-*)`) and class names
-3. **localStorage keys** — Update all `nerv_*` storage keys
-4. **Environment variable** — Rename `NERV_ENCRYPTION_KEY` → `[NEW]_ENCRYPTION_KEY` in code AND `.env.local` AND Vercel
-5. **Keep encryption salts unchanged** — Do NOT change `nerv-os-default-key-change-me` or `nerv-os-provider-salt` to avoid breaking existing encrypted data
-6. **Update branding strings** — Replace all display text
-7. **Update OpenClaw client ID** — If backend doesn't enforce it
-
-### Phase 3: External services
-1. Rename GitHub repo
-2. Update Vercel project name
-3. Update Supabase project label (optional, dashboard-only)
-4. Update documentation
-
-### Phase 4: Verify
-1. `npm run build` — catch any broken CSS class or variable references
-2. Test encryption/decryption with existing data
-3. Verify Vercel deployment connects to GitHub
-4. Test OpenClaw WebSocket handshake
+| Category | New Items |
+|----------|-----------|
+| **dashboard-mcp package** (entirely new) | `package.json`, `config.ts`, `index.ts`, `README.md` — `@nervos/dashboard-mcp`, `TOOL_PREFIX = "nerv"`, `NERV_USER_ID`, `SERVER_NAME = "nerv-dashboard"` |
+| **New localStorage keys** | `nerv_vignette_settings` (useVignetteStore), `nerv_agent_icon_${agentId}` (AgentIconSelector), `nerv_openclaw_device_keypair` / `nerv_openclaw_device_id` (openclawGateway) |
+| **Supabase storage bucket** | `nerv-images` referenced in `supabaseStorage.ts` and `api/storage/sync/route.ts` |
+| **New API references** | `skill-fetch/route.ts` User-Agent: `NERV-OS-Dashboard/1.0` |
+| **New workflow references** | `openclaw-adapter.ts` userAgent: `nerv-workflow/0.1.0` |
+| **New useSocket reference** | `nerv-sessions-list` constant, emergency shutdown message |
+| **Removed from previous analysis** | `AppSidebar.tsx`, `DashboardSidebar.tsx`, `ChatHistorySidebar.tsx`, `MessageRenderer.tsx`, `HandoffPacketModal.tsx`, `MissionBar.tsx`, `ContextControlDrawer.tsx`, `api/settings/secrets/route.ts`, `api/openclaw/events/route.ts`, `.env.local` — these no longer contain NERV references |
 
 ---
 
 ## Estimated Total Changes
 
-| Category | Approximate Count |
-|----------|------------------|
-| CSS variable definitions | ~50 |
-| CSS class definitions | ~30 |
-| CSS keyframe definitions | ~15 |
-| CSS variable usages in components | ~300+ |
-| CSS class usages in components | ~150+ |
-| localStorage/sessionStorage keys | ~12 unique keys, ~26 usage sites |
-| DOM element IDs | 2 |
-| Environment variable references | 3 files |
-| Branding/display strings | ~25 |
-| Code comments | ~20 |
-| Documentation files | 5 |
-| **Total estimated changes** | **~600+ individual edits across ~70+ files** |
+| Category | Count |
+|----------|-------|
+| CSS variable/class/keyframe definitions (globals.css) | ~194 lines |
+| CSS variable usages in components | ~350+ lines |
+| CSS class usages in components | ~100+ lines |
+| localStorage/sessionStorage keys | ~14 unique keys, ~33 usage sites |
+| DOM element IDs | 2 IDs, 4 usage sites |
+| Environment variable references | 2 files, 4 refs |
+| Supabase storage bucket | 2 files, 3 refs |
+| Dashboard MCP server | 4 files, ~20 lines |
+| OpenClaw client identity | 4 files, ~8 refs |
+| Branding/display strings | ~12 files, ~20 refs |
+| Code comments | ~10 lines |
+| Documentation files | ~6 files, ~20 lines |
+| Dev tools scripts | 3 files, ~10 refs |
+| Component/file renames | 1 file |
+| **Total estimated changes** | **~750+ individual edits across ~80+ files** |
 
 > [!NOTE]
-> Despite the large number of changes, this is fundamentally a **mechanical find-and-replace operation**. The app architecture has no deep coupling to the name "NERV" — it's purely a naming convention used consistently throughout.
+> Despite the large volume, this is fundamentally a **mechanical find-and-replace operation** executed progressively. The app architecture has no deep coupling to the name "NERV" — it's purely a naming convention consistently used throughout. The progressive strategy ensures each phase can be tested independently before moving to the next.

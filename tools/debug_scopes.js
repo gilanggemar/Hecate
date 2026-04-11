@@ -1,8 +1,8 @@
 const WebSocket = require('ws');
 
 const WS_URL = 'ws://127.0.0.1:18789';
-const HANDSHAKE_ID = 'nerv-debug-scopes';
-const TOKEN = 'nerv-new-token-12345';
+const HANDSHAKE_ID = 'hecate-debug-scopes';
+const TOKEN = 'hecate-new-token-12345';
 
 const ws = new WebSocket(WS_URL);
 

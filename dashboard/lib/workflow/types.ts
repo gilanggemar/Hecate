@@ -1,5 +1,5 @@
 // ============================================================
-// NERV.OS Workflow V2 — Canonical Type Definitions
+// Hecate Workflow V2 — Canonical Type Definitions
 // DO NOT MODIFY these interfaces without updating this document.
 // ============================================================
 

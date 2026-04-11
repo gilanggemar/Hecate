@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emitToolEvent, onToolEvent, type ToolCallWebhookEvent } from '@/lib/toolEventBus';
 
-const WEBHOOK_SECRET = process.env.OPENCLAW_WEBHOOK_SECRET || process.env.NERV_WEBHOOK_SECRET || 'nerv-dev-secret';
+const WEBHOOK_SECRET = process.env.OPENCLAW_WEBHOOK_SECRET || process.env.HECATE_WEBHOOK_SECRET || 'hecate-dev-secret';
 
 function validateAuth(req: NextRequest): boolean {
     const authHeader = req.headers.get('authorization') || '';

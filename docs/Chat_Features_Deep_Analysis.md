@@ -1,6 +1,6 @@
-# NERV.OS Chat Features - Deep Analysis & Technical Overview
+# Hecate Chat Features - Deep Analysis & Technical Overview
 
-This document provides a detailed technical analysis of the Chat domain within the NERV.OS application. The chat feature acts as the primary interface for users to interact with various AI agents (e.g., OpenClaw, Agent Zero) and features an advanced architecture bridging rich user interfaces with multiple disparate agent backends.
+This document provides a detailed technical analysis of the Chat domain within the Hecate application. The chat feature acts as the primary interface for users to interact with various AI agents (e.g., OpenClaw, Agent Zero) and features an advanced architecture bridging rich user interfaces with multiple disparate agent backends.
 
 ## 1. Core Architecture & Routing
 
@@ -46,7 +46,7 @@ Provides historical chat navigation. It interfaces with `/api/memory/conversatio
 ## 4. State Management & Data Stores
 
 ### OpenClaw Store (`useSocket.ts` / `useOpenClawStore.ts`)
-- Utilizes Zustand to track the highly complex WebSocket events emitted by the NERV.OS OpenClaw Gateway.
+- Utilizes Zustand to track the highly complex WebSocket events emitted by the Hecate OpenClaw Gateway.
 - Bridges the low-level events (`health`, `chat`, `agent` lifecycle streams) into accessible arrays of `ChatMessage`.
 - Subscribes to telemetry actions, meticulously logging metrics (e.g., token usage estimates, latency ms, agent status) at the completion of streams.
 

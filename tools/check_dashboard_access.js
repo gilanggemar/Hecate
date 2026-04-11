@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 
 const WS_URL = 'ws://127.0.0.1:18789';
-const HANDSHAKE_ID = 'nerv-dashboard-handshake-test';
+const HANDSHAKE_ID = 'hecate-dashboard-handshake-test';
 const TOKEN = 'bf373b5a297c6dd2dddb89bf75585ac7dd0f17faa40b07ef';
 
 const ws = new WebSocket(WS_URL);
@@ -17,7 +17,7 @@ ws.on('open', () => {
             minProtocol: 3,
             maxProtocol: 3,
             client: {
-                id: 'nerv-dashboard',
+                id: 'hecate-dashboard',
                 version: '1.0.0',
                 platform: 'browser',
                 mode: 'web' // Trying 'web' mode as 'dashboard' failed schema
@@ -27,7 +27,7 @@ ws.on('open', () => {
         }
     };
 
-    console.log('Sending handshake with ID: nerv-dashboard');
+    console.log('Sending handshake with ID: hecate-dashboard');
     ws.send(JSON.stringify(handshakeMsg));
 });
 

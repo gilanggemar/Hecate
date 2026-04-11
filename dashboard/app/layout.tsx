@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NERV.OS",
+  title: "Hecate",
   description: "Agent Orchestration System",
 };
 

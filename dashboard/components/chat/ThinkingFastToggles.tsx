@@ -52,9 +52,9 @@ export const ThinkingFastToggles: React.FC<ThinkingFastTogglesProps> = ({ sessio
                 return {
                     label: 'Thinking',
                     icon: <Brain className="w-3 h-3" />,
-                    bg: 'bg-[color-mix(in_srgb,var(--nerv-violet)_12%,transparent)]',
-                    border: 'border-[color-mix(in_srgb,var(--nerv-violet)_25%,transparent)]',
-                    text: 'text-[var(--nerv-violet)]'
+                    bg: 'bg-[color-mix(in_srgb,var(--hecate-violet)_12%,transparent)]',
+                    border: 'border-[color-mix(in_srgb,var(--hecate-violet)_25%,transparent)]',
+                    text: 'text-[var(--hecate-violet)]'
                 };
             case 'fast':
             default:

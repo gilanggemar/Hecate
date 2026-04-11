@@ -1,0 +1,26 @@
+{
+  "name": "@hecate/dashboard-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for full programmatic control of the Hecate dashboard",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "hecate-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "inspect": "npx -y @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@supabase/supabase-js": "^2.98.0",
+    "dotenv": "^16.6.0",
+    "zod": "^3.25.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}

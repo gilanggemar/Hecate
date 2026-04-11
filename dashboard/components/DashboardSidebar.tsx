@@ -106,7 +106,7 @@ const standaloneBottomRoutes: Route[] = [
 ];
 
 const teams = [
-    { id: "1", name: "NERV.OS", logo: Logo, plan: "Pro" },
+    { id: "1", name: "Hecate", logo: Logo, plan: "Pro" },
 ];
 
 export function DashboardSidebar() {
@@ -135,7 +135,7 @@ export function DashboardSidebar() {
                     <Logo className="h-7 w-7 text-foreground" />
                     {!isCollapsed && (
                         <span className="text-xl font-bold text-foreground tracking-tight">
-                            NERV
+                            HECATE
                         </span>
                     )}
                 </div>

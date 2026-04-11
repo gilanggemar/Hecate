@@ -1,6 +1,9 @@
 # ========================================
-# NERV.OS — .gitignore
+# Hecate — .gitignore
 # ========================================
+
+# --- OpenClaw agent config (local only) ---
+.openclaw/
 
 # --- Dependencies (auto-installed via npm install) ---
 node_modules/

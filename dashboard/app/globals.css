@@ -112,31 +112,31 @@ html {
   --color-agent-thalia: var(--agent-thalia);
   --color-agent-zero: var(--agent-zero);
 
-  /* --- NERV Chat Extended Palette (Tailwind v4 mappings) --- */
-  --color-nerv-cyan: var(--nerv-cyan);
-  --color-nerv-cyan-dim: var(--nerv-cyan-dim);
-  --color-nerv-cyan-glow: var(--nerv-cyan-glow);
-  --color-nerv-cyan-muted: var(--nerv-cyan-muted);
-  --color-nerv-violet: var(--nerv-violet);
-  --color-nerv-violet-dim: var(--nerv-violet-dim);
-  --color-nerv-violet-glow: var(--nerv-violet-glow);
-  --color-nerv-warn: var(--nerv-warn);
-  --color-nerv-warn-dim: var(--nerv-warn-dim);
-  --color-nerv-danger: var(--nerv-danger);
-  --color-nerv-danger-dim: var(--nerv-danger-dim);
-  --color-nerv-success: var(--nerv-success);
-  --color-nerv-success-dim: var(--nerv-success-dim);
-  --color-nerv-surface-0: var(--nerv-surface-0);
-  --color-nerv-surface-2: var(--nerv-surface-2);
-  --color-nerv-surface-3: var(--nerv-surface-3);
-  --color-nerv-surface-4: var(--nerv-surface-4);
-  --color-nerv-border-subtle: var(--nerv-border-subtle);
-  --color-nerv-border-default: var(--nerv-border-default);
-  --color-nerv-border-strong: var(--nerv-border-strong);
-  --color-nerv-text-primary: var(--nerv-text-primary);
-  --color-nerv-text-secondary: var(--nerv-text-secondary);
-  --color-nerv-text-tertiary: var(--nerv-text-tertiary);
-  --color-nerv-text-ghost: var(--nerv-text-ghost);
+  /* --- Hecate Chat Extended Palette (Tailwind v4 mappings) --- */
+  --color-hecate-cyan: var(--hecate-cyan);
+  --color-hecate-cyan-dim: var(--hecate-cyan-dim);
+  --color-hecate-cyan-glow: var(--hecate-cyan-glow);
+  --color-hecate-cyan-muted: var(--hecate-cyan-muted);
+  --color-hecate-violet: var(--hecate-violet);
+  --color-hecate-violet-dim: var(--hecate-violet-dim);
+  --color-hecate-violet-glow: var(--hecate-violet-glow);
+  --color-hecate-warn: var(--hecate-warn);
+  --color-hecate-warn-dim: var(--hecate-warn-dim);
+  --color-hecate-danger: var(--hecate-danger);
+  --color-hecate-danger-dim: var(--hecate-danger-dim);
+  --color-hecate-success: var(--hecate-success);
+  --color-hecate-success-dim: var(--hecate-success-dim);
+  --color-hecate-surface-0: var(--hecate-surface-0);
+  --color-hecate-surface-2: var(--hecate-surface-2);
+  --color-hecate-surface-3: var(--hecate-surface-3);
+  --color-hecate-surface-4: var(--hecate-surface-4);
+  --color-hecate-border-subtle: var(--hecate-border-subtle);
+  --color-hecate-border-default: var(--hecate-border-default);
+  --color-hecate-border-strong: var(--hecate-border-strong);
+  --color-hecate-text-primary: var(--hecate-text-primary);
+  --color-hecate-text-secondary: var(--hecate-text-secondary);
+  --color-hecate-text-tertiary: var(--hecate-text-tertiary);
+  --color-hecate-text-ghost: var(--hecate-text-ghost);
 }
 
 :root {
@@ -446,48 +446,48 @@ html {
   --focus-ring: var(--accent-base);
   --focus-ring-offset: var(--bg-base);
 
-  /* ═══ NERV CHAT — Extended Palette (Additive Only) ═══ */
+  /* ═══ HECATE CHAT — Extended Palette (Additive Only) ═══ */
 
   /* --- Secondary Accent: Electric Cyan --- */
-  --nerv-cyan: #00e5cc;
-  --nerv-cyan-dim: #00e5cc33;
-  --nerv-cyan-glow: #00e5cc66;
-  --nerv-cyan-muted: #0a7a6e;
+  --hecate-cyan: #00e5cc;
+  --hecate-cyan-dim: #00e5cc33;
+  --hecate-cyan-glow: #00e5cc66;
+  --hecate-cyan-muted: #0a7a6e;
 
   /* --- Tertiary Accent: Helio Violet --- */
-  --nerv-violet: #a78bfa;
-  --nerv-violet-dim: #a78bfa22;
-  --nerv-violet-glow: #a78bfa55;
+  --hecate-violet: #a78bfa;
+  --hecate-violet-dim: #a78bfa22;
+  --hecate-violet-glow: #a78bfa55;
 
   /* --- Semantic: Warning / Drift --- */
-  --nerv-warn: #f59e0b;
-  --nerv-warn-dim: #f59e0b1a;
+  --hecate-warn: #f59e0b;
+  --hecate-warn-dim: #f59e0b1a;
 
   /* --- Semantic: Danger / Critical --- */
-  --nerv-danger: #ef4444;
-  --nerv-danger-dim: #ef44441a;
+  --hecate-danger: #ef4444;
+  --hecate-danger-dim: #ef44441a;
 
   /* --- Semantic: Success / Locked / Ship-Ready --- */
-  --nerv-success: #34d399;
-  --nerv-success-dim: #34d3991a;
+  --hecate-success: #34d399;
+  --hecate-success-dim: #34d3991a;
 
   /* --- Surface Layers (panels, modals, drawers) --- */
-  --nerv-surface-0: #09090b;
-  --nerv-surface-1: #111113;  /* reference only — existing main bg */
-  --nerv-surface-2: #18181b;
-  --nerv-surface-3: #1f1f23;
-  --nerv-surface-4: #27272a;
+  --hecate-surface-0: #09090b;
+  --hecate-surface-1: #111113;  /* reference only — existing main bg */
+  --hecate-surface-2: #18181b;
+  --hecate-surface-3: #1f1f23;
+  --hecate-surface-4: #27272a;
 
   /* --- Border variants --- */
-  --nerv-border-subtle: #ffffff08;
-  --nerv-border-default: #ffffff12;
-  --nerv-border-strong: #ffffff22;
+  --hecate-border-subtle: #ffffff08;
+  --hecate-border-default: #ffffff12;
+  --hecate-border-strong: #ffffff22;
 
   /* --- Text hierarchy --- */
-  --nerv-text-primary: #f5f0eb;
-  --nerv-text-secondary: #a89a8c;
-  --nerv-text-tertiary: #6b5e52;
-  --nerv-text-ghost: #4a3f35;
+  --hecate-text-primary: #f5f0eb;
+  --hecate-text-secondary: #a89a8c;
+  --hecate-text-tertiary: #6b5e52;
+  --hecate-text-ghost: #4a3f35;
 }
 
 @layer base {
@@ -517,7 +517,7 @@ html {
 }
 
 /* ─── Page Loading Indicator ─── */
-.nerv-page-loader {
+.hecate-page-loader {
   position: fixed;
   bottom: 24px;
   left: 24px;
@@ -545,46 +545,46 @@ html {
 }
 
 /* Orbital ring container */
-.nerv-page-loader__ring-wrap {
+.hecate-page-loader__ring-wrap {
   width: 64px;
   height: 64px;
   flex-shrink: 0;
   position: relative;
 }
 
-.nerv-page-loader__ring {
+.hecate-page-loader__ring {
   width: 100%;
   height: 100%;
 }
 
 /* Primary arc — clockwise */
-.nerv-page-loader__arc--primary {
+.hecate-page-loader__arc--primary {
   transform-origin: 40px 40px;
-  animation: nerv-orbit-cw 2.4s linear infinite;
+  animation: hecate-orbit-cw 2.4s linear infinite;
 }
 
 /* Secondary arc — counter-clockwise */
-.nerv-page-loader__arc--secondary {
+.hecate-page-loader__arc--secondary {
   transform-origin: 40px 40px;
-  animation: nerv-orbit-ccw 3.2s linear infinite;
+  animation: hecate-orbit-ccw 3.2s linear infinite;
 }
 
 /* Glowing core */
-.nerv-page-loader__core {
+.hecate-page-loader__core {
   fill: oklch(0.78 0.18 55);
   filter: drop-shadow(0 0 6px oklch(0.78 0.18 55 / 0.7)) drop-shadow(0 0 12px oklch(0.78 0.18 55 / 0.3));
-  animation: nerv-core-pulse 2s ease-in-out infinite;
+  animation: hecate-core-pulse 2s ease-in-out infinite;
 }
 
 /* Info text block */
-.nerv-page-loader__info {
+.hecate-page-loader__info {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
 
-.nerv-page-loader__label {
+.hecate-page-loader__label {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -592,36 +592,36 @@ html {
   color: oklch(0.78 0.18 55);
 }
 
-.nerv-page-loader__status {
+.hecate-page-loader__status {
   font-size: 12px;
   font-weight: 400;
   color: oklch(0.75 0 0);
   letter-spacing: -0.01em;
-  animation: nerv-text-fade 2s ease-in-out infinite;
+  animation: hecate-text-fade 2s ease-in-out infinite;
 }
 
-@keyframes nerv-orbit-cw {
+@keyframes hecate-orbit-cw {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
 
-@keyframes nerv-orbit-ccw {
+@keyframes hecate-orbit-ccw {
   from { transform: rotate(0deg); }
   to   { transform: rotate(-360deg); }
 }
 
-@keyframes nerv-core-pulse {
+@keyframes hecate-core-pulse {
   0%, 100% { r: 3; opacity: 1; }
   50%      { r: 4; opacity: 0.7; }
 }
 
-@keyframes nerv-text-fade {
+@keyframes hecate-text-fade {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.5; }
 }
 
 /* ─── Chat Bubble Slide-Up Animation ─── */
-@keyframes nerv-chat-slide-in {
+@keyframes hecate-chat-slide-in {
   0% {
     opacity: 0;
     transform: translateY(12px);
@@ -632,11 +632,11 @@ html {
   }
 }
 
-.nerv-chat-bubble-enter {
-  animation: nerv-chat-slide-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+.hecate-chat-bubble-enter {
+  animation: hecate-chat-slide-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
-@keyframes nervProcessingGlow {
+@keyframes hecateProcessingGlow {
   0%, 100% {
     box-shadow:
       0 0 12px rgba(249, 115, 22, 0.12),
@@ -654,7 +654,7 @@ html {
 }
 
 /* ── Thinking placeholder: shimmer text + blinking cursor ── */
-.nerv-shimmer-text {
+.hecate-shimmer-text {
   background: linear-gradient(
     90deg,
     rgba(249, 115, 22, 0.4) 0%,
@@ -667,25 +667,25 @@ html {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: nervShimmerText 2s linear infinite;
+  animation: hecateShimmerText 2s linear infinite;
 }
 
-@keyframes nervShimmerText {
+@keyframes hecateShimmerText {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-@keyframes nervDot1 {
+@keyframes hecateDot1 {
   0%, 100% { opacity: 0; }
   25%, 95% { opacity: 1; }
 }
 
-@keyframes nervDot2 {
+@keyframes hecateDot2 {
   0%, 25%, 100% { opacity: 0; }
   50%, 95% { opacity: 1; }
 }
 
-@keyframes nervDot3 {
+@keyframes hecateDot3 {
   0%, 50%, 100% { opacity: 0; }
   75%, 95% { opacity: 1; }
 }
@@ -742,7 +742,7 @@ html {
 }
 
 /* ============================================
-   NERV.OS Typography System — Inter
+   Hecate Typography System — Inter
    
    Weight Hierarchy:
      800  → Display / Hero text (agent names, splash)
@@ -754,7 +754,7 @@ html {
    ============================================ */
 
 /* --- Page-Level Headings --- */
-.nerv-h1 {
+.hecate-h1 {
   font-size: 1.75rem;
   /* 28px */
   font-weight: 600;
@@ -762,7 +762,7 @@ html {
   line-height: 1.2;
 }
 
-.nerv-h2 {
+.hecate-h2 {
   font-size: 1.375rem;
   /* 22px */
   font-weight: 600;
@@ -770,7 +770,7 @@ html {
   line-height: 1.25;
 }
 
-.nerv-h3 {
+.hecate-h3 {
   font-size: 1.125rem;
   /* 18px */
   font-weight: 500;
@@ -779,7 +779,7 @@ html {
 }
 
 /* --- Section Headers --- */
-.nerv-section {
+.hecate-section {
   font-size: 0.6875rem;
   /* 11px */
   font-weight: 600;
@@ -790,7 +790,7 @@ html {
 }
 
 /* Variant: section header with normal opacity */
-.nerv-section-prominent {
+.hecate-section-prominent {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -799,7 +799,7 @@ html {
 }
 
 /* --- Metric Numbers --- */
-.nerv-metric-xl {
+.hecate-metric-xl {
   font-size: 2.5rem;
   /* 40px */
   font-weight: 700;
@@ -808,7 +808,7 @@ html {
   line-height: 1;
 }
 
-.nerv-metric-lg {
+.hecate-metric-lg {
   font-size: 2rem;
   /* 32px */
   font-weight: 700;
@@ -817,7 +817,7 @@ html {
   line-height: 1;
 }
 
-.nerv-metric-md {
+.hecate-metric-md {
   font-size: 1.25rem;
   /* 20px */
   font-weight: 600;
@@ -826,7 +826,7 @@ html {
   line-height: 1;
 }
 
-.nerv-metric-sm {
+.hecate-metric-sm {
   font-size: 0.9375rem;
   /* 15px */
   font-weight: 600;
@@ -836,7 +836,7 @@ html {
 }
 
 /* --- Body Text --- */
-.nerv-body {
+.hecate-body {
   font-size: 0.875rem;
   /* 14px */
   font-weight: 400;
@@ -844,7 +844,7 @@ html {
   letter-spacing: -0.006em;
 }
 
-.nerv-body-sm {
+.hecate-body-sm {
   font-size: 0.8125rem;
   /* 13px */
   font-weight: 400;
@@ -853,7 +853,7 @@ html {
 }
 
 /* --- Captions / Timestamps / Tertiary Text --- */
-.nerv-caption {
+.hecate-caption {
   font-size: 0.75rem;
   /* 12px */
   font-weight: 400;
@@ -863,7 +863,7 @@ html {
 }
 
 /* --- Badge / Chip Labels --- */
-.nerv-badge-text {
+.hecate-badge-text {
   font-size: 0.625rem;
   /* 10px */
   font-weight: 600;
@@ -873,7 +873,7 @@ html {
 }
 
 /* --- Mono / Code Text --- */
-.nerv-mono {
+.hecate-mono {
   font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code',
     ui-monospace, monospace;
   font-size: 0.8125rem;
@@ -883,7 +883,7 @@ html {
   font-variant-ligatures: none;
 }
 
-.nerv-mono-sm {
+.hecate-mono-sm {
   font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code',
     ui-monospace, monospace;
   font-size: 0.6875rem;
@@ -907,7 +907,7 @@ time,
 /* --- Glassmorphism Elevation System --- */
 
 /* Level 1: Subtle glass — for secondary panels, sidebars */
-.nerv-glass-1 {
+.hecate-glass-1 {
   background: oklch(0.15 0.005 0 / 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -915,7 +915,7 @@ time,
 }
 
 /* Level 2: Medium glass — for primary cards, hero sections */
-.nerv-glass-2 {
+.hecate-glass-2 {
   background: oklch(0.13 0.005 0 / 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -926,7 +926,7 @@ time,
 }
 
 /* Level 3: Heavy glass — for modals, floating panels, command palette */
-.nerv-glass-3 {
+.hecate-glass-3 {
   background: oklch(0.11 0.005 0 / 0.8);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -938,12 +938,12 @@ time,
 }
 
 /* Light mode variants */
-[data-theme="light"] .nerv-glass-1 {
+[data-theme="light"] .hecate-glass-1 {
   background: oklch(0.99 0.005 0 / 0.6);
   border: 1px solid oklch(0 0 0 / 0.06);
 }
 
-[data-theme="light"] .nerv-glass-2 {
+[data-theme="light"] .hecate-glass-2 {
   background: oklch(0.99 0.005 0 / 0.75);
   border: 1px solid oklch(0 0 0 / 0.08);
   box-shadow:
@@ -951,7 +951,7 @@ time,
     inset 0 1px 0 oklch(1 0 0 / 0.5);
 }
 
-[data-theme="light"] .nerv-glass-3 {
+[data-theme="light"] .hecate-glass-3 {
   background: oklch(0.99 0.005 0 / 0.85);
   border: 1px solid oklch(0 0 0 / 0.10);
   box-shadow:
@@ -962,11 +962,11 @@ time,
 
 /* --- Accent Border Glow --- */
 
-.nerv-glow-border {
+.hecate-glow-border {
   position: relative;
 }
 
-.nerv-glow-border::after {
+.hecate-glow-border::after {
   content: '';
   position: absolute;
   inset: -1px;
@@ -987,20 +987,20 @@ time,
 
 /* --- Phase 5: Final Polish --- */
 
-.nerv-card-interactive {
+.hecate-card-interactive {
   transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
-.nerv-card-interactive:hover {
+.hecate-card-interactive:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 20px oklch(0 0 0 / 0.15);
 }
 
-.nerv-card-interactive:active {
+.hecate-card-interactive:active {
   transform: translateY(0px);
 }
 
-@keyframes nerv-shimmer {
+@keyframes hecate-shimmer {
   0% {
     background-position: 200% 0;
   }
@@ -1010,7 +1010,7 @@ time,
   }
 }
 
-/* Match NERV global focus style */
+/* Match Hecate global focus style */
 *:focus-visible {
   outline: 2px solid var(--accent-base);
   outline-offset: 2px;
@@ -1069,7 +1069,7 @@ div:has([contenteditable]):focus-within {
 }
 
 /* ═══ GAMIFICATION TYPOGRAPHY & GLASS ═══ */
-.nerv-rank {
+.hecate-rank {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -1077,7 +1077,7 @@ div:has([contenteditable]):focus-within {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
-.nerv-xp {
+.hecate-xp {
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1085,13 +1085,13 @@ div:has([contenteditable]):focus-within {
   color: var(--xp-text);
 }
 
-.nerv-mission-title {
+.hecate-mission-title {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.3;
 }
 
-.nerv-timer {
+.hecate-timer {
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -1099,13 +1099,13 @@ div:has([contenteditable]):focus-within {
   color: var(--text-secondary);
 }
 
-.nerv-achievement-name {
+.hecate-achievement-name {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-.nerv-power-score {
+.hecate-power-score {
   font-size: 36px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -1117,33 +1117,33 @@ div:has([contenteditable]):focus-within {
 }
 
 /* ═══ REFINED GLASS LEVELS ═══ */
-.nerv-glass-0 {
+.hecate-glass-0 {
   background: oklch(0.15 0.005 0 / 0.35);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
 
-.nerv-glass-agent-daisy {
+.hecate-glass-agent-daisy {
   background: oklch(0.14 0.015 135 / 0.65);
   backdrop-filter: blur(12px);
   border: 1px solid oklch(0.78 0.17 135 / 0.1);
 }
-.nerv-glass-agent-ivy {
+.hecate-glass-agent-ivy {
   background: oklch(0.14 0.015 195 / 0.65);
   backdrop-filter: blur(12px);
   border: 1px solid oklch(0.72 0.14 195 / 0.1);
 }
-.nerv-glass-agent-celia {
+.hecate-glass-agent-celia {
   background: oklch(0.14 0.015 290 / 0.65);
   backdrop-filter: blur(12px);
   border: 1px solid oklch(0.55 0.14 290 / 0.1);
 }
-.nerv-glass-agent-thalia {
+.hecate-glass-agent-thalia {
   background: oklch(0.14 0.015 25 / 0.65);
   backdrop-filter: blur(12px);
   border: 1px solid oklch(0.65 0.19 25 / 0.1);
 }
-.nerv-glass-agent-zero {
+.hecate-glass-agent-zero {
   background: oklch(0.14 0.015 232 / 0.65);
   backdrop-filter: blur(12px);
   border: 1px solid oklch(0.55 0.15 232 / 0.1);
@@ -1158,8 +1158,8 @@ div:has([contenteditable]):focus-within {
   border-radius: 8px;
 }
 
-/* ═══ NERV HUD PANEL — Premium game-UI side panel ═══ */
-.nerv-hud-panel {
+/* ═══ HECATE HUD PANEL — Premium game-UI side panel ═══ */
+.hecate-hud-panel {
   position: relative;
   background: linear-gradient(
     180deg,
@@ -1178,7 +1178,7 @@ div:has([contenteditable]):focus-within {
 }
 
 /* Top accent bar — uses agent color via CSS variable */
-.nerv-hud-panel::before {
+.hecate-hud-panel::before {
   content: '';
   position: absolute;
   top: 0;
@@ -1197,7 +1197,7 @@ div:has([contenteditable]):focus-within {
 }
 
 /* Subtle inner glow at top */
-.nerv-hud-panel::after {
+.hecate-hud-panel::after {
   content: '';
   position: absolute;
   top: 0;
@@ -1214,7 +1214,7 @@ div:has([contenteditable]):focus-within {
 }
 
 /* Corner accents — elegant L-shaped brackets */
-.nerv-hud-corner {
+.hecate-hud-corner {
   position: absolute;
   width: 16px;
   height: 16px;
@@ -1222,7 +1222,7 @@ div:has([contenteditable]):focus-within {
   z-index: 5;
 }
 
-.nerv-hud-corner--tl {
+.hecate-hud-corner--tl {
   top: 4px;
   left: 4px;
   border-top: 1.5px solid var(--panel-accent, var(--accent-base, #FF6D29));
@@ -1231,7 +1231,7 @@ div:has([contenteditable]):focus-within {
   opacity: 0.5;
 }
 
-.nerv-hud-corner--tr {
+.hecate-hud-corner--tr {
   top: 4px;
   right: 4px;
   border-top: 1.5px solid var(--panel-accent, var(--accent-base, #FF6D29));
@@ -1240,7 +1240,7 @@ div:has([contenteditable]):focus-within {
   opacity: 0.5;
 }
 
-.nerv-hud-corner--bl {
+.hecate-hud-corner--bl {
   bottom: 4px;
   left: 4px;
   border-bottom: 1.5px solid var(--panel-accent, var(--accent-base, #FF6D29));
@@ -1249,7 +1249,7 @@ div:has([contenteditable]):focus-within {
   opacity: 0.3;
 }
 
-.nerv-hud-corner--br {
+.hecate-hud-corner--br {
   bottom: 4px;
   right: 4px;
   border-bottom: 1.5px solid var(--panel-accent, var(--accent-base, #FF6D29));
@@ -1259,11 +1259,11 @@ div:has([contenteditable]):focus-within {
 }
 
 /* Breathing border glow animation */
-.nerv-hud-panel--breathing {
-  animation: nerv-hud-breathe 6s ease-in-out infinite;
+.hecate-hud-panel--breathing {
+  animation: hecate-hud-breathe 6s ease-in-out infinite;
 }
 
-@keyframes nerv-hud-breathe {
+@keyframes hecate-hud-breathe {
   0%, 100% {
     border-color: rgba(255, 255, 255, 0.06);
     box-shadow:
@@ -1306,7 +1306,7 @@ div:has([contenteditable]):focus-within {
    ═══════════════════════════════════════════════════ */
 
 /* ─── App Shell: Full-viewport container ─── */
-.nerv-app-shell {
+.hecate-app-shell {
   position: relative;
   width: 100vw;
   height: 100vh;
@@ -1316,7 +1316,7 @@ div:has([contenteditable]):focus-within {
 }
 
 /* ─── Top-Left Brand ─── */
-.nerv-top-left {
+.hecate-top-left {
   position: fixed;
   top: 14px;
   left: 20px;
@@ -1327,14 +1327,14 @@ div:has([contenteditable]):focus-within {
 }
 
 /* ─── Top-Right User Menu ─── */
-.nerv-top-right {
+.hecate-top-right {
   position: fixed;
   top: 10px;
   right: 17px;
   z-index: 25;
 }
 
-.nerv-avatar-btn {
+.hecate-avatar-btn {
   width: 36px;
   height: 36px;
   display: flex;
@@ -1349,12 +1349,12 @@ div:has([contenteditable]):focus-within {
   transition: all 150ms ease;
 }
 
-.nerv-avatar-btn:hover {
+.hecate-avatar-btn:hover {
   color: var(--foreground);
   transform: scale(1.1);
 }
 
-.nerv-user-dropdown {
+.hecate-user-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -1365,15 +1365,15 @@ div:has([contenteditable]):focus-within {
   box-shadow: var(--shadow-elevated);
   overflow: hidden;
   z-index: 50;
-  animation: nerv-dropdown-in 150ms ease;
+  animation: hecate-dropdown-in 150ms ease;
 }
 
-@keyframes nerv-dropdown-in {
+@keyframes hecate-dropdown-in {
   from { opacity: 0; transform: translateY(-4px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.nerv-dropdown-item {
+.hecate-dropdown-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1388,13 +1388,13 @@ div:has([contenteditable]):focus-within {
   text-align: left;
 }
 
-.nerv-dropdown-item:hover {
+.hecate-dropdown-item:hover {
   background: var(--accent-subtle);
   color: var(--foreground);
 }
 
 /* ─── Shell Frame: SVG arch border wrapper ─── */
-.nerv-shell-frame {
+.hecate-shell-frame {
   position: relative;
   flex: 1;
   margin: 10px;
@@ -1403,7 +1403,7 @@ div:has([contenteditable]):focus-within {
   flex-direction: column;
 }
 
-.nerv-shell-frame__svg {
+.hecate-shell-frame__svg {
   position: fixed;
   top: 0;
   left: 0;
@@ -1411,27 +1411,27 @@ div:has([contenteditable]):focus-within {
   z-index: 15;
 }
 
-.nerv-shell-frame__fill {
+.hecate-shell-frame__fill {
   fill: var(--bg-base);
 }
 
-.nerv-shell-frame__path {
+.hecate-shell-frame__path {
   stroke: rgba(255, 140, 50, 0.15);
 }
 
-.dark .nerv-shell-frame__path {
+.dark .hecate-shell-frame__path {
   stroke: rgba(255, 140, 50, 0.15);
 }
 
-:root:not(.dark) .nerv-shell-frame__path {
+:root:not(.dark) .hecate-shell-frame__path {
   stroke: rgba(69, 48, 39, 0.18);
 }
 
-:root:not(.dark) .nerv-shell-frame__fill {
+:root:not(.dark) .hecate-shell-frame__fill {
   fill: var(--bg-base);
 }
 
-.nerv-shell-frame__content {
+.hecate-shell-frame__content {
   position: relative;
   flex: 1;
   display: flex;
@@ -1441,14 +1441,14 @@ div:has([contenteditable]):focus-within {
 }
 
 /* ─── Top Rail: Contextual sub-navigation ─── */
-.nerv-top-rail {
+.hecate-top-rail {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 40px;
 }
 
-.nerv-rail-items {
+.hecate-rail-items {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -1458,7 +1458,7 @@ div:has([contenteditable]):focus-within {
   border: none;
 }
 
-.nerv-rail-item {
+.hecate-rail-item {
   position: relative;
   padding: 3px;
   font-size: 13px;
@@ -1472,37 +1472,37 @@ div:has([contenteditable]):focus-within {
   align-items: center;
 }
 
-.nerv-rail-label {
+.hecate-rail-label {
   overflow: hidden;
   white-space: nowrap;
   display: inline-block;
 }
 
-.nerv-rail-item:hover {
+.hecate-rail-item:hover {
   color: var(--foreground);
   background: rgba(255, 255, 255, 0.04);
 }
 
-.dark .nerv-rail-item:hover {
+.dark .hecate-rail-item:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
-:root:not(.dark) .nerv-rail-item:hover {
+:root:not(.dark) .hecate-rail-item:hover {
   background: rgba(0, 0, 0, 0.04);
 }
 
-.nerv-rail-item--active {
+.hecate-rail-item--active {
   color: var(--accent-base);
   background: transparent;
   font-weight: 600;
 }
 
-.nerv-rail-item--active:hover {
+.hecate-rail-item--active:hover {
   background: transparent;
 }
 
 /* ─── Content Viewport ─── */
-.nerv-content-viewport {
+.hecate-content-viewport {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1512,7 +1512,7 @@ div:has([contenteditable]):focus-within {
 }
 
 /* Fullbleed mode — removes content padding so canvas fills the shell area */
-.nerv-content-viewport.nerv-content-fullbleed {
+.hecate-content-viewport.hecate-content-fullbleed {
   padding: 0;
   overflow: hidden;
 }
@@ -1521,12 +1521,12 @@ div:has([contenteditable]):focus-within {
 
 
 /* ─── Bottom Dock: Sits inside the notch at the bottom ─── */
-.nerv-bottom-dock {
+.hecate-bottom-dock {
   display: flex;
   justify-content: center;
 }
 
-.nerv-dock-pill {
+.hecate-dock-pill {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1536,7 +1536,7 @@ div:has([contenteditable]):focus-within {
   border: none;
 }
 
-.nerv-dock-btn {
+.hecate-dock-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1551,56 +1551,56 @@ div:has([contenteditable]):focus-within {
   position: relative;
 }
 
-:root:not(.dark) .nerv-dock-btn {
+:root:not(.dark) .hecate-dock-btn {
   color: rgba(26, 20, 18, 0.4);
 }
 
-.nerv-dock-btn:hover {
+.hecate-dock-btn:hover {
   color: #c47a3a;
   background: transparent;
   transform: scale(1.08);
 }
 
-:root:not(.dark) .nerv-dock-btn:hover {
+:root:not(.dark) .hecate-dock-btn:hover {
   color: rgba(26, 20, 18, 0.85);
   background: transparent;
 }
 
-.nerv-dock-btn--active {
+.hecate-dock-btn--active {
   color: var(--accent-base) !important;
   background: transparent;
   box-shadow: none;
 }
 
-.nerv-dock-btn--active:hover {
+.hecate-dock-btn--active:hover {
   background: transparent;
   transform: scale(1.08);
 }
 
 /* ─── Dock Bloom Rail ─── */
 
-.nerv-dock-stack {
+.hecate-dock-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.nerv-dock-anchor {
+.hecate-dock-anchor {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.nerv-bloom-rail {
+.hecate-bloom-rail {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
 }
 
-.nerv-bloom-label {
+.hecate-bloom-label {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1611,7 +1611,7 @@ div:has([contenteditable]):focus-within {
   border-radius: 6px;
 }
 
-.nerv-bloom-items {
+.hecate-bloom-items {
   display: flex;
   align-items: stretch;
   gap: 2px;
@@ -1628,7 +1628,7 @@ div:has([contenteditable]):focus-within {
   white-space: nowrap;
 }
 
-:root:not(.dark) .nerv-bloom-items {
+:root:not(.dark) .hecate-bloom-items {
   background: oklch(0.98 0.005 0 / 0.88);
   border: 1px solid oklch(0 0 0 / 0.08);
   box-shadow:
@@ -1637,7 +1637,7 @@ div:has([contenteditable]):focus-within {
     inset 0 1px 0 oklch(1 0 0 / 0.6);
 }
 
-.nerv-bloom-tile {
+.hecate-bloom-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1652,30 +1652,30 @@ div:has([contenteditable]):focus-within {
   min-width: 52px;
 }
 
-:root:not(.dark) .nerv-bloom-tile {
+:root:not(.dark) .hecate-bloom-tile {
   color: rgba(26, 20, 18, 0.4);
 }
 
-.nerv-bloom-tile:hover {
+.hecate-bloom-tile:hover {
   color: #c47a3a;
   background: color-mix(in oklch, var(--accent-base) 6%, transparent);
 }
 
-:root:not(.dark) .nerv-bloom-tile:hover {
+:root:not(.dark) .hecate-bloom-tile:hover {
   color: #b06828;
   background: transparent;
 }
 
-.nerv-bloom-tile--active {
+.hecate-bloom-tile--active {
   color: var(--accent-base) !important;
   background: color-mix(in oklch, var(--accent-base) 10%, transparent);
 }
 
-.nerv-bloom-tile--active:hover {
+.hecate-bloom-tile--active:hover {
   background: color-mix(in oklch, var(--accent-base) 10%, transparent);
 }
 
-.nerv-bloom-tile__icon {
+.hecate-bloom-tile__icon {
   position: relative;
   display: flex;
   align-items: center;
@@ -1683,7 +1683,7 @@ div:has([contenteditable]):focus-within {
   flex-shrink: 0;
 }
 
-.nerv-bloom-tile__label {
+.hecate-bloom-tile__label {
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -1691,62 +1691,62 @@ div:has([contenteditable]):focus-within {
   opacity: 0.85;
 }
 
-.nerv-dock-btn--blooming {
+.hecate-dock-btn--blooming {
   color: var(--accent-base) !important;
   filter: drop-shadow(0 0 6px color-mix(in oklch, var(--accent-base) 40%, transparent));
 }
 
 /* ─── Responsive Adjustments ─── */
 @media (max-width: 768px) {
-  .nerv-shell-frame {
+  .hecate-shell-frame {
     margin: 4px 8px 0;
   }
 
-  .nerv-dock-btn {
+  .hecate-dock-btn {
     width: 36px;
     height: 36px;
   }
 
-  .nerv-dock-btn svg {
+  .hecate-dock-btn svg {
     width: 16px;
     height: 16px;
   }
 
-  .nerv-dock-pill {
+  .hecate-dock-pill {
     padding: 4px 8px;
     gap: 4px;
   }
 
-  .nerv-rail-items {
+  .hecate-rail-items {
     overflow-x: auto;
     max-width: calc(100vw - 160px);
     scrollbar-width: none;
   }
 
-  .nerv-rail-items::-webkit-scrollbar {
+  .hecate-rail-items::-webkit-scrollbar {
     display: none;
   }
 
-  .nerv-rail-item {
+  .hecate-rail-item {
     font-size: 12px;
     padding: 5px 8px;
   }
 
-  .nerv-content-viewport {
+  .hecate-content-viewport {
     padding: 8px 12px;
   }
 
-  .nerv-top-left {
+  .hecate-top-left {
     top: 10px;
     left: 12px;
   }
 
-  .nerv-top-right {
+  .hecate-top-right {
     top: 8px;
     right: 12px;
   }
 
-  .nerv-bottom-dock {
+  .hecate-bottom-dock {
     padding: 0 0 8px;
   }
 }

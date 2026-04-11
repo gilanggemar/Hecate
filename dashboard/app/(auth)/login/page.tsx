@@ -80,7 +80,7 @@ export default function LoginPage() {
                 {/* Mobile logo */}
                 <div className="flex items-center gap-2.5 lg:hidden mb-4">
                     <Logo className="h-8 w-8 text-white" />
-                    <span className="text-2xl font-bold tracking-tight text-white">NERV<span className="text-neutral-400">.OS</span></span>
+                    <span className="text-2xl font-bold tracking-tight text-white">HECATE</span>
                 </div>
 
                 <div className="space-y-2">
@@ -106,7 +106,7 @@ export default function LoginPage() {
                         <input
                             id="email"
                             type="email"
-                            placeholder="operator@nerv.os"
+                            placeholder="operator@hecate.ai"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -145,7 +145,7 @@ export default function LoginPage() {
                         {loading || navigating ? (
                             <div className="flex items-center gap-2">
                                 <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                {navigating ? 'Launching NERV.OS...' : 'Authenticating...'}
+                                {navigating ? 'Launching Hecate...' : 'Authenticating...'}
                             </div>
                         ) : (
                             'Sign In'

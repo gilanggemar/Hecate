@@ -179,7 +179,7 @@ export const AgentStatusIndicator = React.memo(({
             {renderIndicator()}
             {showLabel && (
                 <span
-                    className="nerv-badge-text"
+                    className="hecate-badge-text"
                     style={{
                         color: `oklch(from ${getColorVar()} l c h / 0.8)`,
                         fontSize: `${fontMap[size]}px`,

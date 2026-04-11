@@ -39,8 +39,8 @@ conn.on('ready', () => {
                     "http://127.0.0.1:3000",
                     "http://localhost:5173",
                     "http://127.0.0.1:5173",
-                    "https://nerv-phi.vercel.app",
-                    "https://nerv-84nr198oy-gilanggemar.vercel.app",
+                    "https://hecate.vercel.app",
+                    "https://hecate-preview.vercel.app",
                     "*"
                 ];
 

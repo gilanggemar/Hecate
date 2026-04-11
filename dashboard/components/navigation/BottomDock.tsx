@@ -102,13 +102,13 @@ export function BottomDock() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 52 }}
                             transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
-                            className="nerv-dock-stack"
+                            className="hecate-dock-stack"
                         >
                             <AnimatePresence>
                                 {bloomGroup && (
                                     <motion.div
                                         key="bloom-rail"
-                                        className="nerv-bloom-rail"
+                                        className="hecate-bloom-rail"
                                         initial={{ opacity: 0, y: 14 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 14 }}
@@ -119,10 +119,10 @@ export function BottomDock() {
                                         onMouseEnter={keepBloom}
                                         onMouseLeave={cancelBloom}
                                     >
-                                        <span className="nerv-bloom-label">
+                                        <span className="hecate-bloom-label">
                                             {bloomLabel}
                                         </span>
-                                        <div className="nerv-bloom-items">
+                                        <div className="hecate-bloom-items">
                                             {bloomRoutes.map((route) => {
                                                 const IconComp = ICON_MAP[route.iconName] || Home;
                                                 const isSubActive = activeSubPageId === route.id;
@@ -140,17 +140,17 @@ export function BottomDock() {
                                                             clearAll();
                                                         }}
                                                         className={cn(
-                                                            "nerv-bloom-tile",
-                                                            isSubActive && "nerv-bloom-tile--active"
+                                                            "hecate-bloom-tile",
+                                                            isSubActive && "hecate-bloom-tile--active"
                                                         )}
                                                     >
-                                                        <span className="nerv-bloom-tile__icon">
+                                                        <span className="hecate-bloom-tile__icon">
                                                             <IconComp className="w-4 h-4" />
                                                             {showBadge && (
                                                                 <span className="absolute -top-0.5 -right-0.5 w-[5px] h-[5px] rounded-full bg-orange-500" />
                                                             )}
                                                         </span>
-                                                        <span className="nerv-bloom-tile__label">{route.title}</span>
+                                                        <span className="hecate-bloom-tile__label">{route.title}</span>
                                                     </Link>
                                                 );
                                             })}
@@ -159,7 +159,7 @@ export function BottomDock() {
                                 )}
                             </AnimatePresence>
 
-                            <div className="nerv-dock-pill">
+                            <div className="hecate-dock-pill">
                                 {DOCK_ITEMS.map(({ group, icon: Icon, label }) => {
                                     const isActive = activeGroup === group;
                                     const isBlooming = bloomGroup === group;
@@ -167,7 +167,7 @@ export function BottomDock() {
                                     return (
                                         <div
                                             key={group}
-                                            className="nerv-dock-anchor"
+                                            className="hecate-dock-anchor"
                                             onMouseEnter={() => openBloom(group)}
                                             onMouseLeave={cancelBloom}
                                         >
@@ -176,9 +176,9 @@ export function BottomDock() {
                                                 animate={isBlooming ? { y: -2 } : { y: 0 }}
                                                 transition={{ duration: 0.15, ease: "easeOut" }}
                                                 className={cn(
-                                                    "nerv-dock-btn",
-                                                    isActive && "nerv-dock-btn--active",
-                                                    isBlooming && "nerv-dock-btn--blooming"
+                                                    "hecate-dock-btn",
+                                                    isActive && "hecate-dock-btn--active",
+                                                    isBlooming && "hecate-dock-btn--blooming"
                                                 )}
                                                 aria-label={label}
                                                 aria-current={isActive ? "page" : undefined}

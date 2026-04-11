@@ -1,5 +1,5 @@
 // ─── Unified Chat Store ──────────────────────────────────────────────────────
-// Single source of truth for ALL chat state in NERV.OS.
+// Single source of truth for ALL chat state in Hecate.
 // Supabase is the persistent layer; this store is the reactive cache.
 // Agent adapters handle the actual message dispatch to backends.
 

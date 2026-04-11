@@ -54,7 +54,7 @@ export function TopRightUserMenu() {
                 >
                     <button
                         onClick={() => setOpen(!open)}
-                        className="nerv-avatar-btn"
+                        className="hecate-avatar-btn"
                         title={user?.email || "Account"}
                     >
                         {initial}
@@ -70,7 +70,7 @@ export function TopRightUserMenu() {
             )}
 
             {open && (
-                <div className="nerv-user-dropdown" style={{ position: 'absolute', bottom: '100%', top: 'auto', right: 0, marginBottom: 4 }}>
+                <div className="hecate-user-dropdown" style={{ position: 'absolute', bottom: '100%', top: 'auto', right: 0, marginBottom: 4 }}>
                     {/* User email */}
                     {user?.email && (
                         <div className="px-3 py-2 border-b border-border/50">
@@ -83,14 +83,14 @@ export function TopRightUserMenu() {
                     {/* Theme toggle */}
                     <button
                         onClick={() => setTheme(isDark ? "light" : "dark")}
-                        className="nerv-dropdown-item"
+                        className="hecate-dropdown-item"
                     >
                         {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                         <span>{isDark ? "Light mode" : "Dark mode"}</span>
                     </button>
 
                     {/* Logout */}
-                    <button onClick={handleSignOut} className="nerv-dropdown-item">
+                    <button onClick={handleSignOut} className="hecate-dropdown-item">
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign out</span>
                     </button>

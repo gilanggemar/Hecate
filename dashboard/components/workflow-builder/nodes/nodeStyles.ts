@@ -1,4 +1,4 @@
-// ─── NERV GRAPH — V2 Node Style Constants ──────────────────────────────
+// ─── HECATE GRAPH — V2 Node Style Constants ──────────────────────────────
 
 import React from 'react';
 import type { WfNodeExecStatus } from '@/store/useWorkflowBuilderStore';

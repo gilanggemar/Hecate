@@ -6,8 +6,8 @@ if (typeof WebSocket === 'undefined') {
 
 const ws = new WebSocket('ws://127.0.0.1:18789');
 
-const HANDSHAKE_ID = 'nerv-handshake-1';
-const TOKEN = 'nerv-new-token-12345';
+const HANDSHAKE_ID = 'hecate-handshake-1';
+const TOKEN = 'hecate-new-token-12345';
 
 ws.onopen = () => {
     console.log('✅ WebSocket Connected');
@@ -46,7 +46,7 @@ ws.onmessage = (event) => {
                 console.log('✅ Handshake Successful!');
 
                 // Try to list agents
-                const listId = 'nerv-list-agents';
+                const listId = 'hecate-list-agents';
                 const listMsg = {
                     type: 'req',
                     id: listId,
@@ -56,7 +56,7 @@ ws.onmessage = (event) => {
                 console.log('Requesting agent list...');
                 ws.send(JSON.stringify(listMsg));
             }
-        } else if (msg.id === 'nerv-list-agents') {
+        } else if (msg.id === 'hecate-list-agents') {
             if (msg.error) {
                 console.error('❌ List Agents Failed:', JSON.stringify(msg.error));
             } else {

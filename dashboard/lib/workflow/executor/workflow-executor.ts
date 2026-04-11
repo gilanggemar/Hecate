@@ -1,5 +1,5 @@
 // ============================================================
-// NERV.OS Workflow V2 — Workflow Executor
+// Hecate Workflow V2 — Workflow Executor
 // Walks the node graph, executes each step, yields events.
 // ============================================================
 

@@ -1,0 +1,341 @@
+# Hecate Dashboard MCP Server — Implementation Plan
+
+## Goal
+
+Build a standalone MCP server that exposes **every feature** of the Hecate dashboard as high-level, intention-driven tools. When installed by an OpenClaw agent, the agent gains full programmatic control over the dashboard — reading state, writing data, triggering actions — with the dashboard UI reacting in real-time via Supabase subscriptions.
+
+## Architecture
+
+```
+OpenClaw Agent
+     │
+     ▼  MCP tool calls (JSON-RPC over stdio)
+Hecate Dashboard MCP Server  (standalone Node.js process)
+     │
+     ▼  reads / writes via Supabase JS SDK
+Supabase (Postgres + Realtime)
+     │
+     ▼  real-time subscription
+Dashboard UI (auto re-renders)
+```
+
+The MCP server is a **standalone Node.js/TypeScript package** that:
+- Communicates with OpenClaw agents via **stdio** (standard MCP transport)
+- Connects directly to **Supabase** using the service role key
+- Requires **no dashboard process running** — it's independent
+- Lives in a new directory: `dashboard-mcp/`
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Auth Strategy**: The MCP server will use the Supabase **service role key** to bypass RLS. This means agents have full access to all data for the configured user. The user's `user_id` will be set via environment variable `HECATE_USER_ID` so all reads/writes are scoped correctly.
+
+> [!WARNING]
+> **Scope Decision**: This plan covers **70+ tools across 15 domains**. This is a large implementation. I recommend building it in phases (see Delivery Plan below). Please confirm if you want all phases or a specific subset first.
+
+---
+
+## Tool Catalog (15 Domains, 70+ Tools)
+
+### 1. Tasks (`hecate_tasks_*`) — 7 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_tasks_list` | List all tasks, optionally filter by agent_id, status, priority |
+| `hecate_tasks_get` | Get a single task by ID with its logs |
+| `hecate_tasks_create` | Create a new task assigned to an agent |
+| `hecate_tasks_update` | Update task fields (title, description, status, priority) |
+| `hecate_tasks_delete` | Delete a task |
+| `hecate_tasks_append_log` | Append a log entry to a task |
+| `hecate_tasks_bulk_update_status` | Batch update status for multiple tasks |
+
+---
+
+### 2. Agents (`hecate_agents_*`) — 6 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_agents_list` | List all agents with their status, model, role |
+| `hecate_agents_get` | Get detailed agent info by ID |
+| `hecate_agents_update` | Update agent fields (name, codename, role, status, temperature) |
+| `hecate_agents_set_status` | Quick status update (ONLINE/OFFLINE/WORKING/etc.) |
+| `hecate_agents_set_hero_image` | Set an agent's hero image |
+| `hecate_agents_get_xp` | Get XP, level, and rank for an agent |
+
+---
+
+### 3. Scheduler (`hecate_scheduler_*`) — 6 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_scheduler_list_events` | List scheduled events in a date range |
+| `hecate_scheduler_create_event` | Create a new scheduled event |
+| `hecate_scheduler_update_event` | Update event details |
+| `hecate_scheduler_delete_event` | Delete a scheduled event |
+| `hecate_scheduler_move_event` | Reschedule an event to a new date |
+| `hecate_scheduler_execute_event` | Manually trigger a scheduled event now |
+
+---
+
+### 4. Workflows (`hecate_workflows_*`) — 8 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_workflows_list` | List all workflows |
+| `hecate_workflows_get` | Get full workflow definition (nodes, edges, steps) |
+| `hecate_workflows_create` | Create a new workflow |
+| `hecate_workflows_update` | Update workflow definition |
+| `hecate_workflows_delete` | Delete a workflow |
+| `hecate_workflows_trigger_run` | Execute a workflow |
+| `hecate_workflows_list_runs` | List workflow run history |
+| `hecate_workflows_get_run` | Get details of a specific run |
+
+---
+
+### 5. Chat & Conversations (`hecate_chat_*`) — 6 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_chat_list_conversations` | List conversations, optionally by agent |
+| `hecate_chat_get_messages` | Get messages for a conversation |
+| `hecate_chat_send_message` | Post a new message to a conversation |
+| `hecate_chat_create_conversation` | Start a new conversation with an agent |
+| `hecate_chat_pin_conversation` | Pin/unpin a conversation |
+| `hecate_chat_archive_conversation` | Archive a conversation |
+
+---
+
+### 6. Summit Sessions (`hecate_summit_*`) — 5 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_summit_list_sessions` | List all summit sessions |
+| `hecate_summit_get_session` | Get session details with messages |
+| `hecate_summit_create_session` | Start a new multi-agent summit |
+| `hecate_summit_add_message` | Post a message into a summit |
+| `hecate_summit_update_status` | Resolve or archive a summit |
+
+---
+
+### 7. Projects (`hecate_projects_*`) — 5 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_projects_list` | List all projects |
+| `hecate_projects_get` | Get project details with files |
+| `hecate_projects_create` | Create a new project |
+| `hecate_projects_update` | Update project name, description, instructions |
+| `hecate_projects_delete` | Delete a project |
+
+---
+
+### 8. Notifications (`hecate_notifications_*`) — 5 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_notifications_list` | List recent notifications |
+| `hecate_notifications_create` | Create a new notification (visible in dashboard) |
+| `hecate_notifications_mark_read` | Mark a notification as read |
+| `hecate_notifications_mark_all_read` | Mark all as read |
+| `hecate_notifications_delete` | Delete a notification |
+
+---
+
+### 9. Telemetry & Usage (`hecate_telemetry_*`) — 3 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_telemetry_get_summary` | Get aggregated telemetry stats |
+| `hecate_telemetry_get_chart_data` | Get time-series chart data |
+| `hecate_telemetry_log_event` | Log a new telemetry event |
+
+---
+
+### 10. Gamification (`hecate_gamification_*`) — 5 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_gamification_get_overview` | Get XP, levels, streak, achievements summary |
+| `hecate_gamification_award_xp` | Award XP to an agent |
+| `hecate_gamification_get_missions` | List daily missions |
+| `hecate_gamification_update_mission_progress` | Increment mission progress |
+| `hecate_gamification_get_streak` | Get current & longest streak |
+
+---
+
+### 11. Knowledge Base (`hecate_knowledge_*`) — 5 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_knowledge_list_documents` | List knowledge documents, optionally by agent |
+| `hecate_knowledge_get_document` | Get document content |
+| `hecate_knowledge_create_document` | Upload/create a knowledge document |
+| `hecate_knowledge_delete_document` | Delete a knowledge document |
+| `hecate_knowledge_search` | Search knowledge fragments by query |
+
+---
+
+### 12. Audit Log (`hecate_audit_*`) — 2 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_audit_list` | List audit log entries with filters |
+| `hecate_audit_create` | Write a new audit log entry |
+
+---
+
+### 13. Prompt Chunks (`hecate_prompt_chunks_*`) — 4 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_prompt_chunks_list` | List all prompt chunks |
+| `hecate_prompt_chunks_create` | Create a new prompt chunk |
+| `hecate_prompt_chunks_update` | Update a prompt chunk |
+| `hecate_prompt_chunks_delete` | Delete a prompt chunk |
+
+---
+
+### 14. MCP Server Management (`hecate_mcp_servers_*`) — 4 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_mcp_servers_list` | List registered MCP servers |
+| `hecate_mcp_servers_add` | Register a new MCP server |
+| `hecate_mcp_servers_update` | Update MCP server config |
+| `hecate_mcp_servers_delete` | Remove a registered MCP server |
+
+---
+
+### 15. Connection Profiles (`hecate_connections_*`) — 4 tools
+
+| Tool | Description |
+|------|-------------|
+| `hecate_connections_list` | List connection profiles |
+| `hecate_connections_create` | Create a new connection profile |
+| `hecate_connections_activate` | Activate a profile |
+| `hecate_connections_test` | Test a profile's connectivity |
+
+---
+
+## Proposed Changes
+
+### [NEW] `dashboard-mcp/` — Standalone MCP Server Package
+
+#### [NEW] `dashboard-mcp/package.json`
+Node.js package with dependencies: `@modelcontextprotocol/sdk`, `@supabase/supabase-js`, `dotenv`, `zod`
+
+#### [NEW] `dashboard-mcp/.env.example`
+Required env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `HECATE_USER_ID`
+
+#### [NEW] `dashboard-mcp/tsconfig.json`
+TypeScript config targeting ES2022 with Node module resolution
+
+#### [NEW] `dashboard-mcp/src/index.ts`
+MCP server entry point. Initializes the MCP `Server` from the SDK, registers all tools, starts listening on stdio.
+
+#### [NEW] `dashboard-mcp/src/supabase.ts`
+Supabase client singleton using service role key
+
+#### [NEW] `dashboard-mcp/src/tools/tasks.ts`
+All 7 task tools with Zod input schemas + Supabase queries
+
+#### [NEW] `dashboard-mcp/src/tools/agents.ts`
+All 6 agent tools
+
+#### [NEW] `dashboard-mcp/src/tools/scheduler.ts`
+All 6 scheduler tools
+
+#### [NEW] `dashboard-mcp/src/tools/workflows.ts`
+All 8 workflow tools
+
+#### [NEW] `dashboard-mcp/src/tools/chat.ts`
+All 6 chat tools
+
+#### [NEW] `dashboard-mcp/src/tools/summit.ts`
+All 5 summit tools
+
+#### [NEW] `dashboard-mcp/src/tools/projects.ts`
+All 5 project tools
+
+#### [NEW] `dashboard-mcp/src/tools/notifications.ts`
+All 5 notification tools
+
+#### [NEW] `dashboard-mcp/src/tools/telemetry.ts`
+All 3 telemetry tools
+
+#### [NEW] `dashboard-mcp/src/tools/gamification.ts`
+All 5 gamification tools
+
+#### [NEW] `dashboard-mcp/src/tools/knowledge.ts`
+All 5 knowledge tools
+
+#### [NEW] `dashboard-mcp/src/tools/audit.ts`
+All 2 audit tools
+
+#### [NEW] `dashboard-mcp/src/tools/prompt-chunks.ts`
+All 4 prompt chunk tools
+
+#### [NEW] `dashboard-mcp/src/tools/mcp-servers.ts`
+All 4 MCP server management tools
+
+#### [NEW] `dashboard-mcp/src/tools/connections.ts`
+All 4 connection profile tools
+
+---
+
+## MCP Server Config (for OpenClaw agents)
+
+Once built, agents install the MCP server via their config:
+
+```json
+{
+  "mcpServers": {
+    "hecate-dashboard": {
+      "command": "node",
+      "args": ["d:/AI Model/2-Antigravity Projects/Hecate/dashboard-mcp/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "https://wcpqanwpngqnsstcvvis.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "...",
+        "HECATE_USER_ID": "..."
+      }
+    }
+  }
+}
+```
+
+---
+
+## Delivery Plan
+
+### Phase 1 — Foundation + Core (Tasks, Agents, Notifications)
+- MCP server scaffold, Supabase client, tool registration system
+- Tasks (7 tools), Agents (6 tools), Notifications (5 tools)
+- **18 tools total** — the most commonly needed features
+
+### Phase 2 — Orchestration (Scheduler, Workflows, Chat)
+- Scheduler (6 tools), Workflows (8 tools), Chat (6 tools)
+- **20 tools** — execution and communication layer
+
+### Phase 3 — Intelligence (Summit, Projects, Knowledge, Telemetry)
+- Summit (5 tools), Projects (5 tools), Knowledge (5 tools), Telemetry (3 tools)
+- **18 tools** — context and intelligence
+
+### Phase 4 — Meta & Gamification (Audit, Prompt Chunks, MCP, Connections, Gamification)
+- Audit (2 tools), Prompt Chunks (4 tools), MCP Servers (4 tools), Connections (4 tools), Gamification (5 tools)
+- **19 tools** — configuration and meta-management
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npx tsc --noEmit` to verify TypeScript compilation
+- Test each tool individually using the MCP inspector: `npx @modelcontextprotocol/inspector`
+- Verify data round-trips: create → read → update → delete for each domain
+
+### Manual Verification
+- Install MCP in one OpenClaw agent and issue tool calls
+- Confirm dashboard UI updates in real-time when agent creates/updates tasks
+- Verify all 70+ tools are discoverable via `tools/list`

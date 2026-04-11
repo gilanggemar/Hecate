@@ -131,7 +131,7 @@ export const useConstellationStore = create<ConstellationState>((set, get) => ({
     syncStatus: 'idle',
     doctrineLoaded: {},
     doctrineLoadingId: null,
-    ceoConfig: { name: 'Gilang', title: 'Founder & CEO', subtitle: 'NERV. Center' },
+    ceoConfig: { name: 'Gilang', title: 'Founder & CEO', subtitle: 'Hecate Center' },
     zeroChatOpen: false,
     zeroChatTargetAgent: null,
 

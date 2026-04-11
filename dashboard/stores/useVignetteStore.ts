@@ -19,7 +19,7 @@ export const useVignetteStore = create<VignetteState>()(
             updateVignette: (updates) => set((state) => ({ ...state, ...updates })),
         }),
         {
-            name: 'nerv_vignette_settings',
+            name: 'hecate_vignette_settings',
         }
     )
 );

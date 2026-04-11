@@ -1,5 +1,5 @@
 // ============================================================
-// NERV.OS Workflow V2 — Adapter Registry
+// Hecate Workflow V2 — Adapter Registry
 // Factory function to get the correct adapter for an agent.
 // ============================================================
 

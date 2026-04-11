@@ -71,10 +71,10 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
     const getNodeStyle = (node: TimelineNode) => {
         const base = {
             user: { color: 'var(--accent-base)', bg: 'var(--accent-subtle)', size: 8 },
-            assistant: { color: 'var(--nerv-cyan)', bg: 'var(--nerv-cyan-dim)', size: 8 },
-            edit: { color: 'var(--nerv-warn)', bg: 'var(--nerv-warn-dim)', size: 6 },
-            branch: { color: 'var(--nerv-violet)', bg: 'var(--nerv-violet-dim)', size: 10 },
-            checkpoint: { color: 'var(--nerv-success)', bg: 'var(--nerv-success-dim)', size: 10 },
+            assistant: { color: 'var(--hecate-cyan)', bg: 'var(--hecate-cyan-dim)', size: 8 },
+            edit: { color: 'var(--hecate-warn)', bg: 'var(--hecate-warn-dim)', size: 6 },
+            branch: { color: 'var(--hecate-violet)', bg: 'var(--hecate-violet-dim)', size: 10 },
+            checkpoint: { color: 'var(--hecate-success)', bg: 'var(--hecate-success-dim)', size: 10 },
         };
         return base[node.type];
     };
@@ -103,7 +103,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
             <div className="flex flex-col items-center gap-1 mb-2">
                 <span
                     className="text-[8px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--nerv-text-ghost)', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}
+                    style={{ color: 'var(--hecate-text-ghost)', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}
                 >
                     Timeline
                 </span>
@@ -114,7 +114,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
                 {/* Vertical line */}
                 <div
                     className="absolute top-0 bottom-0 w-px"
-                    style={{ background: 'var(--nerv-border-subtle)' }}
+                    style={{ background: 'var(--hecate-border-subtle)' }}
                 />
 
                 {/* Nodes */}
@@ -159,8 +159,8 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
                                                 <div
                                                     className="absolute right-[calc(100%+4px)] px-1.5 py-0.5 rounded text-[8px] font-semibold whitespace-nowrap"
                                                     style={{
-                                                        background: 'var(--nerv-success-dim)',
-                                                        color: 'var(--nerv-success)',
+                                                        background: 'var(--hecate-success-dim)',
+                                                        color: 'var(--hecate-success)',
                                                         top: '50%',
                                                         transform: 'translateY(-50%)'
                                                     }}
@@ -211,11 +211,11 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
                     >
                         <Map
                             className="w-3 h-3"
-                            style={{ color: isMiniMap ? 'var(--nerv-cyan)' : 'var(--nerv-text-ghost)' }}
+                            style={{ color: isMiniMap ? 'var(--hecate-cyan)' : 'var(--hecate-text-ghost)' }}
                         />
                     </button>
                 )}
-                <span className="text-[8px]" style={{ color: 'var(--nerv-text-ghost)' }}>
+                <span className="text-[8px]" style={{ color: 'var(--hecate-text-ghost)' }}>
                     {messages.length}
                 </span>
             </div>

@@ -83,7 +83,7 @@ export function TaskCard({
             {isCompact ? (
                 <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                        <span className="nerv-body-sm font-medium truncate flex-1">
+                        <span className="hecate-body-sm font-medium truncate flex-1">
                             {title}
                         </span>
                         {/* Status indicator */}
@@ -98,7 +98,7 @@ export function TaskCard({
                         )}
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <span className="nerv-caption truncate">{agentName}</span>
+                        <span className="hecate-caption truncate">{agentName}</span>
                         <span
                             className="w-1.5 h-1.5 rounded-full shrink-0"
                             style={{ backgroundColor: priorityColor }}
@@ -107,7 +107,7 @@ export function TaskCard({
                     {scheduledTime && (
                         <div className="flex items-center gap-1 mt-0.5">
                             <Clock className="w-2.5 h-2.5 opacity-40" />
-                            <span className="nerv-mono-sm opacity-60">{scheduledTime}</span>
+                            <span className="hecate-mono-sm opacity-60">{scheduledTime}</span>
                         </div>
                     )}
                     {isRecurring && (
@@ -116,7 +116,7 @@ export function TaskCard({
                                 <TooltipTrigger asChild>
                                     <Repeat className="w-3 h-3 opacity-40 mt-0.5" />
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="nerv-glass-3">
+                                <TooltipContent side="top" className="hecate-glass-3">
                                     {getRecurrenceLabel(recurrenceType)}
                                 </TooltipContent>
                             </Tooltip>
@@ -127,7 +127,7 @@ export function TaskCard({
                 /* ─── Full mode (tray) ─── */
                 <div className="flex flex-col gap-1 min-w-0">
                     <div className="flex items-start justify-between gap-1.5">
-                        <span className="nerv-body font-medium line-clamp-2 flex-1">
+                        <span className="hecate-body font-medium line-clamp-2 flex-1">
                             {title}
                         </span>
                         {status === 'running' && (
@@ -140,7 +140,7 @@ export function TaskCard({
                             className="w-4 h-4 rounded-full shrink-0"
                             style={{ backgroundColor: agentColor }}
                         />
-                        <span className="nerv-body-sm opacity-70">{agentName}</span>
+                        <span className="hecate-body-sm opacity-70">{agentName}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -148,9 +148,9 @@ export function TaskCard({
                             className="w-2 h-2 rounded-full shrink-0"
                             style={{ backgroundColor: priorityColor }}
                         />
-                        <span className="nerv-caption capitalize">{priority}</span>
+                        <span className="hecate-caption capitalize">{priority}</span>
                         {isRecurring && (
-                            <span className="flex items-center gap-0.5 nerv-caption">
+                            <span className="flex items-center gap-0.5 hecate-caption">
                                 <Repeat className="w-3 h-3 opacity-50" />
                                 {getRecurrenceLabel(recurrenceType)}
                             </span>
@@ -158,7 +158,7 @@ export function TaskCard({
                     </div>
 
                     {description && (
-                        <p className="nerv-caption truncate mt-0.5">{description}</p>
+                        <p className="hecate-caption truncate mt-0.5">{description}</p>
                     )}
                 </div>
             )}

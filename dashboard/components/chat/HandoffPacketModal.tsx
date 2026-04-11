@@ -131,8 +131,8 @@ export const HandoffPacketModal: React.FC<HandoffPacketModalProps> = ({
                 onClick: () => router.push('/summit'),
             },
             style: {
-                background: 'var(--nerv-surface-2, #141414)',
-                border: '1px solid var(--nerv-border-subtle, #262626)',
+                background: 'var(--hecate-surface-2, #141414)',
+                border: '1px solid var(--hecate-border-subtle, #262626)',
                 color: 'var(--foreground)',
             },
         });
@@ -151,9 +151,9 @@ export const HandoffPacketModal: React.FC<HandoffPacketModalProps> = ({
 
     const getStatusIcon = (status: ReadinessItem['status']) => {
         switch (status) {
-            case 'ready': return <CheckCircle2 className="w-3.5 h-3.5" style={{ color: 'var(--nerv-success)' }} />;
-            case 'warning': return <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--nerv-warn)' }} />;
-            case 'blocked': return <Shield className="w-3.5 h-3.5" style={{ color: 'var(--nerv-danger)' }} />;
+            case 'ready': return <CheckCircle2 className="w-3.5 h-3.5" style={{ color: 'var(--hecate-success)' }} />;
+            case 'warning': return <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--hecate-warn)' }} />;
+            case 'blocked': return <Shield className="w-3.5 h-3.5" style={{ color: 'var(--hecate-danger)' }} />;
         }
     };
 
@@ -241,7 +241,7 @@ export const HandoffPacketModal: React.FC<HandoffPacketModalProps> = ({
                                                 className="h-full rounded-full transition-all duration-500"
                                                 style={{
                                                     width: `${readinessPercent}%`,
-                                                    background: readinessPercent === 100 ? 'var(--nerv-success)' : readinessPercent > 50 ? 'var(--nerv-warn)' : 'var(--nerv-danger)',
+                                                    background: readinessPercent === 100 ? 'var(--hecate-success)' : readinessPercent > 50 ? 'var(--hecate-warn)' : 'var(--hecate-danger)',
                                                 }}
                                             />
                                         </div>
