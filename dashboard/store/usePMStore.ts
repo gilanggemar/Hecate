@@ -39,6 +39,7 @@ interface PMStore {
     // Dialog states
     createSpaceOpen: boolean;
     createFolderOpen: boolean;
+    createFolderType: 'folder' | 'project';
     createTaskOpen: boolean;
     createWorkflowItemOpen: boolean;
 
@@ -82,6 +83,7 @@ interface PMStore {
     setCurrentView: (view: PMViewType) => void;
     setCreateSpaceOpen: (open: boolean) => void;
     setCreateFolderOpen: (open: boolean) => void;
+    setCreateFolderType: (type: 'folder' | 'project') => void;
     setCreateTaskOpen: (open: boolean) => void;
     setCreateWorkflowItemOpen: (open: boolean) => void;
 
@@ -112,6 +114,7 @@ export const usePMStore = create<PMStore>((set, get) => ({
 
     createSpaceOpen: false,
     createFolderOpen: false,
+    createFolderType: 'folder',
     createTaskOpen: false,
     createWorkflowItemOpen: false,
 
@@ -557,6 +560,7 @@ export const usePMStore = create<PMStore>((set, get) => ({
     setCurrentView: (view) => set({ currentView: view }),
     setCreateSpaceOpen: (open) => set({ createSpaceOpen: open }),
     setCreateFolderOpen: (open) => set({ createFolderOpen: open }),
+    setCreateFolderType: (type) => set({ createFolderType: type }),
     setCreateTaskOpen: (open) => set({ createTaskOpen: open }),
     setCreateWorkflowItemOpen: (open) => set({ createWorkflowItemOpen: open }),
 

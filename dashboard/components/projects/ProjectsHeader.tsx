@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { CreateNewModal } from "./CreateNewModal";
 
 const VIEWS: { id: PMViewType; icon: typeof Table2; label: string }[] = [
     { id: 'table', icon: Table2, label: 'Table' },
@@ -22,7 +23,6 @@ const VIEWS: { id: PMViewType; icon: typeof Table2; label: string }[] = [
 export function ProjectsHeader() {
     const currentView = usePMStore((s) => s.currentView);
     const setCurrentView = usePMStore((s) => s.setCurrentView);
-    const setCreateTaskOpen = usePMStore((s) => s.setCreateTaskOpen);
     const activeSpaceId = usePMStore((s) => s.activeSpaceId);
     const activeFolderId = usePMStore((s) => s.activeFolderId);
     const activeProjectId = usePMStore((s) => s.activeProjectId);
@@ -31,6 +31,8 @@ export function ProjectsHeader() {
     const setActiveSpace = usePMStore((s) => s.setActiveSpace);
     const setActiveFolder = usePMStore((s) => s.setActiveFolder);
     const setActiveProject = usePMStore((s) => s.setActiveProject);
+
+    const [createNewOpen, setCreateNewOpen] = useState(false);
 
     const activeSpace = spaces.find((s) => s.id === activeSpaceId);
     const activeFolder = activeFolderId ? folders.find((f) => f.id === activeFolderId) : null;
@@ -99,7 +101,7 @@ export function ProjectsHeader() {
                     })}
                 </div>
 
-                {/* Right: View tabs + New Task */}
+                {/* Right: View tabs + +New */}
                 <div className="flex items-center gap-2 shrink-0">
                     <div className="flex items-center bg-foreground/3 rounded-lg p-0.5">
                         {VIEWS.map((v) => (
@@ -121,12 +123,12 @@ export function ProjectsHeader() {
 
                     <Button
                         size="sm"
-                        onClick={() => setCreateTaskOpen(true)}
+                        onClick={() => setCreateNewOpen(true)}
                         className="rounded-md h-7 px-3 text-[11px] gap-1.5 bg-accent-base text-background hover:bg-accent-base/90"
                         disabled={!activeSpaceId}
                     >
                         <Plus className="w-3 h-3" />
-                        New Task
+                        New
                     </Button>
                 </div>
             </div>
@@ -139,6 +141,10 @@ export function ProjectsHeader() {
                     </h1>
                 </div>
             )}
+
+            {/* Create New Modal */}
+            <CreateNewModal open={createNewOpen} onClose={() => setCreateNewOpen(false)} />
         </div>
     );
 }
+

@@ -30,19 +30,21 @@ export interface PMFolder {
 
 // ── Task (extension of existing tasks table) ──
 
-export type PMTaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'FAILED';
+export type PMTaskStatus = 'NEW' | 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'FAILED';
 export type PMTaskPriority = 0 | 1 | 2 | 3; // LOW=0, MEDIUM=1, HIGH=2, CRITICAL=3
 export type PMAssigneeType = 'agent' | 'human' | 'auto';
 
 export const PRIORITY_LABELS: Record<number, string> = { 0: 'Low', 1: 'Medium', 2: 'High', 3: 'Critical' };
 export const PRIORITY_DOTS: Record<number, string> = { 0: 'bg-zinc-500', 1: 'bg-teal-400', 2: 'bg-orange-500', 3: 'bg-red-500' };
 export const STATUS_LABELS: Record<string, string> = {
+    NEW: 'New',
     PENDING: 'Backlog',
     IN_PROGRESS: 'In Progress',
     DONE: 'Completed',
     FAILED: 'Failed',
 };
 export const STATUS_BADGE_CLASS: Record<string, string> = {
+    NEW: 'pm-status-badge--new',
     PENDING: 'pm-status-badge--backlog',
     IN_PROGRESS: 'pm-status-badge--progress',
     DONE: 'pm-status-badge--completed',
@@ -201,3 +203,49 @@ export interface SidebarNode {
     children: SidebarNode[];
     taskCount: number;
 }
+
+// ── Task-Ops Fields (stored in custom_fields JSONB) ──
+
+export type TaskOpsItemType = 'budget' | 'stack' | 'legal' | 'deadline' | 'custom';
+
+export interface PMExecutionStep {
+    id: string;
+    text: string;
+    order: number;
+}
+
+export interface PMTaskGoal {
+    id: string;
+    type: TaskOpsItemType;
+    label: string;
+}
+
+export interface PMTaskConstraint {
+    id: string;
+    type: TaskOpsItemType;
+    label: string;
+}
+
+export interface PMTaskAssignee {
+    id: string;
+    type: 'agent' | 'human';
+}
+
+export interface PMTaskCustomFields {
+    type?: string;
+    execution_plan?: PMExecutionStep[];
+    system_prompt?: string;
+    goals?: PMTaskGoal[];
+    constraints?: PMTaskConstraint[];
+    assignees?: PMTaskAssignee[];
+    [key: string]: any;
+}
+
+// Type config for goal/constraint icons & colors (mirrors TaskCardModal)
+export const TASK_OPS_TYPE_CONFIG: Record<TaskOpsItemType, { label: string; color: string }> = {
+    budget:   { label: 'Budget',   color: 'var(--hecate-warn)' },
+    stack:    { label: 'Stack',    color: 'var(--hecate-cyan)' },
+    legal:    { label: 'Legal',    color: 'var(--hecate-violet)' },
+    deadline: { label: 'Deadline', color: 'var(--hecate-danger)' },
+    custom:   { label: 'Custom',   color: 'var(--hecate-text-secondary)' },
+};

@@ -15,6 +15,7 @@ import { TaskDetailPanel } from "@/components/projects/TaskDetailPanel";
 import { CreateSpaceDialog } from "@/components/projects/CreateSpaceDialog";
 import { CreateTaskDialog } from "@/components/projects/CreateTaskDialog";
 import { AddWorkflowDialog } from "@/components/projects/AddWorkflowDialog";
+import { CreateFolderDialog } from "@/components/projects/CreateFolderDialog";
 import { ProjectsEmptyState } from "@/components/projects/ProjectsEmptyState";
 import { useProjectKeyboard } from "@/components/projects/useProjectKeyboard";
 import { motion, AnimatePresence } from "framer-motion";
@@ -98,6 +99,7 @@ export default function ProjectsPage() {
                 <CreateSpaceDialog />
                 <CreateTaskDialog />
                 <AddWorkflowDialog />
+                <CreateFolderDialog />
             </div>
         </motion.div>
     );

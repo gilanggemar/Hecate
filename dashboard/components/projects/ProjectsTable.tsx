@@ -2,17 +2,141 @@
 
 import { usePMStore } from "@/store/usePMStore";
 import { PRIORITY_LABELS, PRIORITY_DOTS, STATUS_LABELS } from "@/lib/pm/types";
-import type { PMTask, PMTaskStatus, PMFolder } from "@/lib/pm/types";
+import type { PMTask, PMTaskStatus, PMFolder, PMTaskCustomFields, PMTaskAssignee } from "@/lib/pm/types";
 import { cn } from "@/lib/utils";
 import {
-    Bot, User, Zap, ChevronRight, ChevronDown, Plus,
+    Bot, User, Zap, ChevronRight, ChevronDown, ChevronLeft, Plus,
     Filter, Columns3, ArrowUpDown, Search, X, Tag, CheckCircle2,
-    Folder, FolderOpen, Briefcase, Link2, FileText, GripVertical, GitBranch
+    Folder, FolderOpen, Briefcase, Link2, FileText, GripVertical, GitBranch,
+    Calendar, Check
 } from "lucide-react";
 import { useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { AGENT_ROSTER, getAgentProfile } from "@/lib/agentRoster";
+import { useAgentAvatar } from "@/hooks/useAgentAvatar";
+
+/* ─── Agent Avatar (square, rounded corners, real avatar) ─── */
+function AgentAvatar({ agentId, size = 20 }: { agentId: string; size?: number }) {
+    const { avatarUri } = useAgentAvatar(agentId);
+    const profile = getAgentProfile(agentId);
+    if (avatarUri) {
+        return <img src={avatarUri} alt={profile?.name || agentId} className="object-cover shrink-0" style={{ width: size, height: size * 1.33, borderRadius: 'var(--radius-sm)' }} />;
+    }
+    return (
+        <div className="flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+            style={{ width: size, height: size * 1.33, borderRadius: 'var(--radius-sm)', background: profile?.colorHex || '#555' }}>
+            {profile?.avatarFallback || agentId.slice(0, 2).toUpperCase()}
+        </div>
+    );
+}
+
+/* ─── Inline Calendar (matches sidebar DatePicker style) ─── */
+const MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+];
+const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function InlineCalendar({ value, onChange, onClose }: {
+    value: string | null; // ISO string or null
+    onChange: (date: string | null) => void;
+    onClose: () => void;
+}) {
+    const selectedDate = useMemo(() => {
+        if (!value) return null;
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d;
+    }, [value]);
+
+    const [viewMonth, setViewMonth] = useState(() => selectedDate ? selectedDate.getMonth() : new Date().getMonth());
+    const [viewYear, setViewYear] = useState(() => selectedDate ? selectedDate.getFullYear() : new Date().getFullYear());
+
+    const daysInMonth = useMemo(() => new Date(viewYear, viewMonth + 1, 0).getDate(), [viewYear, viewMonth]);
+    const firstDayOfWeek = useMemo(() => new Date(viewYear, viewMonth, 1).getDay(), [viewYear, viewMonth]);
+
+    const prevMonth = () => {
+        if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+        else setViewMonth(viewMonth - 1);
+    };
+    const nextMonth = () => {
+        if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+        else setViewMonth(viewMonth + 1);
+    };
+    const selectDay = (day: number) => {
+        const d = new Date(viewYear, viewMonth, day, 12, 0, 0);
+        onChange(d.toISOString());
+        onClose();
+    };
+    const isToday = (day: number) => {
+        const now = new Date();
+        return day === now.getDate() && viewMonth === now.getMonth() && viewYear === now.getFullYear();
+    };
+    const isSelected = (day: number) => {
+        if (!selectedDate) return false;
+        return day === selectedDate.getDate() && viewMonth === selectedDate.getMonth() && viewYear === selectedDate.getFullYear();
+    };
+
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+    return (
+        <div className="w-[260px] p-3 bg-card border border-border rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+                <button onClick={prevMonth}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[12px] font-semibold text-foreground">{MONTH_NAMES[viewMonth]} {viewYear}</span>
+                <button onClick={nextMonth}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+            </div>
+            {/* Day labels */}
+            <div className="grid grid-cols-7 gap-0 mb-1">
+                {DAY_LABELS.map((d) => (
+                    <div key={d} className="text-[9px] text-muted-foreground/40 text-center font-semibold py-1">{d}</div>
+                ))}
+            </div>
+            {/* Day grid */}
+            <div className="grid grid-cols-7 gap-0">
+                {cells.map((day, i) => (
+                    <div key={i} className="flex items-center justify-center">
+                        {day ? (
+                            <button onClick={() => selectDay(day)}
+                                className={cn(
+                                    "w-7 h-7 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center",
+                                    isSelected(day)
+                                        ? "bg-accent-base text-white"
+                                        : isToday(day)
+                                            ? "bg-accent-base/15 text-accent-base"
+                                            : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
+                                )}>
+                                {day}
+                            </button>
+                        ) : <div className="w-7 h-7" />}
+                    </div>
+                ))}
+            </div>
+            {/* Footer */}
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/20">
+                <button onClick={() => { onChange(null); onClose(); }}
+                    className="text-[10px] text-muted-foreground/50 hover:text-foreground transition-colors">Clear</button>
+                <button onClick={() => {
+                    const now = new Date();
+                    setViewMonth(now.getMonth());
+                    setViewYear(now.getFullYear());
+                    selectDay(now.getDate());
+                }} className="text-[10px] text-accent-base hover:text-accent-base/80 transition-colors font-medium">Today</button>
+            </div>
+        </div>
+    );
+}
 
 const STATUS_DOTS: Record<string, string> = {
+    NEW: 'bg-blue-400',
     PENDING: 'bg-zinc-500',
     IN_PROGRESS: 'bg-accent-base',
     DONE: 'bg-accent-lime',
@@ -181,6 +305,9 @@ export function ProjectsTable() {
     const [showGroupBy, setShowGroupBy] = useState(false);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [dropdownPos, setDropdownPos] = useState<{ x: number; y: number } | null>(null);
+    // Inline popover state for assignee / date editing
+    const [inlinePopover, setInlinePopover] = useState<{ taskId: string; column: 'assignee' | 'due_date' | 'start_date' } | null>(null);
+    const [calendarPos, setCalendarPos] = useState<{ x: number; y: number } | null>(null);
 
     // ── Reorder / Drag-drop state ──
     const [reorderMode, setReorderMode] = useState(false);
@@ -298,22 +425,35 @@ export function ProjectsTable() {
     };
 
     // ── Inline Add ──
-    const handleInlineAdd = async () => {
-        if (!inlineTitle.trim()) { setInlineAddVisible(false); return; }
-        await createTask({ title: inlineTitle.trim() });
+    const handleInlineAdd = async (keepOpen: boolean = false) => {
+        if (!inlineTitle.trim()) {
+            setInlineAddVisible(false);
+            setInlineTitle('');
+            return;
+        }
+        await createTask({ title: inlineTitle.trim(), status: 'NEW' as any });
         setInlineTitle('');
-        // Keep inline add open for rapid entry
+        if (!keepOpen) {
+            setInlineAddVisible(false);
+        }
+        // If keepOpen, the input stays visible for rapid entry
     };
 
-    const handleInlineFolderAdd = async () => {
-        if (!inlineFolderName.trim()) { setInlineAddVisible(false); return; }
+    const handleInlineFolderAdd = async (keepOpen: boolean = false) => {
+        if (!inlineFolderName.trim()) {
+            setInlineAddVisible(false);
+            setInlineFolderName('');
+            return;
+        }
         if (inlineAddType === 'project') {
             await createProject(activeSpaceId!, inlineFolderName.trim(), activeFolderId || undefined);
         } else {
             await createFolder(activeSpaceId!, inlineFolderName.trim(), activeFolderId || undefined);
         }
         setInlineFolderName('');
-        setInlineAddVisible(false);
+        if (!keepOpen) {
+            setInlineAddVisible(false);
+        }
     };
 
     // ── Inline Edit ──
@@ -530,11 +670,10 @@ export function ProjectsTable() {
                 <AnimatePresence initial={false}>
                     {isExpanded && (
                         <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
+                            initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+                            animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: 'visible' } }}
+                            exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
                             transition={{ duration: 0.15 }}
-                            className="overflow-hidden"
                         >
                             {subFolders.map((sf) => renderFolderRow(sf, depth + 1))}
                             {folderTasks.map((task) => renderRow(task, depth + 1))}
@@ -581,6 +720,7 @@ export function ProjectsTable() {
                         DENSITY_PADDING[density],
                         isSelected ? "bg-accent-base/6" : "hover:bg-foreground/2",
                         isDragging && "opacity-40",
+                        inlinePopover?.taskId === task.id ? "relative z-50" : "relative z-0"
                     )}
                     style={{ paddingLeft: '8px' }}
                 >
@@ -759,33 +899,205 @@ export function ProjectsTable() {
                                     </div>
                                 );
                             }
-                            case 'assignee':
+                            case 'assignee': {
+                                const isAssigneeOpen = inlinePopover?.taskId === task.id && inlinePopover?.column === 'assignee';
+                                const cf = (task.custom_fields || {}) as PMTaskCustomFields;
+                                const multiAssignees: PMTaskAssignee[] = cf.assignees || [];
+                                // If custom_fields.assignees is populated, use that; otherwise fall back to agent_id
+                                const effectiveAssignees = multiAssignees.length > 0
+                                    ? multiAssignees
+                                    : (task.agent_id ? [{ id: task.agent_id, type: 'agent' as const }] : []);
+                                const isSingle = effectiveAssignees.length === 1;
+                                const isMulti = effectiveAssignees.length > 1;
+
                                 return (
-                                    <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center")}>
-                                        <div className="flex items-center gap-2">
-                                            <AssigneeIcon className={cn("w-3.5 h-3.5", task.assignee_type === 'agent' ? "text-accent-violet" : "text-accent-ocean")} />
-                                            <span className="text-[12px] text-muted-foreground truncate">
-                                                {getAgentName(task.agent_id) || (task.assignee_type === 'human' ? 'You' : 'Unassigned')}
-                                            </span>
-                                        </div>
+                                    <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center relative")}>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setInlinePopover(isAssigneeOpen ? null : { taskId: task.id, column: 'assignee' }); }}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-1.5 py-0.5 rounded-md transition-colors cursor-pointer",
+                                                isAssigneeOpen ? "bg-accent-base/10 ring-1 ring-accent-base/30" : "hover:bg-foreground/5"
+                                            )}
+                                        >
+                                            {effectiveAssignees.length === 0 ? (
+                                                <>
+                                                    <AssigneeIcon className={cn("w-3.5 h-3.5", task.assignee_type === 'agent' ? "text-accent-violet" : "text-accent-ocean")} />
+                                                    <span className="text-[12px] text-muted-foreground truncate">Unassigned</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center" style={{ gap: isMulti ? -4 : 6 }}>
+                                                        {effectiveAssignees.map((a, idx) => (
+                                                            <div key={a.id} style={{ zIndex: effectiveAssignees.length - idx }}>
+                                                                <AgentAvatar agentId={a.id} size={18} />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {isSingle && (
+                                                        <span className="text-[12px] text-muted-foreground truncate">
+                                                            {getAgentName(effectiveAssignees[0].id) || 'Agent'}
+                                                        </span>
+                                                    )}
+                                                </>
+                                            )}
+                                        </button>
+                                        <AnimatePresence>
+                                            {isAssigneeOpen && (
+                                                <>
+                                                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setInlinePopover(null); }} />
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 4 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 4 }}
+                                                        className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 bg-card border border-border rounded-lg shadow-xl p-1 min-w-[200px]"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {/* Agent roster — multi-select with checkmarks */}
+                                                        {AGENT_ROSTER.map((agent) => {
+                                                            const isChecked = effectiveAssignees.some((a) => a.id === agent.id);
+                                                            return (
+                                                                <button key={agent.id}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        let newAssignees: PMTaskAssignee[];
+                                                                        if (isChecked) {
+                                                                            newAssignees = effectiveAssignees.filter((a) => a.id !== agent.id);
+                                                                        } else {
+                                                                            newAssignees = [...effectiveAssignees, { id: agent.id, type: 'agent' }];
+                                                                        }
+                                                                        const newCf = { ...cf, assignees: newAssignees };
+                                                                        updateTask(task.id, {
+                                                                            custom_fields: newCf,
+                                                                            agent_id: newAssignees.length > 0 ? newAssignees[0].id : null,
+                                                                            assignee_type: newAssignees.length > 0 ? 'agent' : 'auto',
+                                                                        });
+                                                                    }}
+                                                                    className={cn(
+                                                                        "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] transition-colors",
+                                                                        isChecked
+                                                                            ? "bg-accent-base/10 text-foreground"
+                                                                            : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+                                                                    )}
+                                                                >
+                                                                    <div className="w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors"
+                                                                        style={{
+                                                                            borderColor: isChecked ? agent.colorHex : 'var(--border)',
+                                                                            background: isChecked ? agent.colorHex : 'transparent',
+                                                                        }}>
+                                                                        {isChecked && <Check className="w-2.5 h-2.5 text-white" />}
+                                                                    </div>
+                                                                    <AgentAvatar agentId={agent.id} size={16} />
+                                                                    <span className="flex-1">{agent.name}</span>
+                                                                    <span className="text-[9px] text-muted-foreground/30">{agent.role}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </motion.div>
+                                                </>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 );
-                            case 'due_date':
+                            }
+                            case 'due_date': {
+                                const isDueDateOpen = inlinePopover?.taskId === task.id && inlinePopover?.column === 'due_date';
                                 return (
-                                    <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center")}>
-                                        <span className={cn("text-[12px] tabular-nums", isOverdue ? "text-red-400 font-medium" : "text-muted-foreground/70")}>
-                                            {task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '—'}
-                                        </span>
+                                    <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center relative")}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isDueDateOpen) { setInlinePopover(null); setCalendarPos(null); }
+                                                else {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    const calW = 260;
+                                                    let x = rect.left + rect.width / 2 - calW / 2;
+                                                    if (x + calW > window.innerWidth - 16) x = window.innerWidth - 16 - calW;
+                                                    if (x < 16) x = 16;
+                                                    setCalendarPos({ x, y: rect.bottom + 4 });
+                                                    setInlinePopover({ taskId: task.id, column: 'due_date' });
+                                                }
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-colors cursor-pointer text-[12px] tabular-nums",
+                                                isDueDateOpen ? "bg-accent-base/10 ring-1 ring-accent-base/30" : "hover:bg-foreground/5",
+                                                isOverdue ? "text-red-400 font-medium" : "text-muted-foreground/70"
+                                            )}
+                                        >
+                                            <Calendar className="w-3 h-3 opacity-40" />
+                                            {task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '\u2014'}
+                                        </button>
+                                        <AnimatePresence>
+                                            {isDueDateOpen && calendarPos && (
+                                                <>
+                                                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setInlinePopover(null); setCalendarPos(null); }} />
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 4 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 4 }}
+                                                        className="fixed z-50"
+                                                        style={{ left: calendarPos.x, top: calendarPos.y }}
+                                                    >
+                                                        <InlineCalendar
+                                                            value={task.due_date || null}
+                                                            onChange={(date) => updateTask(task.id, { due_date: date })}
+                                                            onClose={() => { setInlinePopover(null); setCalendarPos(null); }}
+                                                        />
+                                                    </motion.div>
+                                                </>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 );
-                            case 'start_date':
+                            }
+                            case 'start_date': {
+                                const isStartDateOpen = inlinePopover?.taskId === task.id && inlinePopover?.column === 'start_date';
                                 return (
-                                    <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center")}>
-                                        <span className="text-[12px] text-muted-foreground/70 tabular-nums">
-                                            {task.start_date ? new Date(task.start_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '—'}
-                                        </span>
+                                    <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center relative")}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isStartDateOpen) { setInlinePopover(null); setCalendarPos(null); }
+                                                else {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    const calW = 260;
+                                                    let x = rect.left + rect.width / 2 - calW / 2;
+                                                    if (x + calW > window.innerWidth - 16) x = window.innerWidth - 16 - calW;
+                                                    if (x < 16) x = 16;
+                                                    setCalendarPos({ x, y: rect.bottom + 4 });
+                                                    setInlinePopover({ taskId: task.id, column: 'start_date' });
+                                                }
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-colors cursor-pointer text-[12px] text-muted-foreground/70 tabular-nums",
+                                                isStartDateOpen ? "bg-accent-base/10 ring-1 ring-accent-base/30" : "hover:bg-foreground/5"
+                                            )}
+                                        >
+                                            <Calendar className="w-3 h-3 opacity-40" />
+                                            {task.start_date ? new Date(task.start_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '\u2014'}
+                                        </button>
+                                        <AnimatePresence>
+                                            {isStartDateOpen && calendarPos && (
+                                                <>
+                                                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setInlinePopover(null); setCalendarPos(null); }} />
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 4 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 4 }}
+                                                        className="fixed z-50"
+                                                        style={{ left: calendarPos.x, top: calendarPos.y }}
+                                                    >
+                                                        <InlineCalendar
+                                                            value={task.start_date || null}
+                                                            onChange={(date) => updateTask(task.id, { start_date: date })}
+                                                            onClose={() => { setInlinePopover(null); setCalendarPos(null); }}
+                                                        />
+                                                    </motion.div>
+                                                </>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 );
+                            }
                             case 'progress':
                                 return (
                                     <div key={col.id} className={cn(col.flex, "px-2 flex items-center justify-center")}>
@@ -829,11 +1141,10 @@ export function ProjectsTable() {
                 <AnimatePresence initial={false}>
                     {isExpanded && hasSubtasks && (
                         <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
+                            initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+                            animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: 'visible' } }}
+                            exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
                             transition={{ duration: 0.15 }}
-                            className="overflow-hidden"
                         >
                             {subtasks.map((sub) => renderRow(sub, depth + 1))}
                         </motion.div>
@@ -1145,10 +1456,10 @@ export function ProjectsTable() {
                                     value={inlineTitle}
                                     onChange={(e) => setInlineTitle(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleInlineAdd();
+                                        if (e.key === 'Enter') { e.preventDefault(); handleInlineAdd(true); }
                                         if (e.key === 'Escape') { setInlineAddVisible(false); setInlineTitle(''); }
                                     }}
-                                    onBlur={() => { if (!inlineTitle.trim()) setInlineAddVisible(false); }}
+                                    onBlur={() => { handleInlineAdd(false); }}
                                     placeholder="Task name..."
                                     className="text-[13px] bg-transparent border-none outline-none w-full text-foreground placeholder:text-muted-foreground/30"
                                 />
@@ -1170,10 +1481,10 @@ export function ProjectsTable() {
                                     value={inlineFolderName}
                                     onChange={(e) => setInlineFolderName(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleInlineFolderAdd();
+                                        if (e.key === 'Enter') { e.preventDefault(); handleInlineFolderAdd(true); }
                                         if (e.key === 'Escape') { setInlineAddVisible(false); setInlineFolderName(''); }
                                     }}
-                                    onBlur={() => { if (!inlineFolderName.trim()) setInlineAddVisible(false); }}
+                                    onBlur={() => { handleInlineFolderAdd(false); }}
                                     placeholder={inlineAddType === 'project' ? 'Project name...' : 'Folder name...'}
                                     className="text-[13px] bg-transparent border-none outline-none w-full text-foreground placeholder:text-muted-foreground/30"
                                 />
@@ -1204,8 +1515,10 @@ export function ProjectsTable() {
                                     >
                                         <button
                                             onClick={() => {
-                                                setCreateTaskOpen(true);
+                                                setInlineAddType('task');
+                                                setInlineAddVisible(true);
                                                 setAddMenuOpen(false);
+                                                setInlineTitle('');
                                             }}
                                             className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] text-foreground/80 hover:bg-foreground/5 transition-colors"
                                         >

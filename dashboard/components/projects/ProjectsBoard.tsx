@@ -11,9 +11,10 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useState } from "react";
 
-const COLUMNS: PMTaskStatus[] = ['PENDING', 'IN_PROGRESS', 'DONE', 'FAILED'];
+const COLUMNS: PMTaskStatus[] = ['NEW', 'PENDING', 'IN_PROGRESS', 'DONE', 'FAILED'];
 
 const COLUMN_ICONS: Record<string, { icon: typeof Circle; color: string }> = {
+    NEW: { icon: Circle, color: 'text-blue-400' },
     PENDING: { icon: Circle, color: 'text-zinc-500' },
     IN_PROGRESS: { icon: Clock, color: 'text-accent-base' },
     DONE: { icon: CheckCircle2, color: 'text-accent-lime' },
@@ -28,6 +29,7 @@ const PRIORITY_ICONS: Record<number, { icon: typeof Minus; color: string }> = {
 };
 
 const DEFAULT_WIP_LIMITS: Record<string, number> = {
+    NEW: 0,
     PENDING: 0,
     IN_PROGRESS: 5,
     DONE: 0,

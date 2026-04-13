@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { usePMStore } from "@/store/usePMStore";
 import { PRIORITY_LABELS, PRIORITY_DOTS } from "@/lib/pm/types";
 import type { PMAssigneeType, PMTaskStatus } from "@/lib/pm/types";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Bot, User, Zap, X, FileText, Link2, Search, Loader2, CheckCircle2 } from "lucide-react";
+import { Bot, User, Zap, X, FileText, Link2, Search, Loader2, CheckCircle2, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,6 +22,7 @@ const ASSIGNEE_OPTIONS: { id: PMAssigneeType; icon: typeof Bot; label: string }[
 ];
 
 const STATUS_OPTIONS: { id: PMTaskStatus; label: string }[] = [
+    { id: 'NEW', label: 'New' },
     { id: 'PENDING', label: 'Backlog' },
     { id: 'IN_PROGRESS', label: 'In Progress' },
 ];
@@ -36,6 +37,165 @@ interface AgentTask {
     priority: string;
     description?: string;
     spaceId?: string | null;
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+/* ─── Mini calendar for dialog ─── */
+function DialogCalendar({ value, onChange, onClose }: {
+    value: string | null;
+    onChange: (date: string | null) => void;
+    onClose: () => void;
+}) {
+    const selectedDate = useMemo(() => {
+        if (!value) return null;
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d;
+    }, [value]);
+
+    const [viewMonth, setViewMonth] = useState(() => selectedDate ? selectedDate.getMonth() : new Date().getMonth());
+    const [viewYear, setViewYear] = useState(() => selectedDate ? selectedDate.getFullYear() : new Date().getFullYear());
+
+    const daysInMonth = useMemo(() => new Date(viewYear, viewMonth + 1, 0).getDate(), [viewYear, viewMonth]);
+    const firstDayOfWeek = useMemo(() => new Date(viewYear, viewMonth, 1).getDay(), [viewYear, viewMonth]);
+
+    const prevMonth = () => {
+        if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
+        else setViewMonth(viewMonth - 1);
+    };
+    const nextMonth = () => {
+        if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
+        else setViewMonth(viewMonth + 1);
+    };
+    const selectDay = (day: number) => {
+        const d = new Date(viewYear, viewMonth, day, 12, 0, 0);
+        onChange(d.toISOString());
+        onClose();
+    };
+    const isToday = (day: number) => {
+        const now = new Date();
+        return day === now.getDate() && viewMonth === now.getMonth() && viewYear === now.getFullYear();
+    };
+    const isSelected = (day: number) => {
+        if (!selectedDate) return false;
+        return day === selectedDate.getDate() && viewMonth === selectedDate.getMonth() && viewYear === selectedDate.getFullYear();
+    };
+
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+    return (
+        <div className="w-[260px] p-3 bg-card border border-border rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+                <button onClick={prevMonth} className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[12px] font-semibold text-foreground">{MONTH_NAMES[viewMonth]} {viewYear}</span>
+                <button onClick={nextMonth} className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+            </div>
+            <div className="grid grid-cols-7 gap-0 mb-1">
+                {DAY_LABELS.map((d) => (
+                    <div key={d} className="text-[9px] text-muted-foreground/40 text-center font-semibold py-1">{d}</div>
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-0">
+                {cells.map((day, i) => (
+                    <div key={i} className="flex items-center justify-center">
+                        {day ? (
+                            <button onClick={() => selectDay(day)}
+                                className={cn(
+                                    "w-7 h-7 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center",
+                                    isSelected(day)
+                                        ? "bg-accent-base text-white"
+                                        : isToday(day)
+                                            ? "bg-accent-base/15 text-accent-base"
+                                            : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
+                                )}>
+                                {day}
+                            </button>
+                        ) : <div className="w-7 h-7" />}
+                    </div>
+                ))}
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/20">
+                <button onClick={() => { onChange(null); onClose(); }}
+                    className="text-[10px] text-muted-foreground/50 hover:text-foreground transition-colors">Clear</button>
+                <button onClick={() => {
+                    const now = new Date();
+                    setViewMonth(now.getMonth());
+                    setViewYear(now.getFullYear());
+                    selectDay(now.getDate());
+                }} className="text-[10px] text-accent-base hover:text-accent-base/80 transition-colors font-medium">Today</button>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Date picker field for dialog ─── */
+function DialogDateField({ label, value, onChange }: {
+    label: string;
+    value: string; // ISO string or empty
+    onChange: (val: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+    const btnRef = useRef<HTMLButtonElement>(null);
+
+    const displayValue = value
+        ? new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : null;
+
+    const handleToggle = () => {
+        if (open) { setOpen(false); setPos(null); return; }
+        if (btnRef.current) {
+            const rect = btnRef.current.getBoundingClientRect();
+            const calW = 260;
+            let x = rect.left;
+            if (x + calW > window.innerWidth - 16) x = window.innerWidth - 16 - calW;
+            if (x < 16) x = 16;
+            let y = rect.bottom + 4;
+            if (y + 320 > window.innerHeight - 16) y = rect.top - 320 - 4;
+            setPos({ x, y });
+        }
+        setOpen(true);
+    };
+
+    return (
+        <div className="space-y-1.5">
+            <label className="text-[11px] text-muted-foreground font-medium">{label}</label>
+            <button
+                ref={btnRef}
+                type="button"
+                onClick={handleToggle}
+                className={cn(
+                    "w-full h-8 px-2.5 flex items-center gap-2 rounded-md border text-[12px] transition-colors",
+                    open
+                        ? "border-accent-base/40 ring-1 ring-accent-base/20 bg-card"
+                        : "border-border bg-background hover:bg-foreground/3",
+                    displayValue ? "text-foreground" : "text-muted-foreground/40"
+                )}
+            >
+                <Calendar className="w-3.5 h-3.5 opacity-40 shrink-0" />
+                <span className="flex-1 text-left truncate">{displayValue || 'Select date'}</span>
+            </button>
+            {open && pos && (
+                <>
+                    <div className="fixed inset-0 z-[10001]" onClick={() => { setOpen(false); setPos(null); }} />
+                    <div className="fixed z-[10002]" style={{ left: pos.x, top: pos.y }}>
+                        <DialogCalendar
+                            value={value || null}
+                            onChange={(date) => onChange(date || '')}
+                            onClose={() => { setOpen(false); setPos(null); }}
+                        />
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }
 
 export function CreateTaskDialog() {
@@ -316,24 +476,16 @@ export function CreateTaskDialog() {
 
                                 {/* Dates */}
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[11px] text-muted-foreground font-medium">Start Date</label>
-                                        <Input
-                                            type="date"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                            className="h-8 text-[12px] rounded-md border-border bg-background"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[11px] text-muted-foreground font-medium">Due Date</label>
-                                        <Input
-                                            type="date"
-                                            value={dueDate}
-                                            onChange={(e) => setDueDate(e.target.value)}
-                                            className="h-8 text-[12px] rounded-md border-border bg-background"
-                                        />
-                                    </div>
+                                    <DialogDateField
+                                        label="Start Date"
+                                        value={startDate}
+                                        onChange={setStartDate}
+                                    />
+                                    <DialogDateField
+                                        label="Due Date"
+                                        value={dueDate}
+                                        onChange={setDueDate}
+                                    />
                                 </div>
 
                                 {/* Tags */}
@@ -498,24 +650,16 @@ export function CreateTaskDialog() {
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[11px] text-muted-foreground font-medium">Start Date</label>
-                                                <Input
-                                                    type="date"
-                                                    value={linkStartDate}
-                                                    onChange={(e) => setLinkStartDate(e.target.value)}
-                                                    className="h-8 text-[12px] rounded-md border-border bg-background"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[11px] text-muted-foreground font-medium">Due Date</label>
-                                                <Input
-                                                    type="date"
-                                                    value={linkDueDate}
-                                                    onChange={(e) => setLinkDueDate(e.target.value)}
-                                                    className="h-8 text-[12px] rounded-md border-border bg-background"
-                                                />
-                                            </div>
+                                            <DialogDateField
+                                                label="Start Date"
+                                                value={linkStartDate}
+                                                onChange={setLinkStartDate}
+                                            />
+                                            <DialogDateField
+                                                label="Due Date"
+                                                value={linkDueDate}
+                                                onChange={setLinkDueDate}
+                                            />
                                         </div>
 
                                         {/* Tags */}
