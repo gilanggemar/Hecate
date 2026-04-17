@@ -114,7 +114,7 @@ interface MessageRendererProps {
 
 export const MessageRenderer = React.memo(function MessageRenderer({ content }: MessageRendererProps) {
     return (
-        <div className="message-content w-full min-w-0 break-words font-normal">
+        <div className="message-content w-full min-w-0 break-words font-normal" style={{ overflowWrap: 'anywhere' }}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}

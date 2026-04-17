@@ -3,13 +3,10 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Puzzle, Loader2, CheckCircle2, AlertCircle, Copy, Check, RefreshCw
+    Puzzle, Loader2, CheckCircle2, AlertCircle, Copy, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useSocketStore } from "@/lib/useSocket";
 import { toast } from "sonner";
 
@@ -18,19 +15,18 @@ type InstallStatus = "idle" | "installing" | "success" | "error";
 export function PluginInstall() {
     const { agents } = useSocketStore();
     const [status, setStatus] = useState<InstallStatus>("idle");
-    const [selectedAgent, setSelectedAgent] = useState<string>("");
     const [errorMsg, setErrorMsg] = useState("");
     const [copied, setCopied] = useState(false);
 
-    // Auto-select first agent if none selected
+    // Auto-pick the first available agent to execute the install
+    // The user never needs to choose — the plugin installs globally for ALL agents
     const availableAgents = agents.filter(
         (a: any) => a.running || a.probeOk || a.connected
     );
 
-    const effectiveAgent = selectedAgent ||
-        (availableAgents.length > 0
-            ? (availableAgents[0].accountId || availableAgents[0].name || availableAgents[0].id)
-            : "");
+    const effectiveAgent = availableAgents.length > 0
+        ? (availableAgents[0].accountId || availableAgents[0].name || availableAgents[0].id)
+        : "";
 
     const handleInstall = useCallback(async () => {
         if (!effectiveAgent) {
@@ -98,28 +94,6 @@ export function PluginInstall() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                        {/* Agent selector */}
-                        {availableAgents.length > 1 && (
-                            <Select
-                                value={effectiveAgent}
-                                onValueChange={setSelectedAgent}
-                            >
-                                <SelectTrigger className="h-8 w-[120px] text-[11px] rounded-md border-border bg-background">
-                                    <SelectValue placeholder="Agent..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-md">
-                                    {availableAgents.map((a: any) => {
-                                        const id = a.accountId || a.name || a.id;
-                                        return (
-                                            <SelectItem key={id} value={id} className="text-xs capitalize">
-                                                {id}
-                                            </SelectItem>
-                                        );
-                                    })}
-                                </SelectContent>
-                            </Select>
-                        )}
-
                         <Button
                             onClick={handleInstall}
                             disabled={status === "installing" || !effectiveAgent}

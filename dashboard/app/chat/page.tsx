@@ -1232,7 +1232,7 @@ export default function ChatPage() {
 
                     {/* Chat column */}
                     <div 
-                        className="flex-1 flex flex-col m-0 min-h-0 relative"
+                        className="flex-1 flex flex-col m-0 min-h-0 relative overflow-hidden"
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
@@ -1251,13 +1251,13 @@ export default function ChatPage() {
                         {/* ─── Mission Bar moved to input area ─── */}
 
                         {/* Messages row: scroll + timeline scrubber */}
-                        <div className="flex-1 min-h-0 flex">
+                        <div className="flex-1 min-h-0 flex overflow-hidden">
                             <div 
                                 ref={scrollRef} 
                                 onScroll={handleScroll} 
                                 onMouseDown={() => { isInteractingRef.current = true; }}
                                 onMouseUp={() => { setTimeout(() => { isInteractingRef.current = false; }, 200); }}
-                                className="flex-1 overflow-y-auto scrollbar-hide w-full pr-[4px] pb-5 relative flex flex-col pt-5"
+                                className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide w-full pr-[4px] pb-5 relative flex flex-col pt-5"
                             >
                             {isDbLoading ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-60 gap-3">
@@ -1277,7 +1277,7 @@ export default function ChatPage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col mt-auto w-full justify-end">
+                                <div className="flex flex-col mt-auto w-full justify-end min-w-0">
                                     {visibleMessages.map((msg, idx) => {
                                         // Hide empty assistant messages — the thinking placeholder covers this
                                         if (msg.role === 'assistant' && (!msg.content || !msg.content.trim())) return null;
@@ -1287,7 +1287,7 @@ export default function ChatPage() {
                                         const displayName = isUser ? 'You' : selectedAgentName;
 
                                         return (
-                                            <div key={msg.id} data-msg-idx={idx} className={cn("flex w-full justify-start ofiere-chat-bubble-enter", isFirstInGroup ? "mt-[12px]" : "mt-[4px]")}
+                                            <div key={msg.id} data-msg-idx={idx} className={cn("flex w-full justify-start ofiere-chat-bubble-enter min-w-0", isFirstInGroup ? "mt-[12px]" : "mt-[4px]")}
                                                 style={{ animationDelay: `${Math.min(idx * 30, 200)}ms` }}
                                             >
                                                 <div className="flex-shrink-0 mr-[12px] w-[42px] flex flex-col justify-start items-center relative mt-[5px]">
@@ -1382,14 +1382,14 @@ export default function ChatPage() {
                                                             </div>
                                                         </div>
                                                     ) : (renderMessageContent(isUser ? stripInjectedPrefixes(msg.content) : msg.content) || (msg.attachments && msg.attachments.length > 0)) && (
-                                                        <div className="group/msg relative w-fit" style={{ maxWidth: 'calc(100% - 3px)' }}>
+                                                        <div className="group/msg relative w-fit" style={{ maxWidth: isUser ? '80%' : 'calc(100% - 3px)' }}>
                                                             <div className={cn(
                                                                 "px-[12px] py-[6px] text-[13px] leading-relaxed min-w-[80px] w-fit flex flex-col gap-2",
                                                                 isUser
                                                                     ? "bg-accent text-foreground"
                                                                     : "bg-orange-500/35 text-white border border-orange-500/40",
                                                                 isFirstInGroup ? "rounded-[6px]" : "rounded-tr-[6px] rounded-br-[6px] rounded-bl-[6px] rounded-tl-[2px]"
-                                                            )}>
+                                                            )} style={{ overflowWrap: 'anywhere' }}>
                                                                 {/* Quoted Reply Indicator */}
                                                                 {isUser && (() => {
                                                                     const quoteText = (msg as any).metadata?.quotedReply || (msg as any).quotedReply;
@@ -1674,7 +1674,7 @@ export default function ChatPage() {
 
                             <div
                                 className={cn(
-                                    "bg-background border shadow-sm rounded-md transition-all relative",
+                                    "bg-background border shadow-sm rounded-md transition-all relative overflow-visible",
                                     showThinkingPlaceholder
                                         ? "border-orange-500/60"
                                         : "border-border"
@@ -1684,6 +1684,24 @@ export default function ChatPage() {
                                     boxShadow: '0 0 15px rgba(249, 115, 22, 0.15), 0 0 30px rgba(249, 115, 22, 0.08), inset 0 0 8px rgba(249, 115, 22, 0.03)',
                                 } : undefined}
                             >
+                                {/* ─── Slash Command Menu (positioned above entire input box) ─── */}
+                                <SlashCommandMenu
+                                    query={slashQuery}
+                                    visible={showSlashMenu}
+                                    onClose={() => setShowSlashMenu(false)}
+                                    onSelect={(cmd: SlashCommand) => {
+                                        setShowSlashMenu(false);
+                                        if (cmd.instant && !cmd.args) {
+                                            // Instant commands: dispatch directly to OpenClaw
+                                            const sessionKey = `agent:${selectedAgentId}:nchat`;
+                                            setMessage("");
+                                            dispatchMessage(selectedAgentId, cmd.command, sessionKey);
+                                        } else {
+                                            // Commands with args: insert into input, let user type args
+                                            setMessage(cmd.command + ' ');
+                                        }
+                                    }}
+                                />
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -1735,25 +1753,7 @@ export default function ChatPage() {
                                     </div>
                                 )}
 
-                                <div className="px-3 pt-3 pb-2 grow relative">
-                                    {/* ─── Slash Command Menu ─── */}
-                                    <SlashCommandMenu
-                                        query={slashQuery}
-                                        visible={showSlashMenu}
-                                        onClose={() => setShowSlashMenu(false)}
-                                        onSelect={(cmd: SlashCommand) => {
-                                            setShowSlashMenu(false);
-                                            if (cmd.instant && !cmd.args) {
-                                                // Instant commands: dispatch directly to OpenClaw
-                                                const sessionKey = `agent:${selectedAgentId}:nchat`;
-                                                setMessage("");
-                                                dispatchMessage(selectedAgentId, cmd.command, sessionKey);
-                                            } else {
-                                                // Commands with args: insert into input, let user type args
-                                                setMessage(cmd.command + ' ');
-                                            }
-                                        }}
-                                    />
+                                <div className="px-3 pt-3 pb-2 grow">
                                     <form onSubmit={handleSendMessage}>
                                         <ChatInputWithChunks
                                             value={message}
