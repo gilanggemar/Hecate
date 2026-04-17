@@ -65,48 +65,34 @@ export function useRealtimeTasks() {
 
 function handleInsert(
     row: Record<string, any>,
-    taskStore: ReturnType<typeof useTaskStore.getState>,
-    pmStore: ReturnType<typeof usePMStore.getState>
+    _taskStore: ReturnType<typeof useTaskStore.getState>,
+    _pmStore: ReturnType<typeof usePMStore.getState>
 ) {
-    // Task-Ops store: add if not already present and not pm_only
     const cf = row.custom_fields || {};
     const isPmOnly = cf.pm_only === true;
 
+    // Task-Ops store: add if not pm_only and not already present.
+    // Use setState callback to always check the LATEST state (avoids stale-snapshot dupes).
     if (!isPmOnly) {
-        const exists = taskStore.tasks.some((t) => t.id === row.id);
-        if (!exists) {
-            useTaskStore.setState((state) => ({
-                tasks: [mapToTaskOps(row), ...state.tasks],
-            }));
-        }
+        useTaskStore.setState((state) => {
+            if (state.tasks.some((t) => t.id === row.id)) return state; // already exists
+            return { tasks: [mapToTaskOps(row), ...state.tasks] };
+        });
     }
 
     // PM store: add if it has a space_id (PM task) and not already present
     if (row.space_id) {
-        const exists = pmStore.tasks.some((t) => t.id === row.id);
-        if (!exists) {
-            usePMStore.setState((state) => ({
-                tasks: [mapToPMTask(row), ...state.tasks],
-            }));
-        }
-    }
-
-    // Agent-card tasks: always refresh if the task has an agent_id
-    // (The agent card filters by agentId from the taskStore)
-    if (row.agent_id && !isPmOnly) {
-        const exists = taskStore.tasks.some((t) => t.id === row.id);
-        if (!exists) {
-            useTaskStore.setState((state) => ({
-                tasks: [mapToTaskOps(row), ...state.tasks],
-            }));
-        }
+        usePMStore.setState((state) => {
+            if (state.tasks.some((t) => t.id === row.id)) return state;
+            return { tasks: [mapToPMTask(row), ...state.tasks] };
+        });
     }
 }
 
 function handleUpdate(
     row: Record<string, any>,
-    taskStore: ReturnType<typeof useTaskStore.getState>,
-    pmStore: ReturnType<typeof usePMStore.getState>
+    _taskStore: ReturnType<typeof useTaskStore.getState>,
+    _pmStore: ReturnType<typeof usePMStore.getState>
 ) {
     // Task-Ops store
     useTaskStore.setState((state) => ({
@@ -129,8 +115,8 @@ function handleUpdate(
 
 function handleDelete(
     row: Record<string, any>,
-    taskStore: ReturnType<typeof useTaskStore.getState>,
-    pmStore: ReturnType<typeof usePMStore.getState>
+    _taskStore: ReturnType<typeof useTaskStore.getState>,
+    _pmStore: ReturnType<typeof usePMStore.getState>
 ) {
     const id = row.id;
     if (!id) return;
