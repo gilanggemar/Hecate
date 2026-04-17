@@ -1,10 +1,18 @@
+// src/cli.ts — CLI registration for Hecate PM plugin
+// Uses api.registerCli with descriptors as documented:
+//   https://docs.openclaw.ai/plugins/sdk-overview#cli-registration-metadata
+//
+// The descriptors array enables lazy plugin CLI registration and root help text.
+// The async ({ program }) => {} pattern is shown in the official Matrix plugin example.
+
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as readline from "node:readline";
 import { createClient } from "@supabase/supabase-js";
 
-// OpenClaw config paths
+// ── Config paths ─────────────────────────────────────────────────────────────
+
 const CONFIG_DIR = path.join(os.homedir(), ".openclaw");
 const CONFIG_PATH = path.join(CONFIG_DIR, "openclaw.json");
 
@@ -50,21 +58,15 @@ function getPluginConfig(): {
 
 // ── CLI Registration ─────────────────────────────────────────────────────────
 
-interface PluginApi {
-  registerCli: (
-    registrar: (ctx: { program: any }) => void,
-    opts?: { commands?: string[] },
-  ) => void;
-}
-
-export function registerCli(api: PluginApi): void {
+export function registerCli(api: any): void {
   api.registerCli(
-    ({ program }: { program: any }) => {
+    // Async registrar — follows the pattern from the official Matrix plugin example
+    async ({ program }: { program: any }) => {
       const cmd = program
         .command("hecate")
         .description("Hecate PM dashboard integration");
 
-      // ── setup ────────────────────────────────────────────────────────────
+      // ── setup ──────────────────────────────────────────────────────────
       cmd
         .command("setup")
         .description("Configure Hecate PM connection")
@@ -112,7 +114,7 @@ export function registerCli(api: PluginApi): void {
             return;
           }
 
-          // Save to config
+          // Save to config under plugins.entries.hecate.config
           const config = readConfig();
           if (!config.plugins) config.plugins = {};
           const plugins = config.plugins as Record<string, unknown>;
@@ -124,24 +126,26 @@ export function registerCli(api: PluginApi): void {
             config: { supabaseUrl, serviceRoleKey: serviceKey, userId, agentId },
           };
 
-          // Add hecate to tools.alsoAllow
+          // Enable Hecate tools via tools.allow (so optional tools are accessible)
           if (!config.tools) config.tools = {};
           const tools = config.tools as Record<string, unknown>;
-          if (!Array.isArray(tools.alsoAllow)) tools.alsoAllow = [];
-          const alsoAllow = tools.alsoAllow as string[];
-          if (!alsoAllow.includes("hecate")) alsoAllow.push("hecate");
+          if (!Array.isArray(tools.allow)) tools.allow = [];
+          const allow = tools.allow as string[];
+          // Adding plugin id to tools.allow enables all its optional tools
+          if (!allow.includes("hecate")) allow.push("hecate");
 
           writeConfig(config);
 
           console.log("\nDone. Saved to ~/.openclaw/openclaw.json");
-          console.log(`  - Supabase URL: ${supabaseUrl}`);
-          console.log(`  - User ID: ${userId}`);
-          console.log(`  - Agent ID: ${agentId}`);
-          console.log("  - Plugin enabled");
+          console.log(`  Supabase URL: ${supabaseUrl}`);
+          console.log(`  User ID:      ${userId}`);
+          console.log(`  Agent ID:     ${agentId}`);
+          console.log("  Plugin:       enabled");
+          console.log("  Tools:        allowed");
           console.log("\nRestart to apply: openclaw gateway restart\n");
         });
 
-      // ── status ───────────────────────────────────────────────────────────
+      // ── status ─────────────────────────────────────────────────────────
       cmd
         .command("status")
         .description("Show Hecate PM plugin configuration")
@@ -166,7 +170,7 @@ export function registerCli(api: PluginApi): void {
           console.log("");
         });
 
-      // ── doctor ───────────────────────────────────────────────────────────
+      // ── doctor ─────────────────────────────────────────────────────────
       cmd
         .command("doctor")
         .description("Test Hecate PM connection")
@@ -195,17 +199,16 @@ export function registerCli(api: PluginApi): void {
               .order("name");
 
             if (error) {
-              console.log(`\n  Connection failed: ${error.message}\n`);
+              console.log(`\n  ✗ Connection failed: ${error.message}\n`);
               return;
             }
 
-            console.log(`  Found ${(data || []).length} agents\n`);
+            console.log(`  ✓ Found ${(data || []).length} agents\n`);
             for (const agent of data || []) {
               const marker = agent.id === cfg.agentId ? " ← YOU" : "";
               console.log(`    ${agent.id} — ${agent.name} (${agent.status})${marker}`);
             }
 
-            // Test tasks access
             const { count } = await sb
               .from("tasks")
               .select("id", { count: "exact", head: true })
@@ -215,7 +218,7 @@ export function registerCli(api: PluginApi): void {
             console.log("\n  Status: healthy ✓\n");
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            console.log(`\n  Connection failed: ${msg}`);
+            console.log(`\n  ✗ Connection failed: ${msg}`);
             console.log("\n  Possible causes:");
             console.log("    - Invalid Supabase URL or service key");
             console.log("    - Network issue reaching Supabase");
@@ -223,6 +226,15 @@ export function registerCli(api: PluginApi): void {
           }
         });
     },
-    { commands: ["hecate"] },
+    // Descriptors enable lazy registration and root help text
+    {
+      descriptors: [
+        {
+          name: "hecate",
+          description: "Manage Hecate PM dashboard integration (setup, status, diagnostics)",
+          hasSubcommands: true,
+        },
+      ],
+    },
   );
 }
