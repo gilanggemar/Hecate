@@ -44,32 +44,32 @@ This is a one-time setup. Follow EVERY step EXACTLY. Do NOT skip any step. Do NO
 
 **Step 1: Detect your OpenClaw home directory**
 
-Check which path exists:
-- If \`/data/.openclaw/\` exists → use that (Docker)
-- If \`~/.openclaw/\` exists → use that (native install)
-- Otherwise → create \`~/.openclaw/\`
+Run this command to find your OpenClaw home:
+\`\`\`bash
+if [ -d "/data/.openclaw" ]; then echo "/data/.openclaw"; elif [ -d "$HOME/.openclaw" ]; then echo "$HOME/.openclaw"; else echo "$HOME/.openclaw"; fi
+\`\`\`
 
-Call this path OPENCLAW_HOME for the remaining steps.
+Use the output as OPENCLAW_HOME for ALL remaining steps. Replace every occurrence of OPENCLAW_HOME below with the actual path from this step.
 
 ---
 
 **Step 2: Download the Ofiere plugin files**
 
-Run this command:
+Replace OPENCLAW_HOME with the path from Step 1, then run:
 \`\`\`bash
-mkdir -p /data/.openclaw/extensions && cd /tmp && rm -rf ofiere-plugin-tmp && git clone --depth 1 https://github.com/gilanggemar/Ofiere.git ofiere-plugin-tmp 2>/dev/null && rm -rf /data/.openclaw/extensions/ofiere && cp -r ofiere-plugin-tmp/ofiere-openclaw-plugin /data/.openclaw/extensions/ofiere && rm -rf ofiere-plugin-tmp && echo "Plugin files installed"
+OPENCLAW_HOME="<path from step 1>" && mkdir -p "$OPENCLAW_HOME/extensions" && cd /tmp && rm -rf ofiere-plugin-tmp && git clone --depth 1 https://github.com/gilanggemar/Ofiere.git ofiere-plugin-tmp 2>/dev/null && rm -rf "$OPENCLAW_HOME/extensions/ofiere" && cp -r ofiere-plugin-tmp/ofiere-openclaw-plugin "$OPENCLAW_HOME/extensions/ofiere" && rm -rf ofiere-plugin-tmp && echo "Plugin files installed to $OPENCLAW_HOME/extensions/ofiere"
 \`\`\`
 
-If git is not available, try curl:
+If git is not available, use curl instead:
 \`\`\`bash
-mkdir -p /data/.openclaw/extensions && cd /tmp && curl -sSL https://github.com/gilanggemar/Ofiere/archive/refs/heads/main.tar.gz | tar xz && rm -rf /data/.openclaw/extensions/ofiere && cp -r Ofiere-main/ofiere-openclaw-plugin /data/.openclaw/extensions/ofiere && rm -rf Ofiere-main && echo "Plugin files installed"
+OPENCLAW_HOME="<path from step 1>" && mkdir -p "$OPENCLAW_HOME/extensions" && cd /tmp && curl -sSL https://github.com/gilanggemar/Ofiere/archive/refs/heads/main.tar.gz | tar xz && rm -rf "$OPENCLAW_HOME/extensions/ofiere" && cp -r Ofiere-main/ofiere-openclaw-plugin "$OPENCLAW_HOME/extensions/ofiere" && rm -rf Ofiere-main && echo "Plugin files installed to $OPENCLAW_HOME/extensions/ofiere"
 \`\`\`
 
 ---
 
 **Step 3: Configure environment variables**
 
-Append these EXACT lines to \`/data/.openclaw/.env\` (create the file if it doesn't exist). 
+Append these EXACT lines to OPENCLAW_HOME/.env (create the file if it doesn't exist). 
 If any of these variables already exist in the file, UPDATE their values instead of duplicating them.
 
 \`\`\`
@@ -83,8 +83,8 @@ OFIERE_USER_ID=${creds.userId}
 **Step 4: Verify**
 
 Confirm the following:
-1. The directory \`/data/.openclaw/extensions/ofiere/\` exists and contains \`index.ts\` and \`src/\`
-2. The file \`/data/.openclaw/.env\` contains all three \`OFIERE_*\` variables
+1. The directory OPENCLAW_HOME/extensions/ofiere/ exists and contains \`index.ts\` and \`src/\`
+2. The file OPENCLAW_HOME/.env contains all three \`OFIERE_*\` variables
 
 ---
 
