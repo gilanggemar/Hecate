@@ -9,6 +9,9 @@ export const OfiereConfigSchema = z.object({
   agentId: z.string().default(""),
 });
 
+// Cache the first successful config so per-agent re-registrations don't lose it
+let _cachedConfig: OfiereConfig | null = null;
+
 export function parseOfiereConfig(value: unknown): OfiereConfig {
   const raw =
     value && typeof value === "object" && !Array.isArray(value)
@@ -18,12 +21,13 @@ export function parseOfiereConfig(value: unknown): OfiereConfig {
   const configObj = raw.config as Record<string, unknown> | undefined;
 
   // Support both nested (config.supabaseUrl) and flat (supabaseUrl) access
-  // Also fall back to env vars
+  // Also fall back to env vars, then to cached config
   const supabaseUrl =
     (typeof configObj?.supabaseUrl === "string" && configObj.supabaseUrl.trim()) ||
     (typeof raw.supabaseUrl === "string" && raw.supabaseUrl.trim()) ||
     process.env.OFIERE_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
+    _cachedConfig?.supabaseUrl ||
     "";
 
   const serviceRoleKey =
@@ -31,25 +35,35 @@ export function parseOfiereConfig(value: unknown): OfiereConfig {
     (typeof raw.serviceRoleKey === "string" && raw.serviceRoleKey.trim()) ||
     process.env.OFIERE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    _cachedConfig?.serviceRoleKey ||
     "";
 
   const userId =
     (typeof configObj?.userId === "string" && configObj.userId.trim()) ||
     (typeof raw.userId === "string" && raw.userId.trim()) ||
     process.env.OFIERE_USER_ID ||
+    _cachedConfig?.userId ||
     "";
 
   const agentId =
     (typeof configObj?.agentId === "string" && configObj.agentId.trim()) ||
     (typeof raw.agentId === "string" && raw.agentId.trim()) ||
     process.env.OFIERE_AGENT_ID ||
+    _cachedConfig?.agentId ||
     "";
 
-  return OfiereConfigSchema.parse({
+  const parsed = OfiereConfigSchema.parse({
     ...raw,
     supabaseUrl,
     serviceRoleKey,
     userId,
     agentId,
   });
+
+  // Cache if this parse yielded a complete config
+  if (parsed.supabaseUrl && parsed.serviceRoleKey && parsed.userId) {
+    _cachedConfig = parsed;
+  }
+
+  return parsed;
 }

@@ -299,9 +299,9 @@ export default function SettingsPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-[280px_1fr] gap-4 min-h-[420px]">
+              <div className="grid grid-cols-[280px_1fr] gap-4 min-h-[420px] min-w-0 overflow-hidden">
                 {/* Left Column: Agent List */}
-                <div className="space-y-1.5 h-[550px] overflow-y-auto pr-2">
+                <div className="space-y-1.5 max-h-[550px] overflow-y-auto pr-2">
                   {/* Add New Agent Button */}
                   <Button
                     onClick={() => {
@@ -408,7 +408,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Right Column: Selected Agent Settings */}
-                <Card className="rounded-md border-border/40 bg-card/30 shadow-none overflow-y-auto h-[550px] relative py-0 gap-0 block">
+                <Card className="rounded-md border-border/40 bg-card/30 shadow-none overflow-hidden relative py-0 gap-0 block min-w-0">
                   {selectedAgentSettings ? (
                     (() => {
                       const agent = agents.find(
@@ -551,9 +551,9 @@ export default function SettingsPage() {
                           )}
 
                           {/* Model Selectors — Two Column: Agent Mode | Companion Mode */}
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-4 min-w-0">
                             {/* Left Column: Agent Mode */}
-                            <div className="space-y-4">
+                            <div className="space-y-4 min-w-0">
                               <div className="flex items-center gap-2 pb-1 border-b border-border/30 mb-2">
                                 <Cpu className="w-3.5 h-3.5 text-orange-400" />
                                 <span className="text-[11px] uppercase tracking-widest text-orange-400/80 font-semibold">Agent Mode</span>
@@ -616,7 +616,7 @@ export default function SettingsPage() {
                             </div>
 
                             {/* Right Column: Companion Mode */}
-                            <div className="space-y-4">
+                            <div className="space-y-4 min-w-0">
                               <div className="flex items-center gap-2 pb-1 border-b border-pink-500/20 mb-2">
                                 <Sparkles className="w-3.5 h-3.5 text-pink-400" />
                                 <span className="text-[11px] uppercase tracking-widest text-pink-400/80 font-semibold">Companion Mode</span>

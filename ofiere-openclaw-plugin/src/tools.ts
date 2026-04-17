@@ -60,8 +60,20 @@ export function registerTools(
    * Priority: explicit param > runtime context > env var fallback
    */
   async function resolveAgent(explicitId?: string): Promise<string | null> {
-    // 1. Explicit agent_id passed by the LLM (e.g. "create task for Daisy")
-    if (explicitId && explicitId.trim()) return explicitId.trim();
+    // 1. Explicit agent_id passed by the LLM (e.g. "ivy", "daisy", or a UUID)
+    if (explicitId && explicitId.trim()) {
+      const trimmed = explicitId.trim();
+      // If it looks like a UUID or our ID format, use directly
+      if (trimmed.match(/^[0-9a-f]{8}-/) || trimmed.match(/^agent-/)) {
+        return trimmed;
+      }
+      // Otherwise treat as a name and resolve to the actual agent ID
+      try {
+        return await resolveAgentId(trimmed, userId, supabase);
+      } catch {
+        return trimmed; // fallback: use as-is
+      }
+    }
 
     // 2. Runtime: read calling agent's name from OpenClaw context
     const callerName = getCallingAgentName(api);
@@ -134,21 +146,22 @@ export function registerTools(
       label: "Create Ofiere Task",
       description:
         "Create a new task in the Ofiere PM dashboard. " +
-        "If agent_id is not provided, the task is automatically assigned to you (the calling agent). " +
+        "IMPORTANT: You MUST always pass your own name as agent_id (e.g. 'ivy', 'daisy') to assign the task to yourself. " +
+        "If you want to assign to a different agent, pass their name instead. " +
         "Pass agent_id as 'none' or 'unassigned' to create an unassigned task. " +
         "The task will appear in the dashboard immediately via real-time sync.",
       parameters: {
         type: "object",
-        required: ["title"],
+        required: ["title", "agent_id"],
         properties: {
           title: { type: "string", description: "Task title (required)" },
           description: { type: "string", description: "Task description" },
           agent_id: {
             type: "string",
             description:
-              "Agent ID to assign the task to. If omitted, assigns to yourself. " +
-              "Pass 'none' or 'unassigned' to create a task with no assignee. " +
-              "Use OFIERE_LIST_AGENTS to see available agents.",
+              "REQUIRED. Your own agent name (e.g. 'ivy', 'daisy', 'celia') to self-assign, " +
+              "or another agent's name to assign to them. " +
+              "Pass 'none' or 'unassigned' to create a task with no assignee.",
           },
           status: {
             type: "string",
@@ -232,7 +245,6 @@ export function registerTools(
         }
       },
     },
-    { optional: true },
   );
 
   // ── OFIERE_UPDATE_TASK — Optional (has side effects) ─────────────────
@@ -297,7 +309,6 @@ export function registerTools(
         }
       },
     },
-    { optional: true },
   );
 
   // ── OFIERE_DELETE_TASK — Optional (destructive side effect) ──────────
@@ -352,7 +363,6 @@ export function registerTools(
         }
       },
     },
-    { optional: true },
   );
 
   // ── OFIERE_LIST_AGENTS — Required (read-only, no side effects) ───────

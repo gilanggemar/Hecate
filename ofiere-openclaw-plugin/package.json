@@ -1,6 +1,6 @@
 {
   "name": "ofiere-openclaw-plugin",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "description": "OpenClaw plugin for Ofiere PM — manage tasks, agents, and projects from your agent",
   "keywords": ["openclaw", "ofiere", "project-management", "agents", "plugin"],

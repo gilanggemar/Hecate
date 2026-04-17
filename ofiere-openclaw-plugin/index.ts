@@ -1,8 +1,7 @@
 // index.ts — Ofiere PM Plugin for OpenClaw
-// Uses definePluginEntry from the official plugin-entry subpath (NOT the deprecated monolithic root)
-// Pattern: https://docs.openclaw.ai/plugins/building-plugins#quick-start-tool-plugin
+// Matches Composio plugin pattern: plain object export + api.on()
 
-import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { parseOfiereConfig } from "./src/config.js";
 import { getSupabase } from "./src/supabase.js";
 import { registerTools } from "./src/tools.js";
@@ -10,21 +9,21 @@ import { getSystemPrompt } from "./src/prompt.js";
 import { registerCli } from "./src/cli.js";
 import { seedAgentCache } from "./src/agent-resolver.js";
 
-export default definePluginEntry({
+const ofierePlugin = {
   id: "ofiere",
   name: "Ofiere PM",
   description:
     "Manage Ofiere PM tasks, agents, and projects directly from the agent. " +
     "Create tasks, update progress, assign agents — all synced to the dashboard in real time.",
 
-  register(api) {
+  register(api: OpenClawPluginApi) {
     const config = parseOfiereConfig(api.pluginConfig);
 
     // Always register CLI (even if disabled — so user can run `openclaw ofiere setup`)
     registerCli(api);
 
     if (!config.enabled) {
-      api.logger.debug("[ofiere] Plugin disabled via config");
+      api.logger.debug?.("[ofiere] Plugin disabled via config");
       return;
     }
 
@@ -44,7 +43,6 @@ export default definePluginEntry({
 
     // ── Pre-seed agent cache if OFIERE_AGENT_ID is set (legacy mode) ──────
     if (config.agentId) {
-      // Try to extract the calling agent's name from OpenClaw context
       const callerName =
         (api as any)?.agentContext?.accountId ||
         (api as any)?.agentContext?.name ||
@@ -64,13 +62,10 @@ export default definePluginEntry({
     };
 
     // ── Hook: inject Ofiere context into every agent prompt ────────────────
-    // Uses api.registerHook (the documented API) instead of api.on shorthand
-    api.registerHook(
-      ["before_prompt_build"],
-      () => ({
-        prependSystemContext: getSystemPrompt(promptState),
-      }),
-    );
+    // Using api.on() — same pattern as Composio
+    api.on("before_prompt_build", () => ({
+      prependSystemContext: getSystemPrompt(promptState),
+    }));
 
     // ── Connect to Supabase and register tools ────────────────────────────
     try {
@@ -89,4 +84,6 @@ export default definePluginEntry({
       api.logger.error(`[ofiere] Failed to initialize: ${msg}`);
     }
   },
-});
+};
+
+export default ofierePlugin;
