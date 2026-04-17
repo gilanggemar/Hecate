@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth';
 import { resolveActiveConnection } from '@/lib/resolveActiveConnection';
-import { getAdapterForAgent } from '@/lib/workflow/adapter-registry';
+import crypto from 'crypto';
 
 /**
  * POST /api/plugin/handshake
  *
- * Zero-terminal plugin installer. Sends a setup prompt to the user's
- * OpenClaw agent via WebSocket. The agent writes plugin files and
- * env vars — no SSH, no terminal, no user intervention.
+ * Zero-terminal plugin installer. Opens a raw WebSocket to the OpenClaw gateway,
+ * sends the install prompt as a chat message, then closes immediately.
+ * Fire-and-forget — does NOT wait for the agent to finish executing.
  *
  * Body: { agentId: string }  — which agent should run the install
  */
@@ -38,33 +38,180 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No OpenClaw connection configured. Go to Settings → Console to connect.' }, { status: 400 });
         }
 
-        const adapter = getAdapterForAgent(agentId, 'openclaw', {
-            baseUrl: activeConn.openclaw.wsUrl || activeConn.openclaw.httpUrl,
-            wsToken: activeConn.openclaw.token,
-            userId,
-        });
+        const wsUrl = (activeConn.openclaw.wsUrl || activeConn.openclaw.httpUrl)
+            .replace(/^http:/, 'ws:')
+            .replace(/^https:/, 'wss:');
+        const wsToken = activeConn.openclaw.token;
 
-        // ── Build the install prompt ──
+        if (!wsUrl || !wsToken) {
+            return NextResponse.json({ error: 'OpenClaw connection URL or token is missing' }, { status: 400 });
+        }
+
         const promptText = buildInstallPrompt({
             supabaseUrl: SUPABASE_URL,
             serviceRoleKey: SERVICE_ROLE_KEY,
             userId,
         });
 
-        await adapter.invoke({
-            agentId,
-            runId: `ofiere-install-${Date.now()}`,
-            stepId: 'plugin-install',
-            task: promptText,
-            sessionKeyOverride: `nchat:${agentId}`,
-            responseMode: 'text',
-        }).catch(err => console.error('[Ofiere Plugin Install]', err));
+        // Fire-and-forget: send the message and close
+        // This avoids Vercel's serverless timeout killing the connection
+        await sendChatMessage(wsUrl, wsToken, agentId, promptText);
 
         return NextResponse.json({ success: true, message: 'Plugin install sent to agent' });
     } catch (err: any) {
-        console.error('Failed to trigger plugin install:', err);
-        return NextResponse.json({ error: err.message || 'Failed' }, { status: 500 });
+        console.error('[Plugin Install] Failed:', err);
+        return NextResponse.json({ error: err.message || 'Failed to send install instructions' }, { status: 500 });
     }
+}
+
+/**
+ * Opens a WebSocket to OpenClaw, completes HMAC handshake,
+ * sends a chat message, and closes. Resolves once the message is sent.
+ */
+async function sendChatMessage(
+    wsUrl: string,
+    wsToken: string,
+    agentId: string,
+    message: string,
+): Promise<void> {
+    let WebSocketImpl: any;
+    try {
+        WebSocketImpl = (await import('ws')).default;
+    } catch {
+        WebSocketImpl = globalThis.WebSocket;
+    }
+
+    if (!WebSocketImpl) {
+        throw new Error('No WebSocket implementation available');
+    }
+
+    return new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            try { ws?.close(); } catch {}
+            reject(new Error('Timed out connecting to OpenClaw gateway (8s)'));
+        }, 8000);
+
+        const ws = new WebSocketImpl(wsUrl);
+        let handshakeComplete = false;
+        let messageSent = false;
+
+        const handleMessage = async (rawData: any) => {
+            const data = typeof rawData === 'string' ? rawData : rawData.toString();
+            let frame: any;
+            try { frame = JSON.parse(data); } catch { return; }
+
+            // ─── Handle HMAC Challenge ───
+            if (frame.event === 'connect.challenge' || frame.event === 'challenge' || frame.nonce) {
+                const nonce = frame.payload?.nonce || frame.data?.nonce || frame.nonce;
+                if (nonce && wsToken) {
+                    try {
+                        const keyPair = await globalThis.crypto.subtle.generateKey(
+                            { name: 'Ed25519' }, true, ['sign', 'verify']
+                        );
+                        const pubRaw = await globalThis.crypto.subtle.exportKey('raw', keyPair.publicKey);
+                        const publicKeyB64 = Buffer.from(pubRaw).toString('base64url');
+                        const idHash = await globalThis.crypto.subtle.digest('SHA-256', pubRaw);
+                        const deviceId = Array.from(new Uint8Array(idHash))
+                            .map(b => b.toString(16).padStart(2, '0')).join('');
+
+                        const signedAtMs = Date.now();
+                        const payloadStr = [
+                            'v3', deviceId, 'openclaw-control-ui', 'webchat', 'operator',
+                            'operator.read,operator.write,operator.admin,operator.approvals',
+                            String(signedAtMs), wsToken, nonce, 'web', 'desktop'
+                        ].join('|');
+
+                        const encoded = new TextEncoder().encode(payloadStr);
+                        const sigBytes = await globalThis.crypto.subtle.sign(
+                            { name: 'Ed25519' }, keyPair.privateKey, encoded
+                        );
+                        const signature = Buffer.from(sigBytes).toString('base64url');
+
+                        ws.send(JSON.stringify({
+                            type: 'req', id: '__handshake__', method: 'connect',
+                            params: {
+                                minProtocol: 3, maxProtocol: 3,
+                                client: { id: 'openclaw-control-ui', version: '0.1.0', platform: 'web', deviceFamily: 'desktop', mode: 'webchat' },
+                                device: { id: deviceId, publicKey: publicKeyB64, signature, signedAt: signedAtMs, nonce },
+                                role: 'operator',
+                                scopes: ['operator.read', 'operator.write', 'operator.admin', 'operator.approvals'],
+                                caps: [], commands: [], permissions: {},
+                                auth: { token: wsToken },
+                                locale: 'en-US', userAgent: 'ofiere-plugin-install/1.0'
+                            },
+                        }));
+                    } catch (e: any) {
+                        clearTimeout(timeout);
+                        try { ws.close(); } catch {}
+                        reject(new Error(`HMAC handshake failed: ${e.message}`));
+                    }
+                }
+                return;
+            }
+
+            // ─── Handle Handshake Response ───
+            if (!handshakeComplete) {
+                const isHandshakeRes = frame.id === '__handshake__' || frame.type === 'hello-ok' || frame.status === 'connected' || frame.greeting;
+                if (isHandshakeRes) {
+                    if (frame.error || frame.ok === false) {
+                        clearTimeout(timeout);
+                        try { ws.close(); } catch {}
+                        reject(new Error(`OpenClaw handshake failed: ${JSON.stringify(frame.error)}`));
+                        return;
+                    }
+                    handshakeComplete = true;
+                    console.log('[Plugin Install] Handshake complete, sending install prompt...');
+
+                    // Send the chat message to the agent
+                    const sessionKey = `nchat:${agentId}`;
+                    ws.send(JSON.stringify({
+                        type: 'req',
+                        id: `plugin-install-${Date.now()}`,
+                        method: 'chat.send',
+                        params: {
+                            sessionKey,
+                            message,
+                            idempotencyKey: crypto.randomUUID(),
+                        },
+                    }));
+                    return;
+                }
+            }
+
+            // ─── Handle chat.send response ───
+            if (handshakeComplete && !messageSent && frame.type === 'res') {
+                messageSent = true;
+                console.log('[Plugin Install] Chat message accepted by gateway');
+                clearTimeout(timeout);
+                // Close after a short delay to ensure message is fully dispatched
+                setTimeout(() => {
+                    try { ws.close(1000, 'Install sent'); } catch {}
+                    resolve();
+                }, 500);
+            }
+        };
+
+        // Wire up events
+        if (ws.on) {
+            ws.on('message', handleMessage);
+            ws.on('error', (err: any) => {
+                clearTimeout(timeout);
+                reject(new Error(`WebSocket error: ${err?.message || 'connection failed'}`));
+            });
+            ws.on('close', () => {
+                clearTimeout(timeout);
+                if (messageSent) {
+                    resolve();
+                } else if (!handshakeComplete) {
+                    reject(new Error('WebSocket closed before handshake completed'));
+                }
+            });
+        } else {
+            ws.onmessage = (event: MessageEvent) => handleMessage(event.data);
+            ws.onerror = () => { clearTimeout(timeout); reject(new Error('WebSocket error')); };
+            ws.onclose = () => { clearTimeout(timeout); if (messageSent) resolve(); };
+        }
+    });
 }
 
 function buildInstallPrompt(creds: { supabaseUrl: string; serviceRoleKey: string; userId: string }): string {
@@ -92,16 +239,19 @@ Call this path OPENCLAW_HOME for the remaining steps.
 
 Run this command:
 \`\`\`bash
-mkdir -p $OPENCLAW_HOME/extensions && cd /tmp && rm -rf ofiere-plugin-tmp && git clone --depth 1 https://github.com/gilanggemar/Ofiere.git ofiere-plugin-tmp 2>/dev/null && rm -rf $OPENCLAW_HOME/extensions/ofiere && cp -r ofiere-plugin-tmp/ofiere-openclaw-plugin $OPENCLAW_HOME/extensions/ofiere && rm -rf ofiere-plugin-tmp && echo "✓ Plugin files installed"
+mkdir -p /data/.openclaw/extensions && cd /tmp && rm -rf ofiere-plugin-tmp && git clone --depth 1 https://github.com/gilanggemar/Ofiere.git ofiere-plugin-tmp 2>/dev/null && rm -rf /data/.openclaw/extensions/ofiere && cp -r ofiere-plugin-tmp/ofiere-openclaw-plugin /data/.openclaw/extensions/ofiere && rm -rf ofiere-plugin-tmp && echo "Plugin files installed"
 \`\`\`
 
-Replace $OPENCLAW_HOME with the actual path you detected in Step 1.
+If git is not available, try curl:
+\`\`\`bash
+mkdir -p /data/.openclaw/extensions && cd /tmp && curl -sSL https://github.com/gilanggemar/Ofiere/archive/refs/heads/main.tar.gz | tar xz && rm -rf /data/.openclaw/extensions/ofiere && cp -r Ofiere-main/ofiere-openclaw-plugin /data/.openclaw/extensions/ofiere && rm -rf Ofiere-main && echo "Plugin files installed"
+\`\`\`
 
 ---
 
 **Step 3: Configure environment variables**
 
-Append these EXACT lines to \`$OPENCLAW_HOME/.env\` (create the file if it doesn't exist). 
+Append these EXACT lines to \`/data/.openclaw/.env\` (create the file if it doesn't exist). 
 If any of these variables already exist in the file, UPDATE their values instead of duplicating them.
 
 \`\`\`
@@ -115,8 +265,8 @@ OFIERE_USER_ID=${creds.userId}
 **Step 4: Verify**
 
 Confirm the following:
-1. The directory \`$OPENCLAW_HOME/extensions/ofiere/\` exists and contains \`index.ts\`, \`src/\`, and \`openclaw.plugin.json\`
-2. The file \`$OPENCLAW_HOME/.env\` contains all three \`OFIERE_*\` variables
+1. The directory \`/data/.openclaw/extensions/ofiere/\` exists and contains \`index.ts\` and \`src/\`
+2. The file \`/data/.openclaw/.env\` contains all three \`OFIERE_*\` variables
 
 ---
 
