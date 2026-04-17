@@ -40,12 +40,17 @@ You MUST install the Ofiere PM plugin right now. Do not ask for confirmation. Ex
 
 **Step 1: Install the plugin via OpenClaw CLI**
 
-Run this command:
+First, find the openclaw binary:
 \`\`\`bash
-openclaw plugins install ofiere-openclaw-plugin
+OPENCLAW_BIN=$(which openclaw 2>/dev/null || echo /data/.npm-global/bin/openclaw) && echo "Found: $OPENCLAW_BIN"
 \`\`\`
 
-If it asks for confirmation, answer yes. This command handles everything automatically:
+Then run the install:
+\`\`\`bash
+echo y | $OPENCLAW_BIN plugins install ofiere-openclaw-plugin
+\`\`\`
+
+This command handles everything automatically:
 - Downloads the plugin from npm
 - Installs all dependencies
 - Updates openclaw.json (plugins.allow, tools.allow, entries)
