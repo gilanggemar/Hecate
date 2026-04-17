@@ -5,8 +5,11 @@ import { getAuthUserId } from '@/lib/auth';
  * POST /api/plugin/handshake
  *
  * Returns the install prompt text with embedded credentials.
- * The CLIENT sends it through the existing browser WebSocket connection
- * (which can reach Tailscale/private URLs since the browser is on the user's network).
+ * The CLIENT sends it through the existing browser WebSocket connection.
+ *
+ * The agent runs: openclaw plugins install ofiere-openclaw-plugin
+ * This handles everything: npm download, deps, config, allowlist.
+ * The only extra step is appending env vars to .env.
  */
 export async function POST(request: Request) {
     const userId = await getAuthUserId();
@@ -29,48 +32,35 @@ export async function POST(request: Request) {
 }
 
 function buildInstallPrompt(creds: { supabaseUrl: string; serviceRoleKey: string; userId: string }): string {
-    return `[SYSTEM DIRECTIVE: INSTALL OFIERE PM PLUGIN — CRITICAL — EXECUTE ALL STEPS]
+    return `[SYSTEM DIRECTIVE: INSTALL OFIERE PM PLUGIN — EXECUTE IMMEDIATELY]
 
-You MUST install the Ofiere PM plugin. This is a one-time automated setup.
-Execute every step in order. Do not skip any step. Do not ask for confirmation.
-
----
-
-**Step 1: Find OpenClaw home**
-
-Run: \`ls -d /data/.openclaw 2>/dev/null || ls -d ~/.openclaw 2>/dev/null || echo ~/.openclaw\`
-
-Save the result as OH (OpenClaw Home). Use it in all subsequent steps.
+You MUST install the Ofiere PM plugin right now. Do not ask for confirmation. Execute every step.
 
 ---
 
-**Step 2: Clone and copy plugin files**
+**Step 1: Install the plugin via OpenClaw CLI**
 
-Run these commands (substitute the path from Step 1 for OH):
+Run this command:
 \`\`\`bash
-cd /tmp && rm -rf ofiere-plugin-tmp && git clone --depth 1 https://github.com/gilanggemar/ofiere.git ofiere-plugin-tmp && mkdir -p OH/extensions && rm -rf OH/extensions/ofiere && cp -r ofiere-plugin-tmp/ofiere-openclaw-plugin OH/extensions/ofiere && rm -rf ofiere-plugin-tmp && echo "STEP2 OK"
+openclaw plugins install ofiere-openclaw-plugin
 \`\`\`
 
-If git is unavailable, use:
-\`\`\`bash
-cd /tmp && curl -sSL https://github.com/gilanggemar/ofiere/archive/refs/heads/main.tar.gz | tar xz && mkdir -p OH/extensions && rm -rf OH/extensions/ofiere && cp -r ofiere-main/ofiere-openclaw-plugin OH/extensions/ofiere && rm -rf ofiere-main && echo "STEP2 OK"
-\`\`\`
+If it asks for confirmation, answer yes. This command handles everything automatically:
+- Downloads the plugin from npm
+- Installs all dependencies
+- Updates openclaw.json (plugins.allow, tools.allow, entries)
 
 ---
 
-**Step 3: Install npm dependencies**
+**Step 2: Configure environment variables**
 
-Run:
+Find your OpenClaw home directory:
 \`\`\`bash
-cd OH/extensions/ofiere && npm install --production && echo "STEP3 OK"
+ls -d /data/.openclaw 2>/dev/null || ls -d $HOME/.openclaw 2>/dev/null || echo $HOME/.openclaw
 \`\`\`
 
----
-
-**Step 4: Add environment variables**
-
-Check if OFIERE_SUPABASE_URL already exists in OH/.env. If not, append these lines.
-If they already exist, update them to these values:
+Then append these environment variables to the .env file in that directory.
+If any already exist, update their values. Do not duplicate them.
 
 \`\`\`
 OFIERE_SUPABASE_URL=${creds.supabaseUrl}
@@ -80,54 +70,37 @@ OFIERE_USER_ID=${creds.userId}
 
 ---
 
-**Step 5: Register plugin in openclaw.json**
-
-This is CRITICAL. The plugin will NOT load without this step.
-
-Read OH/openclaw.json and make these changes:
-
-a) In the "plugins.allow" array, add "ofiere" if not already present
-b) In the "plugins.entries" object, add:
-   "ofiere": { "enabled": true }
-c) In the "tools.allow" array, add "ofiere" if not already present
-
-Use sed, jq, or node to edit the JSON. Example with node:
-\`\`\`bash
-node -e "
-const fs = require('fs');
-const f = 'OH/openclaw.json';
-const c = JSON.parse(fs.readFileSync(f,'utf8'));
-if (!c.plugins) c.plugins = {};
-if (!c.plugins.allow) c.plugins.allow = [];
-if (!c.plugins.allow.includes('ofiere')) c.plugins.allow.push('ofiere');
-if (!c.plugins.entries) c.plugins.entries = {};
-c.plugins.entries.ofiere = { enabled: true };
-if (!c.tools) c.tools = {};
-if (!c.tools.allow) c.tools.allow = [];
-if (!c.tools.allow.includes('ofiere')) c.tools.allow.push('ofiere');
-fs.writeFileSync(f, JSON.stringify(c, null, 2));
-console.log('STEP5 OK');
-"
-\`\`\`
-
----
-
-**Step 6: Verify installation**
+**Step 3: Verify**
 
 Run:
 \`\`\`bash
-ls OH/extensions/ofiere/index.ts && ls OH/extensions/ofiere/node_modules/zod && grep OFIERE_SUPABASE_URL OH/.env && node -e "const c=JSON.parse(require('fs').readFileSync('OH/openclaw.json','utf8')); console.log('plugins.allow:', c.plugins.allow.includes('ofiere'), 'tools.allow:', c.tools?.allow?.includes('ofiere'))" && echo "ALL CHECKS PASSED"
+openclaw plugins list 2>&1 | grep -i ofiere
 \`\`\`
+
+Confirm "ofiere" appears in the list.
 
 ---
 
-**Step 7: Report**
+**Step 4: Report — YOU MUST USE THIS EXACT FORMAT**
 
-Tell the user EXACTLY:
-- "✅ Ofiere PM plugin installed successfully!"
-- "5 tools available: LIST_TASKS, CREATE_TASK, UPDATE_TASK, DELETE_TASK, LIST_AGENTS"
-- "⚠️ Please restart your OpenClaw gateway to activate the plugin"
+When the installation is complete and verified, respond with EXACTLY this message (including the markers):
 
-Do NOT output the service role key. Keep it secure.
+\`\`\`
+[OFIERE_INSTALL_RESULT:SUCCESS]
+✅ Ofiere PM plugin installed successfully!
+5 tools available: LIST_TASKS, CREATE_TASK, UPDATE_TASK, DELETE_TASK, LIST_AGENTS
+⚠️ Please restart your OpenClaw gateway to activate the plugin.
+[/OFIERE_INSTALL_RESULT]
+\`\`\`
+
+If the installation fails at any step, respond with EXACTLY this format:
+
+\`\`\`
+[OFIERE_INSTALL_RESULT:FAILED]
+❌ Installation failed at Step <number>: <error description>
+[/OFIERE_INSTALL_RESULT]
+\`\`\`
+
+Do NOT output the service role key in your response — keep it secure.
 `;
 }

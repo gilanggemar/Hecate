@@ -1,5 +1,5 @@
 {
-  "name": "@ofiere-ai/openclaw-plugin",
+  "name": "ofiere-openclaw-plugin",
   "version": "1.0.0",
   "type": "module",
   "description": "OpenClaw plugin for Ofiere PM — manage tasks, agents, and projects from your agent",
