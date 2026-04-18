@@ -4,7 +4,7 @@ import { getAuthUserId } from '@/lib/auth';
 /**
  * POST /api/plugin/handshake
  *
- * Returns personalized install commands with embedded credentials.
+ * Returns personalized install AND uninstall commands with embedded credentials.
  * Provides both Docker and native variants since OpenClaw may run
  * in either environment.
  */
@@ -19,38 +19,46 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Server missing Supabase credentials' }, { status: 500 });
     }
 
-    const installScript = 'https://raw.githubusercontent.com/gilanggemar/Ofiere/main/ofiere-openclaw-plugin/install.sh';
+    const baseUrl = 'https://raw.githubusercontent.com/gilanggemar/Ofiere/main/ofiere-openclaw-plugin';
 
-    // Core args (same for both modes)
-    const args = `--supabase-url "${SUPABASE_URL}" --service-key "${SERVICE_ROLE_KEY}" --user-id "${userId}"`;
-
-    // Native variant — runs directly on the machine
-    const nativeCmd = `curl -sSL ${installScript} | bash -s -- ${args}`;
-
-    // Docker variant:
-    //   1. Finds the OpenClaw container
-    //   2. Runs install INSIDE the container with --no-restart (docker CLI unavailable inside)
-    //   3. Restarts the container from the HOST after install completes
-    const innerCmd = `curl -sSL ${installScript} | bash -s -- ${args} --no-restart`;
-    const dockerCmd = [
+    // ── Install Commands ──
+    const installArgs = `--supabase-url "${SUPABASE_URL}" --service-key "${SERVICE_ROLE_KEY}" --user-id "${userId}"`;
+    const nativeInstall = `curl -sSL ${baseUrl}/install.sh | bash -s -- ${installArgs}`;
+    const innerInstall = `curl -sSL ${baseUrl}/install.sh | bash -s -- ${installArgs} --no-restart`;
+    const dockerInstall = [
         'CONTAINER=$(docker ps --filter "name=openclaw" --format "{{.Names}}" | head -1)',
-        `docker exec -i $CONTAINER bash -c '${innerCmd}'`,
+        `docker exec -i $CONTAINER bash -c '${innerInstall}'`,
+        'docker restart $CONTAINER',
+    ].join(' && ');
+
+    // ── Uninstall Commands ──
+    const nativeUninstall = `curl -sSL ${baseUrl}/uninstall.sh | bash`;
+    const innerUninstall = `curl -sSL ${baseUrl}/uninstall.sh | bash -s -- --no-restart`;
+    const dockerUninstall = [
+        'CONTAINER=$(docker ps --filter "name=openclaw" --format "{{.Names}}" | head -1)',
+        `docker exec -i $CONTAINER bash -c '${innerUninstall}'`,
         'docker restart $CONTAINER',
     ].join(' && ');
 
     return NextResponse.json({
         success: true,
-        dockerCommand: dockerCmd,
-        nativeCommand: nativeCmd,
+        // Install
+        dockerCommand: dockerInstall,
+        nativeCommand: nativeInstall,
+        // Uninstall
+        dockerUninstall,
+        nativeUninstall,
         steps: [
             {
                 label: 'Docker (most common)',
-                command: dockerCmd,
+                command: dockerInstall,
+                uninstall: dockerUninstall,
                 description: 'If OpenClaw runs in Docker, paste this on your VPS host',
             },
             {
                 label: 'Native',
-                command: nativeCmd,
+                command: nativeInstall,
+                uninstall: nativeUninstall,
                 description: 'If OpenClaw runs directly (no Docker), paste this on your server',
             },
         ],

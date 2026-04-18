@@ -93,8 +93,12 @@ export function useChatRouter() {
             if (!matchesAgent) return false;
             
             if (m.sessionKey) {
-                // Accept the requested session type AND :main (fallback for race conditions)
-                return m.sessionKey.endsWith(`:${sessionType}`) || m.sessionKey.endsWith(':main');
+                // Accept: the requested session type, :main (fallback), or any session key
+                // associated with this agent (covers format variations from OpenClaw gateway)
+                return m.sessionKey.endsWith(`:${sessionType}`) 
+                    || m.sessionKey.endsWith(':main')
+                    || m.sessionKey.includes(`:${agentId}:`)
+                    || m.sessionKey.startsWith(`agent:${agentId}`);
             }
             
             return true;
