@@ -4,8 +4,12 @@ import { getAuthUserId } from '@/lib/auth';
 /**
  * POST /api/plugin/handshake
  *
- * Returns personalized install commands with embedded credentials.
- * Uses the install.sh script from GitHub so it always pulls the latest plugin code.
+ * Returns a personalized, single-command install script with embedded credentials.
+ * The command:
+ *   1. Downloads the plugin from npm
+ *   2. Installs all dependencies automatically
+ *   3. Configures environment variables
+ *   4. Restarts the OpenClaw gateway
  */
 export async function POST(request: Request) {
     const userId = await getAuthUserId();
@@ -18,7 +22,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Server missing Supabase credentials' }, { status: 500 });
     }
 
-    // Build the one-liner install command that uses the install.sh script from GitHub
+    // Single command that does everything
     const installCmd = [
         `curl -sSL https://raw.githubusercontent.com/gilanggemar/Ofiere/main/ofiere-openclaw-plugin/install.sh | bash -s --`,
         `--supabase-url "${SUPABASE_URL}"`,
@@ -28,14 +32,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
         success: true,
+        installCommand: installCmd,
         steps: [
             {
-                label: 'Install / Update Ofiere plugin (downloads latest from GitHub)',
+                label: 'Install Ofiere plugin (paste this into your VPS terminal)',
                 command: installCmd,
-            },
-            {
-                label: 'Restart OpenClaw gateway',
-                command: 'openclaw gateway restart',
             },
         ],
     });

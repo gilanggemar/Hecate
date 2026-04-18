@@ -3,26 +3,21 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Puzzle, Loader2, Copy, Check, ChevronDown, ChevronUp, Terminal,
+    Puzzle, Loader2, Copy, Check, ChevronUp, Terminal,
+    CheckCircle2, Package, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 
-interface InstallStep {
-    label: string;
-    command: string;
-}
-
 export function PluginInstall() {
     const [expanded, setExpanded] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [steps, setSteps] = useState<InstallStep[]>([]);
-    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-    const [copiedAll, setCopiedAll] = useState(false);
+    const [installCommand, setInstallCommand] = useState("");
+    const [copied, setCopied] = useState(false);
 
-    const handleShowSteps = useCallback(async () => {
-        if (expanded && steps.length > 0) {
+    const handleShowCommand = useCallback(async () => {
+        if (expanded && installCommand) {
             setExpanded(false);
             return;
         }
@@ -35,32 +30,24 @@ export function PluginInstall() {
             });
             const data = await res.json();
 
-            if (!res.ok) throw new Error(data.error || "Failed to load install steps");
-            if (!data.steps?.length) throw new Error("No install steps returned");
+            if (!res.ok) throw new Error(data.error || "Failed to load install command");
+            if (!data.installCommand && !data.steps?.length) throw new Error("No install command returned");
 
-            setSteps(data.steps);
+            setInstallCommand(data.installCommand || data.steps[0].command);
             setExpanded(true);
         } catch (err: any) {
-            toast.error(err.message || "Failed to load install commands");
+            toast.error(err.message || "Failed to load install command");
         } finally {
             setLoading(false);
         }
-    }, [expanded, steps]);
+    }, [expanded, installCommand]);
 
-    const copyCommand = useCallback(async (command: string, idx: number) => {
-        await navigator.clipboard.writeText(command);
-        setCopiedIdx(idx);
-        toast.success("Copied!");
-        setTimeout(() => setCopiedIdx(null), 2000);
-    }, []);
-
-    const copyAll = useCallback(async () => {
-        const allCommands = steps.map((s) => s.command).join("\n");
-        await navigator.clipboard.writeText(allCommands);
-        setCopiedAll(true);
-        toast.success("All commands copied!");
-        setTimeout(() => setCopiedAll(false), 2000);
-    }, [steps]);
+    const copyCommand = useCallback(async () => {
+        await navigator.clipboard.writeText(installCommand);
+        setCopied(true);
+        toast.success("Command copied to clipboard!");
+        setTimeout(() => setCopied(false), 2500);
+    }, [installCommand]);
 
     return (
         <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0 overflow-hidden max-w-full">
@@ -77,13 +64,13 @@ export function PluginInstall() {
                             </p>
                             <p className="text-[11px] text-muted-foreground leading-relaxed max-w-md">
                                 Gives all your agents the ability to create, update, and manage tasks directly from chat.
-                                Install once — every agent gets the tools automatically.
+                                One command installs everything — no manual setup needed.
                             </p>
                         </div>
                     </div>
 
                     <Button
-                        onClick={handleShowSteps}
+                        onClick={handleShowCommand}
                         disabled={loading}
                         size="sm"
                         className="rounded-full h-8 px-4 text-xs bg-orange-500 hover:bg-orange-600 text-white gap-1.5 shrink-0"
@@ -96,7 +83,7 @@ export function PluginInstall() {
                         ) : expanded ? (
                             <>
                                 <ChevronUp className="w-3 h-3" />
-                                Hide Steps
+                                Hide
                             </>
                         ) : (
                             <>
@@ -107,59 +94,71 @@ export function PluginInstall() {
                     </Button>
                 </div>
 
-                {/* Install steps */}
+                {/* Install command */}
                 <AnimatePresence>
-                    {expanded && steps.length > 0 && (
+                    {expanded && installCommand && (
                         <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="space-y-2 overflow-hidden"
+                            className="space-y-3 overflow-hidden"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="text-[11px] text-muted-foreground">
-                                    Run these commands in your OpenClaw terminal:
-                                </p>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={copyAll}
-                                    className="h-6 px-2 text-[10px] rounded gap-1 text-muted-foreground hover:text-foreground"
-                                >
-                                    {copiedAll ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                                    {copiedAll ? "Copied all" : "Copy all"}
-                                </Button>
+                            {/* What it does */}
+                            <div className="flex items-center gap-4 text-[10px] text-muted-foreground/70">
+                                <span className="flex items-center gap-1">
+                                    <Package className="w-3 h-3 text-orange-400/60" />
+                                    Downloads from npm
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Zap className="w-3 h-3 text-orange-400/60" />
+                                    Installs dependencies
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-orange-400/60" />
+                                    Auto-restarts gateway
+                                </span>
                             </div>
 
-                            {steps.map((step, idx) => (
-                                <div key={idx} className="group overflow-hidden">
-                                    <p className="text-[10px] text-muted-foreground/70 mb-1 font-medium">
-                                        {idx + 1}. {step.label}
-                                    </p>
-                                    <div className="flex items-stretch bg-[#0d0d0d] border border-border/40 rounded-md overflow-hidden">
-                                        <div className="flex-1 min-w-0 overflow-x-auto py-2 px-3">
-                                            <code className="text-[11px] text-orange-300/90 font-mono break-all whitespace-pre-wrap" style={{ wordBreak: 'break-all' }}>
-                                                {step.command}
-                                            </code>
-                                        </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => copyCommand(step.command, idx)}
-                                            className="px-2.5 rounded-none border-l border-border/30 text-muted-foreground hover:text-foreground hover:bg-white/5 shrink-0 self-stretch"
-                                        >
-                                            {copiedIdx === idx ? (
-                                                <Check className="w-3 h-3 text-emerald-400" />
-                                            ) : (
-                                                <Copy className="w-3 h-3" />
-                                            )}
-                                        </Button>
+                            {/* Command block */}
+                            <div className="group overflow-hidden">
+                                <p className="text-[10px] text-muted-foreground/70 mb-1.5 font-medium">
+                                    Paste this into your OpenClaw server terminal:
+                                </p>
+                                <div className="flex items-stretch bg-[#0d0d0d] border border-border/40 rounded-md overflow-hidden">
+                                    <div className="flex-1 min-w-0 overflow-x-auto py-2.5 px-3">
+                                        <code className="text-[11px] text-orange-300/90 font-mono break-all whitespace-pre-wrap" style={{ wordBreak: 'break-all' }}>
+                                            {installCommand}
+                                        </code>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={copyCommand}
+                                        className="px-3 rounded-none border-l border-border/30 text-muted-foreground hover:text-foreground hover:bg-white/5 shrink-0 self-stretch gap-1.5"
+                                    >
+                                        {copied ? (
+                                            <>
+                                                <Check className="w-3 h-3 text-emerald-400" />
+                                                <span className="text-[10px] text-emerald-400">Copied</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy className="w-3 h-3" />
+                                                <span className="text-[10px]">Copy</span>
+                                            </>
+                                        )}
+                                    </Button>
                                 </div>
-                            ))}
+                            </div>
 
-                            <div className="text-[10px] text-amber-400/70 bg-amber-500/5 border border-amber-500/15 rounded-md px-3 py-2 mt-1">
-                                💡 These commands are pre-filled with your credentials. Just copy and paste — no editing needed.
+                            {/* Info banner */}
+                            <div className="text-[10px] text-amber-400/70 bg-amber-500/5 border border-amber-500/15 rounded-md px-3 py-2">
+                                💡 This command is pre-filled with your credentials. Just copy, paste into your VPS terminal, and you're done — takes about 30 seconds.
+                            </div>
+
+                            {/* Requirements */}
+                            <div className="text-[10px] text-muted-foreground/50 flex items-center gap-3">
+                                <span>Requires: Node.js 18+, npm, SSH access to your OpenClaw server</span>
                             </div>
                         </motion.div>
                     )}
