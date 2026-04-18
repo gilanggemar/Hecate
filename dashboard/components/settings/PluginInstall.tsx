@@ -41,7 +41,7 @@ export function PluginInstall() {
 
         const gw = getGateway();
         if (!gw.isConnected) {
-            // Gateway not connected — try Supabase fallback directly
+            // Gateway not connected — try Supabase fallback
             try {
                 const res = await fetch("/api/plugin/status");
                 if (res.ok) {
@@ -54,62 +54,50 @@ export function PluginInstall() {
             return;
         }
 
-        // ── Method 1: tools.catalog (default agent) ──
+        // ── Method 1: Query tools.catalog for each connected agent ──
+        // The catalog response uses {groups[{tools[]}]} structure,
+        // so we deep-search the full JSON for "OFIERE" tool names.
         try {
-            const catalog = await gw.request('tools.catalog', { agentId: 'default' });
-            const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
-            if (Array.isArray(tools) && tools.some((t: any) => {
-                const name = typeof t === 'string' ? t : (t?.name || t?.id || t?.slug || '');
-                return name.toUpperCase().includes('OFIERE');
-            })) {
+            const agents = useSocketStore.getState().agents;
+            // Use first real agent (skip 'main' which is a meta-agent)
+            const realAgents = agents.filter((a: any) => a.id && a.id !== 'main');
+            const agentsToCheck = realAgents.length > 0 ? realAgents.slice(0, 2) : agents.slice(0, 2);
+
+            for (const agent of agentsToCheck) {
+                try {
+                    const catalog = await gw.request('tools.catalog', { agentId: agent.id });
+                    if (catalog) {
+                        const catalogStr = JSON.stringify(catalog).toUpperCase();
+                        if (catalogStr.includes('OFIERE')) {
+                            setPluginStatus("installed");
+                            return;
+                        }
+                    }
+                } catch { /* skip this agent */ }
+            }
+        } catch { /* ignore */ }
+
+        // ── Method 2: Deep-scan health response ──
+        try {
+            const health = await gw.request('health', {});
+            if (health && JSON.stringify(health).toLowerCase().includes('ofiere')) {
                 setPluginStatus("installed");
                 return;
             }
         } catch { /* continue */ }
 
-        // ── Method 2: health deep scan ──
-        try {
-            const health = await gw.request('health', {});
-            if (health) {
-                const healthStr = JSON.stringify(health).toLowerCase();
-                if (healthStr.includes('ofiere')) {
-                    setPluginStatus("installed");
-                    return;
-                }
-            }
-        } catch { /* continue */ }
-
-        // ── Method 3: handshake info ──
+        // ── Method 3: Deep-scan handshake info ──
         try {
             const gwInfo = useSocketStore.getState().gatewayInfo;
-            if (gwInfo) {
-                const infoStr = JSON.stringify(gwInfo).toLowerCase();
-                if (infoStr.includes('ofiere')) {
-                    setPluginStatus("installed");
-                    return;
-                }
+            if (gwInfo && JSON.stringify(gwInfo).toLowerCase().includes('ofiere')) {
+                setPluginStatus("installed");
+                return;
             }
         } catch { /* ignore */ }
 
-        // ── Method 4: Per-agent tools.catalog ──
-        try {
-            const agents = useSocketStore.getState().agents;
-            for (const agent of agents.slice(0, 3)) {
-                try {
-                    const catalog = await gw.request('tools.catalog', { agentId: agent.id });
-                    const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
-                    if (Array.isArray(tools) && tools.some((t: any) => {
-                        const name = typeof t === 'string' ? t : (t?.name || t?.id || t?.slug || '');
-                        return name.toUpperCase().includes('OFIERE');
-                    })) {
-                        setPluginStatus("installed");
-                        return;
-                    }
-                } catch { /* skip agent */ }
-            }
-        } catch { /* ignore */ }
-
-        // ── Method 5: Server-side check (Supabase / file presence) ──
+        // ── Method 4: Server-side Supabase check ──
+        // Works when gateway methods can't detect — e.g. if the gateway
+        // doesn't expose plugin tools in its catalog.
         try {
             const res = await fetch("/api/plugin/status");
             if (res.ok) {
