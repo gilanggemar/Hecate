@@ -8,6 +8,25 @@
 
 ---
 
+## Where Everything Lives
+
+| What | Path |
+|------|------|
+| **Plugin source code** | `d:/AI Model/2-Antigravity Projects/Ofiere/ofiere-openclaw-plugin/` |
+| **Dashboard (Next.js)** | `d:/AI Model/2-Antigravity Projects/Ofiere/dashboard/` |
+| **npm package name** | `ofiere-openclaw-plugin` (published to npmjs.com) |
+| **GitHub repo** | `gilanggemar/ofiere` (main branch) |
+| **Dashboard Task-Ops API** | `dashboard/app/api/tasks/route.ts` — maps `custom_fields` to flat fields |
+| **Dashboard Realtime Hook** | `dashboard/hooks/useRealtimeTasks.ts` — syncs DB writes to frontend stores |
+| **Dashboard Task Store** | `dashboard/lib/useTaskStore.ts` — in-memory task state with DB persistence |
+| **Dashboard TaskCardModal** | `dashboard/components/TaskCardModal.tsx` — the modal that renders execution plan/goals/constraints |
+| **PM Types** | `dashboard/lib/pm/types.ts` — TypeScript interfaces for PMExecutionStep, PMTaskGoal, etc. |
+
+> **When to check dashboard code**: If the plugin writes data correctly but the UI doesn't show it,
+> the issue is in the dashboard data flow (API route → store → component), not the plugin.
+
+---
+
 ## Architecture Summary
 
 The Ofiere OpenClaw plugin uses a **meta-tool consolidation pattern** where each "domain" of the Ofiere dashboard gets ONE registered tool with an `action` parameter for routing.
@@ -564,7 +583,13 @@ ssh root@76.13.193.227 "docker exec openclaw-bvwc-openclaw-1 cat /data/.openclaw
 
 2. **Tool count in `registerTools()` must match actual registrations.** The count is used in the system prompt: "You have N meta-tools". A mismatch confuses the LLM.
 
-3. **All handler functions must return `ToolResult`** using `ok(data)` or `err(message)`. OpenClaw expects `{ content: [{ type: "text", text: "..." }] }`.
+3. **All handler functions must return `ToolResult`** using `ok(data)` or `err(message)`. OpenClaw expects `{ content: [{ type: "text", text: "..." }] }`. The helpers are defined at the top of `tools.ts`:
+
+```typescript
+type ToolResult = { content: { type: string; text: string }[] };
+const ok  = (data: unknown): ToolResult => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
+const err = (msg: string):   ToolResult => ({ content: [{ type: "text", text: JSON.stringify({ error: msg }) }] });
+```
 
 4. **The `action` parameter MUST use `enum`** in the schema. This constrains the LLM to valid values. Without it, the LLM will invent action names like "add", "remove", "get".
 
@@ -591,6 +616,44 @@ ssh root@76.13.193.227 "docker exec openclaw-bvwc-openclaw-1 cat /data/.openclaw
 - `api.registerTool()` is the only way to register tools. Called during `register()`.
 - Tools are re-registered on every gateway restart. No persistent tool state.
 - The `api` object identity is the PLUGIN, not individual agents. Each agent shares the same plugin instance.
+
+### How to Discover New Tables for Expansion
+
+Before building a new meta-tool, verify the target tables exist and check their columns:
+
+```
+# Using the Supabase MCP server:
+mcp_supabase-mcp-server_list_tables  project_id: "wcpqanwpngqnsstcvvis"  schemas: ["public"]  verbose: true
+
+# Or query directly:
+mcp_supabase-mcp-server_execute_sql  project_id: "wcpqanwpngqnsstcvvis"  query: "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'your_table' ORDER BY ordinal_position"
+```
+
+Always verify table names and column names BEFORE writing handler code. Don't guess.
+
+### Dashboard Data Flow (Plugin → UI)
+
+When the plugin writes to Supabase, the dashboard picks it up via this chain:
+
+```
+Plugin writes to Supabase DB
+        ↓
+Supabase Realtime fires postgres_changes event
+        ↓
+useRealtimeTasks.ts receives the event
+        ↓
+mapToTaskOps() maps row → { executionPlan, goals, constraints, ... }
+        ↓
+useTaskStore updates in-memory state
+        ↓
+UI components re-render
+```
+
+If the UI doesn't show data after a plugin write:
+1. Check the DB directly (Supabase MCP → execute_sql)
+2. If data IS in DB → it's a dashboard mapping issue (check `mapToTaskOps()` in `useRealtimeTasks.ts`)
+3. If data is NOT in DB → it's a plugin handler issue (check `tools.ts`)
+4. A page refresh always forces a fresh `fetchTasks()` from the API, bypassing realtime
 
 ---
 
