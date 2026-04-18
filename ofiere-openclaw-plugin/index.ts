@@ -74,12 +74,13 @@ const ofierePlugin = {
       // Probe the api object for any agent identity info (for debugging + fallback)
       probeApiForAgentName(api, api.logger);
 
-      registerTools(api, supabase, config);
-      promptState.toolCount = 5;
+      // registerTools now returns the count — no more hardcoding
+      const toolCount = registerTools(api, supabase, config);
+      promptState.toolCount = toolCount;
       promptState.ready = true;
       const agentLabel = config.agentId || "auto-detect";
       api.logger.info(
-        `[ofiere] Ready — 5 tools registered (agent: ${agentLabel})`,
+        `[ofiere] Ready — ${toolCount} meta-tools registered (agent: ${agentLabel})`,
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

@@ -40,15 +40,27 @@ Once configured, the plugin connects to your Supabase database at gateway startu
 
 Changes made by the agent are immediately visible on the Ofiere dashboard (Vercel) via Supabase real-time subscriptions.
 
-## AI Tools
+## AI Meta-Tools
 
-| Tool | Description |
-|---|---|
-| `OFIERE_LIST_TASKS` | List and filter PM tasks |
-| `OFIERE_CREATE_TASK` | Create a new task (auto-assigns to calling agent) |
-| `OFIERE_UPDATE_TASK` | Update task fields (status, priority, progress, etc.) |
-| `OFIERE_DELETE_TASK` | Delete a task and its subtasks |
-| `OFIERE_LIST_AGENTS` | List available agents for task assignment |
+The plugin uses a scalable meta-tool architecture. Each tool handles one domain with an `action` parameter to select the operation.
+
+| Tool | Actions | Description |
+|---|---|---|
+| `OFIERE_TASK_OPS` | `list`, `create`, `update`, `delete` | Manage PM tasks — list, create, update status/priority, delete |
+| `OFIERE_AGENT_OPS` | `list` | Query available agents for task assignment |
+
+### Example
+
+```
+// Create a task
+OFIERE_TASK_OPS({ action: "create", title: "Deploy v2", agent_id: "ivy" })
+
+// List tasks
+OFIERE_TASK_OPS({ action: "list", status: "PENDING", limit: 10 })
+
+// Update a task
+OFIERE_TASK_OPS({ action: "update", task_id: "task-123", status: "DONE" })
+```
 
 ## CLI Commands
 
