@@ -568,9 +568,12 @@ export default function ChatPage() {
              if (!dbIds.has(String(m.id))) {
                  const lowerContent = rawContent.toLowerCase();
                  
-                 // Strict Deduplication: if the exact cleaned text already exists in our Supabase history,
-                 // and this isn't an actively streaming message, skip rendering this redundant gateway payload.
-                 if (dbContents.has(lowerContent) && m.streaming !== true) {
+                 // Soft Deduplication: only deduplicate if ALL conditions are met:
+                 // 1. The exact cleaned text exists in DB history
+                 // 2. The message is NOT actively streaming
+                 // 3. The message has no tool calls (tool calls carry visual state)
+                 // This prevents legitimate live responses from being silently dropped.
+                 if (dbContents.has(lowerContent) && m.streaming !== true && (!m.tool_calls || m.tool_calls.length === 0)) {
                      continue;
                  }
 

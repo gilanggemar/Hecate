@@ -83,25 +83,12 @@ export function useChatRouter() {
             }));
         }
 
-        const sessionType = options?.sessionType || 'nchat';
-
         return openClawMessages.filter(m => {
+            // Match by agentId (substring match covers format variations like "webchat:thalia")
             const matchesAgent = m.agentId === agentId ||
                                  (m.agentId && m.agentId.includes(agentId)) ||
                                  (agentId && m.agentId && agentId.includes(m.agentId));
-            
-            if (!matchesAgent) return false;
-            
-            if (m.sessionKey) {
-                // Accept: the requested session type, :main (fallback), or any session key
-                // associated with this agent (covers format variations from OpenClaw gateway)
-                return m.sessionKey.endsWith(`:${sessionType}`) 
-                    || m.sessionKey.endsWith(':main')
-                    || m.sessionKey.includes(`:${agentId}:`)
-                    || m.sessionKey.startsWith(`agent:${agentId}`);
-            }
-            
-            return true;
+            return matchesAgent;
         });
     }, [integratedAgents, a0Messages, openClawMessages]);
 

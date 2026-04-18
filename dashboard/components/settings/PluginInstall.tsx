@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Puzzle, Loader2, Copy, Check, ChevronUp, Terminal,
     CheckCircle2, Package, Zap, Container, Server, Trash2,
+    AlertCircle, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { getGateway } from "@/lib/openclawGateway";
+import { useSocketStore } from "@/lib/useSocket";
 
 type InstallMode = "docker" | "native";
 type ActionType = "install" | "uninstall";
+type PluginStatus = "checking" | "installed" | "not_installed" | "unknown";
 
 export function PluginInstall() {
     const [expanded, setExpanded] = useState(false);
@@ -23,11 +27,61 @@ export function PluginInstall() {
     const [nativeUninstall, setNativeUninstall] = useState("");
     const [mode, setMode] = useState<InstallMode>("docker");
     const [copied, setCopied] = useState(false);
+    const [pluginStatus, setPluginStatus] = useState<PluginStatus>("checking");
+    const isConnected = useSocketStore(s => s.isConnected);
 
     const activeCommand =
         action === "install"
             ? (mode === "docker" ? dockerInstall : nativeInstall)
             : (mode === "docker" ? dockerUninstall : nativeUninstall);
+
+    // Check plugin status via the live WebSocket gateway
+    const checkStatus = useCallback(async () => {
+        setPluginStatus("checking");
+        try {
+            const gw = getGateway();
+            if (!gw.isConnected) {
+                setPluginStatus("unknown");
+                return;
+            }
+
+            // Query the tools catalog from the gateway — this is the
+            // definitive source of truth for what tools are loaded
+            const catalog = await gw.request('tools.catalog', { agentId: 'default' });
+            const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
+            
+            const hasOfiere = Array.isArray(tools) && tools.some((t: any) => {
+                const name = typeof t === 'string' ? t : (t?.name || t?.id || t?.slug || '');
+                return name.toUpperCase().includes('OFIERE');
+            });
+
+            if (hasOfiere) {
+                setPluginStatus("installed");
+                return;
+            }
+
+            // Also check the health endpoint for loaded plugins
+            const health = await gw.request('health', {});
+            const plugins = health?.plugins || health?.loadedPlugins || [];
+            const extensions = health?.extensions || [];
+            
+            const hasInPlugins = [...(Array.isArray(plugins) ? plugins : []), ...(Array.isArray(extensions) ? extensions : [])].some((p: any) => {
+                const name = typeof p === 'string' ? p : (p?.name || p?.id || '');
+                return name.toLowerCase().includes('ofiere');
+            });
+
+            setPluginStatus(hasInPlugins ? "installed" : "not_installed");
+        } catch {
+            setPluginStatus("unknown");
+        }
+    }, []);
+
+    // Check on mount and when gateway connects
+    useEffect(() => {
+        if (isConnected) {
+            checkStatus();
+        }
+    }, [isConnected, checkStatus]);
 
     const fetchCommands = useCallback(async (targetAction: ActionType) => {
         setLoading(true);
@@ -74,6 +128,14 @@ export function PluginInstall() {
 
     const isUninstall = action === "uninstall";
 
+    const statusConfig = {
+        checking: { color: "text-muted-foreground/50", bg: "bg-muted-foreground/10", dotColor: "bg-muted-foreground/40", label: "Checking...", animate: true },
+        installed: { color: "text-emerald-400", bg: "bg-emerald-500/10", dotColor: "bg-emerald-400", label: "Active", animate: false },
+        not_installed: { color: "text-amber-400", bg: "bg-amber-500/10", dotColor: "bg-amber-400", label: "Not Installed", animate: false },
+        unknown: { color: "text-muted-foreground/60", bg: "bg-muted-foreground/10", dotColor: "bg-muted-foreground/40", label: "Unknown", animate: false },
+    };
+    const status = statusConfig[pluginStatus];
+
     return (
         <Card className="rounded-md border-border bg-card shadow-none py-0 gap-0 overflow-hidden max-w-full">
             <CardContent className="p-4 space-y-3 overflow-hidden max-w-full">
@@ -83,10 +145,28 @@ export function PluginInstall() {
                         <div className="w-9 h-9 rounded-md flex items-center justify-center bg-orange-500/10 text-orange-400 shrink-0 mt-0.5">
                             <Puzzle className="w-4.5 h-4.5" />
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium text-foreground">
-                                Ofiere Plugin for OpenClaw
-                            </p>
+                        <div className="space-y-1.5">
+                            <div className="flex items-center gap-2.5">
+                                <p className="text-sm font-medium text-foreground">
+                                    Ofiere Plugin for OpenClaw
+                                </p>
+                                {/* Status indicator */}
+                                <button
+                                    onClick={checkStatus}
+                                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${status.bg} ${status.color} transition-all hover:opacity-80 cursor-pointer`}
+                                    title="Click to refresh status"
+                                >
+                                    {status.animate ? (
+                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                    ) : (
+                                        <span className={`w-1.5 h-1.5 rounded-full ${status.dotColor} ${pluginStatus === "installed" ? "animate-pulse" : ""}`} />
+                                    )}
+                                    {status.label}
+                                    {pluginStatus !== "checking" && (
+                                        <RefreshCw className="w-2.5 h-2.5 opacity-40" />
+                                    )}
+                                </button>
+                            </div>
                             <p className="text-[11px] text-muted-foreground leading-relaxed max-w-md">
                                 Gives all your agents the ability to create, update, and manage tasks directly from chat.
                                 One command installs everything — no manual setup needed.
@@ -167,7 +247,7 @@ export function PluginInstall() {
 
                             {isUninstall && (
                                 <div className="text-[10px] text-red-400/70 bg-red-500/5 border border-red-500/15 rounded-md px-3 py-2">
-                                    ⚠️ This will completely remove the Ofiere plugin, its environment variables, and its config entries from your OpenClaw installation. 
+                                    ⚠️ This will completely remove the Ofiere plugin, its environment variables, and its config entries from your OpenClaw installation.
                                     All agents will lose access to task management tools.
                                 </div>
                             )}
@@ -211,7 +291,7 @@ export function PluginInstall() {
                                         : "SSH into your OpenClaw server and paste:"}
                                 </p>
                                 <div className={`flex items-stretch border rounded-md overflow-hidden ${
-                                    isUninstall 
+                                    isUninstall
                                         ? "bg-[#0d0d0d] border-red-900/30"
                                         : "bg-[#0d0d0d] border-border/40"
                                 }`}>

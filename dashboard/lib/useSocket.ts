@@ -630,12 +630,21 @@ export function useSocket() {
                 p.tool_calls = [...(p.tool_calls || []), extractedTool];
             }
 
-            // Resolve agentId
+            // Resolve agentId — never default to a specific agent name; use session-derived ID
             const startId = (p.runId ?? p.requestId) || null;
             const mappedAgentId = startId ? runIdToAgent.current.get(startId) : null;
             const sessionAgentId = p.sessionKey ? agentIdFromSessionKey(p.sessionKey) : null;
-            const finalAgentId = p.agentId ?? p.message?.agentId ?? mappedAgentId ?? sessionAgentId ?? 'ivy';
+            // Try to derive from parent runId mapping if this is a sub-run
+            const parentRunId = p.parentRunId ?? p.parent_run_id;
+            const parentAgentId = parentRunId ? runIdToAgent.current.get(parentRunId) : null;
+            const finalAgentId = p.agentId ?? p.message?.agentId ?? mappedAgentId ?? parentAgentId ?? sessionAgentId ?? 'unknown';
             const finalSessionKey = p.sessionKey || (startId && runIdToSessionKey.current?.get(startId)) || `agent:${finalAgentId}:nchat`;
+            
+            // Forward-map this runId so sub-runs can inherit the agent
+            if (startId && finalAgentId !== 'unknown' && !runIdToAgent.current.has(startId)) {
+                runIdToAgent.current.set(startId, finalAgentId);
+                runIdToSessionKey.current.set(startId, finalSessionKey);
+            }
 
             if (routeToSummit && runId && contentChunk) {
                 const existing = useSocketStore.getState().summitMessages.find(m => m.runId === runId);
