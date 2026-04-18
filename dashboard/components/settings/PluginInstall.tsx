@@ -41,12 +41,20 @@ export function PluginInstall() {
 
         const gw = getGateway();
         if (!gw.isConnected) {
+            // Gateway not connected — try Supabase fallback directly
+            try {
+                const res = await fetch("/api/plugin/status");
+                if (res.ok) {
+                    const data = await res.json();
+                    setPluginStatus(data.installed ? "installed" : "not_installed");
+                    return;
+                }
+            } catch { /* ignore */ }
             setPluginStatus("unknown");
             return;
         }
 
-        // ── Method 1: tools.catalog ──
-        // The definitive source — lists every tool the gateway has loaded.
+        // ── Method 1: tools.catalog (default agent) ──
         try {
             const catalog = await gw.request('tools.catalog', { agentId: 'default' });
             const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
@@ -57,12 +65,9 @@ export function PluginInstall() {
                 setPluginStatus("installed");
                 return;
             }
-        } catch {
-            // tools.catalog may not be supported — continue to next method
-        }
+        } catch { /* continue */ }
 
-        // ── Method 2: health → deep scan the entire JSON for "ofiere" ──
-        // This catches any mention in plugins, extensions, tools, channels, etc.
+        // ── Method 2: health deep scan ──
         try {
             const health = await gw.request('health', {});
             if (health) {
@@ -72,12 +77,9 @@ export function PluginInstall() {
                     return;
                 }
             }
-        } catch {
-            // health may fail — continue
-        }
+        } catch { /* continue */ }
 
-        // ── Method 3: Check handshake info stored in the socketStore ──
-        // The handshake payload from initial connection often lists plugins.
+        // ── Method 3: handshake info ──
         try {
             const gwInfo = useSocketStore.getState().gatewayInfo;
             if (gwInfo) {
@@ -87,15 +89,12 @@ export function PluginInstall() {
                     return;
                 }
             }
-        } catch {
-            // ignore
-        }
+        } catch { /* ignore */ }
 
-        // ── Method 4: Query each agent's tools individually ──
-        // Some gateways only expose tools per-agent.
+        // ── Method 4: Per-agent tools.catalog ──
         try {
             const agents = useSocketStore.getState().agents;
-            for (const agent of agents.slice(0, 3)) { // check first 3 agents max
+            for (const agent of agents.slice(0, 3)) {
                 try {
                     const catalog = await gw.request('tools.catalog', { agentId: agent.id });
                     const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
@@ -106,15 +105,22 @@ export function PluginInstall() {
                         setPluginStatus("installed");
                         return;
                     }
-                } catch {
-                    // skip this agent
+                } catch { /* skip agent */ }
+            }
+        } catch { /* ignore */ }
+
+        // ── Method 5: Server-side check (Supabase / file presence) ──
+        try {
+            const res = await fetch("/api/plugin/status");
+            if (res.ok) {
+                const data = await res.json();
+                if (data.installed) {
+                    setPluginStatus("installed");
+                    return;
                 }
             }
-        } catch {
-            // ignore
-        }
+        } catch { /* ignore */ }
 
-        // If gateway is connected but nothing found → definitively not installed
         setPluginStatus("not_installed");
     }, []);
 

@@ -1,111 +1,72 @@
 import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * GET /api/plugin/status
  *
- * Checks if the Ofiere plugin is currently installed and active
- * by querying the OpenClaw gateway for registered tools.
+ * Checks if the Ofiere plugin is currently installed by:
+ * 1. Checking if the user has tasks in the tasks table (plugin was used)
+ * 2. Checking if OFIERE env vars exist in the connection profile
  */
 export async function GET() {
     const userId = await getAuthUserId();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || process.env.NEXT_PUBLIC_OPENCLAW_URL || '';
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-    if (!GATEWAY_URL) {
-        return NextResponse.json({ installed: false, reason: 'no_gateway', message: 'No OpenClaw gateway configured' });
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+        return NextResponse.json({ installed: false, reason: 'no_config' });
     }
 
     try {
-        // Try to check via the gateway's health or tools endpoint
-        const wsUrl = GATEWAY_URL.replace(/^ws/, 'http').replace(/\/ws\/?$/, '');
+        const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+        // Method 1: Check if the user has any agents in the agents table
+        // that were created by the Ofiere plugin
+        const { data: agents, error: agentsErr } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('user_id', userId)
+            .limit(1);
         
-        // Method 1: Check via REST health endpoint (most OpenClaw setups expose this)
-        const healthRes = await fetch(`${wsUrl}/api/health`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(5000),
-        }).catch(() => null);
-
-        if (healthRes?.ok) {
-            const health = await healthRes.json().catch(() => null);
-            
-            // Check if ofiere tools are in the registered tools list
-            const tools = health?.tools || health?.registeredTools || [];
-            const plugins = health?.plugins || health?.loadedPlugins || [];
-            
-            const hasOfiereTools = Array.isArray(tools) && tools.some((t: any) => {
-                const name = typeof t === 'string' ? t : t?.name || t?.id || '';
-                return name.toLowerCase().includes('ofiere');
-            });
-            
-            const hasOfierePlugin = Array.isArray(plugins) && plugins.some((p: any) => {
-                const name = typeof p === 'string' ? p : p?.name || p?.id || '';
-                return name.toLowerCase().includes('ofiere');
-            });
-
-            if (hasOfiereTools || hasOfierePlugin) {
-                return NextResponse.json({ installed: true, source: 'health' });
-            }
+        // If agents table exists and has data for this user, plugin is active
+        if (!agentsErr && agents && agents.length > 0) {
+            return NextResponse.json({ installed: true, source: 'agents_table' });
         }
 
-        // Method 2: Check via tools.list RPC (if gateway supports it)
-        const toolsRes = await fetch(`${wsUrl}/api/tools`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(5000),
-        }).catch(() => null);
+        // Method 2: Check the tasks table for this user
+        const { data: tasks, error: tasksErr } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('user_id', userId)
+            .limit(1);
 
-        if (toolsRes?.ok) {
-            const toolsData = await toolsRes.json().catch(() => null);
-            const toolsList = toolsData?.tools || toolsData || [];
-            
-            if (Array.isArray(toolsList)) {
-                const hasOfiere = toolsList.some((t: any) => {
-                    const name = typeof t === 'string' ? t : t?.name || t?.id || '';
-                    return name.toLowerCase().includes('ofiere');
-                });
-                if (hasOfiere) {
-                    return NextResponse.json({ installed: true, source: 'tools' });
+        if (!tasksErr && tasks && tasks.length > 0) {
+            return NextResponse.json({ installed: true, source: 'tasks_table' });
+        }
+
+        // Method 3: Check if the connection profile has OFIERE credentials stored
+        const { data: profiles } = await supabase
+            .from('connection_profiles')
+            .select('openclaw_config')
+            .eq('user_id', userId)
+            .limit(1);
+
+        if (profiles && profiles.length > 0) {
+            const config = profiles[0]?.openclaw_config;
+            if (config) {
+                const configStr = JSON.stringify(config).toLowerCase();
+                if (configStr.includes('ofiere')) {
+                    return NextResponse.json({ installed: true, source: 'connection_profile' });
                 }
             }
         }
 
-        // Method 3: Fallback — check if the Supabase table has records for this user
-        // (indicates the plugin was at least configured and used)
-        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-        
-        if (SUPABASE_URL && SERVICE_ROLE_KEY) {
-            const sbRes = await fetch(
-                `${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${userId}&select=id&limit=1`,
-                {
-                    headers: {
-                        'apikey': SERVICE_ROLE_KEY,
-                        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-                    },
-                    signal: AbortSignal.timeout(3000),
-                }
-            ).catch(() => null);
-
-            // If tasks table exists and has records, plugin was installed at some point
-            // But this only tells us it WAS installed, not that it IS installed now
-            // So we return 'unknown' status to be safe
-        }
-
-        // If we couldn't detect the plugin via any method, report it as not detected
-        return NextResponse.json({ 
-            installed: false, 
-            reason: 'not_detected',
-            message: 'Ofiere tools not found in gateway. Plugin may not be installed or gateway may need a restart.'
-        });
-        
+        // Nothing found
+        return NextResponse.json({ installed: false, reason: 'no_data' });
     } catch (err: any) {
-        return NextResponse.json({ 
-            installed: false, 
-            reason: 'error',
-            message: err.message || 'Failed to check plugin status'
-        });
+        return NextResponse.json({ installed: false, reason: 'error', message: err.message });
     }
 }
