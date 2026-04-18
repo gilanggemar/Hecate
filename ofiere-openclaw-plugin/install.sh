@@ -186,7 +186,59 @@ append_env "OFIERE_SUPABASE_URL" "$SUPABASE_URL"
 append_env "OFIERE_SERVICE_ROLE_KEY" "$SERVICE_KEY"
 append_env "OFIERE_USER_ID" "$USER_ID"
 
-# ── Step 4: Verify plugin loads ──────────────────────────────────────────────
+# ── Step 4: Register plugin in openclaw.json ─────────────────────────────────
+
+echo "→ Registering plugin in OpenClaw config..."
+
+CONFIG_FILE="$OPENCLAW_HOME/openclaw.json"
+
+if [[ -f "$CONFIG_FILE" ]]; then
+  # Use Node.js for safe JSON manipulation (we already verified node exists)
+  REGISTER_RESULT=$(node -e "
+    const fs = require('fs');
+    const p = '$CONFIG_FILE';
+    const c = JSON.parse(fs.readFileSync(p, 'utf8'));
+
+    let changed = false;
+
+    // Ensure plugins.allow exists and includes 'ofiere'
+    if (!c.plugins) c.plugins = {};
+    if (!c.plugins.allow) c.plugins.allow = [];
+    if (!c.plugins.allow.includes('ofiere')) {
+      c.plugins.allow.push('ofiere');
+      changed = true;
+    }
+
+    // Ensure tools.allow exists and includes 'ofiere'
+    if (!c.tools) c.tools = {};
+    if (!c.tools.allow) c.tools.allow = [];
+    if (!c.tools.allow.includes('ofiere')) {
+      c.tools.allow.push('ofiere');
+      changed = true;
+    }
+
+    if (changed) {
+      fs.writeFileSync(p, JSON.stringify(c, null, 2) + String.fromCharCode(10));
+      console.log('REGISTERED');
+    } else {
+      console.log('ALREADY_REGISTERED');
+    }
+  " 2>&1) || true
+
+  if [[ "$REGISTER_RESULT" == "REGISTERED" ]]; then
+    echo "  ✓ Added 'ofiere' to plugins.allow and tools.allow"
+  elif [[ "$REGISTER_RESULT" == "ALREADY_REGISTERED" ]]; then
+    echo "  ✓ Plugin already registered in config"
+  else
+    echo "  ⚠ Could not update openclaw.json: $REGISTER_RESULT"
+    echo "    You may need to manually add 'ofiere' to plugins.allow and tools.allow"
+  fi
+else
+  echo "  ⚠ openclaw.json not found at $CONFIG_FILE"
+  echo "    OpenClaw will auto-discover the plugin from the extensions directory."
+fi
+
+# ── Step 5: Verify plugin loads ──────────────────────────────────────────────
 
 echo "→ Verifying plugin..."
 
@@ -208,7 +260,7 @@ else
   echo "    The plugin may still work — OpenClaw uses its own module loader."
 fi
 
-# ── Step 5: Auto-restart gateway ─────────────────────────────────────────────
+# ── Step 6: Auto-restart gateway ─────────────────────────────────────────────
 
 if [[ "$NO_RESTART" == "true" ]]; then
   echo ""
