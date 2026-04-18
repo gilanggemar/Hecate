@@ -183,7 +183,7 @@ function uid(): string {
 function agentIdFromSessionKey(key: string): string {
     const parts = key.split(':');
     if (parts[0] === 'agent' && parts.length >= 2) return parts[1];
-    return 'ivy';
+    return 'unknown';
 }
 
 /**
@@ -786,19 +786,37 @@ export function useSocket() {
         // Agent events (new protocol: tool calls, thinking, lifecycle, assistant deltas)
         gw.on('agent', (payload) => {
             const p = payload;
-            if (p.stream === 'lifecycle' && p.data?.phase === 'end' && p.runId) {
-                const lifecycleRunId = p.runId;
+
+            // ── Resolve agentId for ALL agent events ──
+            // This is critical: event:agent payloads carry sessionKey/agentId
+            // that we use to bridge text into chatMessages.
+            const agentRunId = p.runId;
+            const agentSessionKey = p.sessionKey || (p.data?.sessionKey);
+            const agentPayloadId = p.agentId || p.data?.agentId;
+            const agentFromSession = agentSessionKey ? agentIdFromSessionKey(agentSessionKey) : null;
+            const agentFromMap = agentRunId ? runIdToAgent.current.get(agentRunId) : null;
+            const resolvedAgentId = agentPayloadId || agentFromMap || agentFromSession || 'unknown';
+            const resolvedSessionKey = agentSessionKey || `agent:${resolvedAgentId}:nchat`;
+
+            // Forward-map this runId so future events inherit the agent
+            if (agentRunId && resolvedAgentId !== 'unknown' && !runIdToAgent.current.has(agentRunId)) {
+                runIdToAgent.current.set(agentRunId, resolvedAgentId);
+                runIdToSessionKey.current.set(agentRunId, resolvedSessionKey);
+            }
+
+            // ── Lifecycle: end → finalize chat message ──
+            if (p.stream === 'lifecycle' && p.data?.phase === 'end' && agentRunId) {
+                const lifecycleRunId = agentRunId;
 
                 // Log telemetry for completed OpenClaw agent run
                 const startTime = runIdToStartTime.current.get(lifecycleRunId) || Date.now();
                 const inputText = runIdToInputText.current.get(lifecycleRunId) || '';
                 const completedMsgForTelemetry = useSocketStore.getState().chatMessages.find(m => m.id === `reply-${lifecycleRunId}`);
                 const outputText = completedMsgForTelemetry?.content || '';
-                const agentId = runIdToAgent.current.get(lifecycleRunId) || 'unknown';
 
                 if (outputText || inputText) {
                     logChatTelemetry({
-                        agentId,
+                        agentId: resolvedAgentId,
                         inputText,
                         outputText,
                         latencyMs: Date.now() - startTime,
@@ -814,12 +832,39 @@ export function useSocket() {
                     const existing = useSocketStore.getState().summitMessages.find(m => m.runId === lifecycleRunId);
                     if (existing) updateSummitMessage(existing.id, { streaming: false });
                 } else {
-                    // Re-parse at lifecycle end too (backup for 'done' event)
                     const completedMsg = useSocketStore.getState().chatMessages.find(m => m.id === `reply-${lifecycleRunId}`);
-                    if (completedMsg && completedMsg.content && (!completedMsg.tool_calls || completedMsg.tool_calls.length === 0)) {
-                        const finalParse = parseOpenClawToolCalls(completedMsg.content);
-                        if (finalParse.toolCalls.length > 0) {
-                            const finalToolCalls = finalParse.toolCalls.map((tc) => ({
+                    if (completedMsg) {
+                        // Re-parse for tool calls at lifecycle end
+                        if (completedMsg.content && (!completedMsg.tool_calls || completedMsg.tool_calls.length === 0)) {
+                            const finalParse = parseOpenClawToolCalls(completedMsg.content);
+                            if (finalParse.toolCalls.length > 0) {
+                                const finalToolCalls = finalParse.toolCalls.map((tc) => ({
+                                    id: tc.id,
+                                    type: 'function' as const,
+                                    function: { name: tc.toolName, arguments: JSON.stringify(tc.input) },
+                                    output: tc.output ? JSON.stringify(tc.output) : undefined,
+                                    status: tc.status,
+                                    _parsed: tc,
+                                }));
+                                updateChatMessage(`reply-${lifecycleRunId}`, {
+                                    streaming: false,
+                                    content: finalParse.cleanedText,
+                                    tool_calls: finalToolCalls,
+                                });
+                            } else {
+                                updateChatMessage(`reply-${lifecycleRunId}`, { streaming: false });
+                            }
+                        } else {
+                            updateChatMessage(`reply-${lifecycleRunId}`, { streaming: false });
+                        }
+                    } else {
+                        // ── BRIDGE: No chatMessage exists yet — create from OpenClawStore's accumulated run ──
+                        // This handles the case where the gateway sent text only via event:agent,
+                        // never via event:chat (common after tool calls).
+                        const ocRun = useOpenClawStore.getState().activeRuns.get(lifecycleRunId);
+                        if (ocRun && ocRun.assistantText.trim() && resolvedAgentId !== 'unknown') {
+                            const finalParse = parseOpenClawToolCalls(ocRun.assistantText);
+                            const toolCallsMapped = finalParse.toolCalls.map((tc) => ({
                                 id: tc.id,
                                 type: 'function' as const,
                                 function: { name: tc.toolName, arguments: JSON.stringify(tc.input) },
@@ -827,26 +872,61 @@ export function useSocket() {
                                 status: tc.status,
                                 _parsed: tc,
                             }));
-                            updateChatMessage(`reply-${lifecycleRunId}`, {
+                            addChatMessage({
+                                id: `reply-${lifecycleRunId}`,
+                                role: 'assistant' as const,
+                                content: finalParse.cleanedText || ocRun.assistantText,
+                                timestamp: new Date().toLocaleTimeString(),
+                                agentId: resolvedAgentId,
+                                sessionKey: resolvedSessionKey,
                                 streaming: false,
-                                content: finalParse.cleanedText,
-                                tool_calls: finalToolCalls,
-                            });
-                        } else {
-                            updateChatMessage(`reply-${lifecycleRunId}`, { streaming: false });
+                                tool_calls: toolCallsMapped.length > 0 ? toolCallsMapped : (ocRun.toolCalls.length > 0 ? ocRun.toolCalls.map(tc => ({
+                                    id: tc.id,
+                                    status: tc.status,
+                                    function: { name: tc.toolName, arguments: JSON.stringify(tc.input) },
+                                    output: tc.output,
+                                })) : []),
+                            } as any);
                         }
-                    } else {
-                        updateChatMessage(`reply-${lifecycleRunId}`, { streaming: false });
                     }
                 }
             }
 
-            // Handle assistant stream text that contains JSON code block tool calls
-            if (p.stream === 'assistant' && p.runId) {
-                const runId = p.runId;
-                const text = p.data?.text || p.data?.delta || '';
+            // ── Bridge: assistant stream text → chatMessages ──
+            // The gateway sends post-tool-call text ONLY via event:agent stream:'assistant',
+            // NOT via event:chat. We must bridge this text to chatMessages for the chat UI.
+            if (p.stream === 'assistant' && agentRunId) {
+                const runId = agentRunId;
+                const delta = p.data?.delta || '';
+                const fullText = p.data?.text || p.data?.content || '';
+                const text = delta || fullText;
+
+                if (text && !summitRunIds.has(runId) && resolvedAgentId !== 'unknown') {
+                    const existing = useSocketStore.getState().chatMessages.find(m => m.id === `reply-${runId}`);
+                    if (existing) {
+                        // Update existing message with new text
+                        if (delta) {
+                            updateChatMessage(`reply-${runId}`, { content: existing.content + delta });
+                        } else if (fullText && fullText.length >= existing.content.length) {
+                            updateChatMessage(`reply-${runId}`, { content: fullText });
+                        }
+                    } else {
+                        // Create new chat message from agent event
+                        addChatMessage({
+                            id: `reply-${runId}`,
+                            role: 'assistant' as const,
+                            content: text,
+                            timestamp: new Date().toLocaleTimeString(),
+                            agentId: resolvedAgentId,
+                            sessionKey: resolvedSessionKey,
+                            streaming: true,
+                            tool_calls: [],
+                        } as any);
+                    }
+                }
+
+                // Also parse for inline tool calls (original behavior)
                 if (text) {
-                    // Parse the accumulated text for tool calls
                     const parseResult = parseOpenClawToolCalls(text);
                     if (parseResult.toolCalls.length > 0) {
                         const routeToSummit = summitRunIds.has(runId);
@@ -876,7 +956,6 @@ export function useSocket() {
                                 }
                             }
                         } else {
-                            // Message not created yet (event:chat hasn't arrived). Buffer these tools!
                             const newTools = parseResult.toolCalls.map(tc => ({
                                 id: tc.id,
                                 type: 'function' as const,
@@ -885,12 +964,10 @@ export function useSocket() {
                                 status: tc.status,
                                 _parsed: tc,
                             }));
-
                             if (newTools.length > 0) {
                                 const buffered = pendingToolCalls.current.get(runId) || [];
                                 const existingIds = new Set(buffered.map(tc => tc.id));
                                 const uniqueNewTools = newTools.filter(tc => !existingIds.has(tc.id));
-
                                 if (uniqueNewTools.length > 0) {
                                     pendingToolCalls.current.set(runId, [...buffered, ...uniqueNewTools]);
                                 }
