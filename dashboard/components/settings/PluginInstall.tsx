@@ -38,42 +38,84 @@ export function PluginInstall() {
     // Check plugin status via the live WebSocket gateway
     const checkStatus = useCallback(async () => {
         setPluginStatus("checking");
-        try {
-            const gw = getGateway();
-            if (!gw.isConnected) {
-                setPluginStatus("unknown");
-                return;
-            }
 
-            // Query the tools catalog from the gateway — this is the
-            // definitive source of truth for what tools are loaded
+        const gw = getGateway();
+        if (!gw.isConnected) {
+            setPluginStatus("unknown");
+            return;
+        }
+
+        // ── Method 1: tools.catalog ──
+        // The definitive source — lists every tool the gateway has loaded.
+        try {
             const catalog = await gw.request('tools.catalog', { agentId: 'default' });
             const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
-            
-            const hasOfiere = Array.isArray(tools) && tools.some((t: any) => {
+            if (Array.isArray(tools) && tools.some((t: any) => {
                 const name = typeof t === 'string' ? t : (t?.name || t?.id || t?.slug || '');
                 return name.toUpperCase().includes('OFIERE');
-            });
-
-            if (hasOfiere) {
+            })) {
                 setPluginStatus("installed");
                 return;
             }
-
-            // Also check the health endpoint for loaded plugins
-            const health = await gw.request('health', {});
-            const plugins = health?.plugins || health?.loadedPlugins || [];
-            const extensions = health?.extensions || [];
-            
-            const hasInPlugins = [...(Array.isArray(plugins) ? plugins : []), ...(Array.isArray(extensions) ? extensions : [])].some((p: any) => {
-                const name = typeof p === 'string' ? p : (p?.name || p?.id || '');
-                return name.toLowerCase().includes('ofiere');
-            });
-
-            setPluginStatus(hasInPlugins ? "installed" : "not_installed");
         } catch {
-            setPluginStatus("unknown");
+            // tools.catalog may not be supported — continue to next method
         }
+
+        // ── Method 2: health → deep scan the entire JSON for "ofiere" ──
+        // This catches any mention in plugins, extensions, tools, channels, etc.
+        try {
+            const health = await gw.request('health', {});
+            if (health) {
+                const healthStr = JSON.stringify(health).toLowerCase();
+                if (healthStr.includes('ofiere')) {
+                    setPluginStatus("installed");
+                    return;
+                }
+            }
+        } catch {
+            // health may fail — continue
+        }
+
+        // ── Method 3: Check handshake info stored in the socketStore ──
+        // The handshake payload from initial connection often lists plugins.
+        try {
+            const gwInfo = useSocketStore.getState().gatewayInfo;
+            if (gwInfo) {
+                const infoStr = JSON.stringify(gwInfo).toLowerCase();
+                if (infoStr.includes('ofiere')) {
+                    setPluginStatus("installed");
+                    return;
+                }
+            }
+        } catch {
+            // ignore
+        }
+
+        // ── Method 4: Query each agent's tools individually ──
+        // Some gateways only expose tools per-agent.
+        try {
+            const agents = useSocketStore.getState().agents;
+            for (const agent of agents.slice(0, 3)) { // check first 3 agents max
+                try {
+                    const catalog = await gw.request('tools.catalog', { agentId: agent.id });
+                    const tools: any[] = catalog?.tools || catalog?.items || catalog || [];
+                    if (Array.isArray(tools) && tools.some((t: any) => {
+                        const name = typeof t === 'string' ? t : (t?.name || t?.id || t?.slug || '');
+                        return name.toUpperCase().includes('OFIERE');
+                    })) {
+                        setPluginStatus("installed");
+                        return;
+                    }
+                } catch {
+                    // skip this agent
+                }
+            }
+        } catch {
+            // ignore
+        }
+
+        // If gateway is connected but nothing found → definitively not installed
+        setPluginStatus("not_installed");
     }, []);
 
     // Check on mount and when gateway connects
