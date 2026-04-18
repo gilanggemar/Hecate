@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Ofiere PM Plugin — Foolproof Installer for OpenClaw
+# Ofiere PM Plugin — Bulletproof Installer for OpenClaw
 #
-# This script NEVER modifies openclaw.json. It only:
-#   1. Downloads plugin files to the extensions directory
-#   2. Appends env vars to the .env file (idempotent)
-#
-# OpenClaw auto-discovers plugins in the extensions directory.
+# Downloads the plugin from npm, installs all dependencies automatically,
+# configures environment variables, and optionally restarts the gateway.
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/gilanggemar/Ofiere/main/ofiere-openclaw-plugin/install.sh | bash -s -- \
@@ -17,8 +14,8 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/gilanggemar/Ofiere.git"
-PLUGIN_SUBDIR="ofiere-openclaw-plugin"
+PLUGIN_PKG="ofiere-openclaw-plugin"
+NO_RESTART=false
 
 # ── Auto-detect OpenClaw home ────────────────────────────────────────────────
 
@@ -55,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     --supabase-url)  SUPABASE_URL="$2";  shift 2 ;;
     --service-key)   SERVICE_KEY="$2";   shift 2 ;;
     --user-id)       USER_ID="$2";       shift 2 ;;
+    --no-restart)    NO_RESTART=true;    shift ;;
     *)               echo "Unknown option: $1"; exit 1 ;;
   esac
 done
@@ -63,7 +61,7 @@ done
 
 if [[ -z "$SUPABASE_URL" || -z "$SERVICE_KEY" || -z "$USER_ID" ]]; then
   echo ""
-  echo "Ofiere PM Plugin — Foolproof Installer"
+  echo "Ofiere PM Plugin — Installer"
   echo ""
   echo "Usage:"
   echo "  curl -sSL https://raw.githubusercontent.com/gilanggemar/Ofiere/main/ofiere-openclaw-plugin/install.sh | bash -s -- \\"
@@ -71,68 +69,98 @@ if [[ -z "$SUPABASE_URL" || -z "$SERVICE_KEY" || -z "$USER_ID" ]]; then
   echo "    --service-key \"eyJ...\" \\"
   echo "    --user-id \"your-uuid\""
   echo ""
-  echo "Only 3 parameters needed. No agent ID required — all agents get the plugin automatically."
+  echo "Only 3 parameters needed. All agents get the plugin automatically."
   echo ""
   exit 1
 fi
+
+# ── Pre-flight checks ───────────────────────────────────────────────────────
 
 echo ""
 echo "╔═══════════════════════════════════════════════╗"
 echo "║   Ofiere PM Plugin — Installing...            ║"
 echo "╚═══════════════════════════════════════════════╝"
 echo ""
+
+# Check Node.js
+if ! command -v node &>/dev/null; then
+  echo "  ✗ Node.js not found."
+  echo "    Install Node.js 18+ first: https://nodejs.org"
+  exit 1
+fi
+
+NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
+if [[ "$NODE_VERSION" -lt 18 ]]; then
+  echo "  ✗ Node.js version $(node -v) is too old. Need v18+."
+  exit 1
+fi
+echo "  ✓ Node.js $(node -v)"
+
+# Check npm
+if ! command -v npm &>/dev/null; then
+  echo "  ✗ npm not found."
+  exit 1
+fi
+echo "  ✓ npm $(npm -v)"
+
+echo ""
 echo "  OpenClaw Home:  $OPENCLAW_HOME"
 echo "  Plugin Target:  $PLUGIN_DIR"
 echo ""
 
-# ── Step 1: Download plugin files ────────────────────────────────────────────
-# Strategy: git clone if available, otherwise curl tarball
+# ── Step 1: Download plugin from npm ─────────────────────────────────────────
 
-mkdir -p "$EXTENSIONS_DIR"
+mkdir -p "$PLUGIN_DIR"
 
-if [[ -d "$PLUGIN_DIR/.git" ]] || [[ -d "$PLUGIN_DIR/src" ]]; then
-  echo "→ Plugin already exists, updating..."
-  # If we originally cloned it, try to pull
-  if [[ -d "$PLUGIN_DIR/.git" ]]; then
-    cd "$PLUGIN_DIR"
-    git pull --quiet 2>/dev/null || true
-    cd - > /dev/null
-  else
-    # Re-download via tarball
-    TMP_DIR=$(mktemp -d)
-    if command -v git &>/dev/null; then
-      git clone --depth 1 --single-branch --branch main "$REPO_URL" "$TMP_DIR/ofiere-repo" 2>/dev/null
-      rm -rf "$PLUGIN_DIR"
-      cp -r "$TMP_DIR/ofiere-repo/$PLUGIN_SUBDIR" "$PLUGIN_DIR"
-    elif command -v curl &>/dev/null; then
-      curl -sSL "https://github.com/gilanggemar/Ofiere/archive/refs/heads/main.tar.gz" | tar xz -C "$TMP_DIR"
-      rm -rf "$PLUGIN_DIR"
-      cp -r "$TMP_DIR/Ofiere-main/$PLUGIN_SUBDIR" "$PLUGIN_DIR"
-    else
-      echo "  ✗ Neither git nor curl found. Cannot download plugin."
-      exit 1
-    fi
-    rm -rf "$TMP_DIR"
-  fi
-  echo "  ✓ Plugin updated"
-else
-  echo "→ Downloading plugin..."
-  TMP_DIR=$(mktemp -d)
-  if command -v git &>/dev/null; then
-    git clone --depth 1 --single-branch --branch main "$REPO_URL" "$TMP_DIR/ofiere-repo" 2>/dev/null
-    cp -r "$TMP_DIR/ofiere-repo/$PLUGIN_SUBDIR" "$PLUGIN_DIR"
-  elif command -v curl &>/dev/null; then
-    curl -sSL "https://github.com/gilanggemar/Ofiere/archive/refs/heads/main.tar.gz" | tar xz -C "$TMP_DIR"
-    cp -r "$TMP_DIR/Ofiere-main/$PLUGIN_SUBDIR" "$PLUGIN_DIR"
-  else
-    echo "  ✗ Neither git nor curl found. Cannot download plugin."
-    exit 1
-  fi
+echo "→ Downloading plugin from npm..."
+
+# Save the current directory
+ORIG_DIR="$(pwd)"
+
+# Download the npm package tarball
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+
+npm pack "$PLUGIN_PKG" --quiet 2>/dev/null || npm pack "$PLUGIN_PKG" 2>/dev/null
+
+TARBALL=$(ls ${PLUGIN_PKG}-*.tgz 2>/dev/null | head -1)
+if [[ -z "$TARBALL" ]]; then
+  echo "  ✗ Failed to download $PLUGIN_PKG from npm."
+  echo "    Check your internet connection and try again."
+  cd "$ORIG_DIR"
   rm -rf "$TMP_DIR"
-  echo "  ✓ Plugin downloaded"
+  exit 1
 fi
 
-# ── Step 2: Append env vars (idempotent) ─────────────────────────────────────
+# Extract directly into the plugin directory (--strip-components=1 removes the 'package/' prefix)
+tar xzf "$TARBALL" -C "$PLUGIN_DIR" --strip-components=1
+cd "$ORIG_DIR"
+rm -rf "$TMP_DIR"
+
+echo "  ✓ Plugin downloaded (npm: $PLUGIN_PKG)"
+
+# ── Step 2: Install dependencies ─────────────────────────────────────────────
+
+echo "→ Installing dependencies..."
+
+cd "$PLUGIN_DIR"
+
+# npm install resolves @supabase/supabase-js, zod, and any transitive deps
+npm install --omit=dev --no-audit --no-fund --loglevel=error 2>&1 | while read -r line; do
+  echo "    $line"
+done
+
+if [[ -d "$PLUGIN_DIR/node_modules/@supabase" ]]; then
+  echo "  ✓ Dependencies installed"
+else
+  echo "  ✗ Dependency installation may have failed."
+  echo "    Try running manually: cd $PLUGIN_DIR && npm install"
+  exit 1
+fi
+
+cd "$ORIG_DIR"
+
+# ── Step 3: Append env vars (idempotent) ─────────────────────────────────────
 
 echo "→ Configuring environment variables..."
 
@@ -158,25 +186,97 @@ append_env "OFIERE_SUPABASE_URL" "$SUPABASE_URL"
 append_env "OFIERE_SERVICE_ROLE_KEY" "$SERVICE_KEY"
 append_env "OFIERE_USER_ID" "$USER_ID"
 
+# ── Step 4: Verify plugin loads ──────────────────────────────────────────────
+
+echo "→ Verifying plugin..."
+
+# Quick check: can Node resolve the entry point and its imports?
+VERIFY_RESULT=$(node -e "
+  try {
+    require('$PLUGIN_DIR/node_modules/@supabase/supabase-js');
+    require('$PLUGIN_DIR/node_modules/zod');
+    console.log('OK');
+  } catch(e) {
+    console.log('FAIL:' + e.message);
+  }
+" 2>&1) || true
+
+if [[ "$VERIFY_RESULT" == "OK" ]]; then
+  echo "  ✓ Plugin dependencies verified"
+else
+  echo "  ⚠ Verification warning: $VERIFY_RESULT"
+  echo "    The plugin may still work — OpenClaw uses its own module loader."
+fi
+
+# ── Step 5: Auto-restart gateway ─────────────────────────────────────────────
+
+if [[ "$NO_RESTART" == "true" ]]; then
+  echo ""
+  echo "  ℹ Skipping restart (--no-restart flag)"
+  echo "  → Restart manually: openclaw gateway restart"
+else
+  echo "→ Restarting OpenClaw gateway..."
+
+  RESTARTED=false
+
+  # Try Docker first (most common for VPS deployments)
+  if command -v docker &>/dev/null; then
+    # Find the OpenClaw container
+    CONTAINER_ID=$(docker ps --filter "name=openclaw" --format "{{.ID}}" 2>/dev/null | head -1)
+    if [[ -z "$CONTAINER_ID" ]]; then
+      # Try broader search
+      CONTAINER_ID=$(docker ps --format "{{.ID}} {{.Image}}" 2>/dev/null | grep -i "openclaw" | awk '{print $1}' | head -1)
+    fi
+
+    if [[ -n "$CONTAINER_ID" ]]; then
+      docker restart "$CONTAINER_ID" >/dev/null 2>&1 && RESTARTED=true
+      if [[ "$RESTARTED" == "true" ]]; then
+        echo "  ✓ Docker container restarted ($CONTAINER_ID)"
+      fi
+    fi
+  fi
+
+  # Try native OpenClaw CLI
+  if [[ "$RESTARTED" == "false" ]] && command -v openclaw &>/dev/null; then
+    openclaw gateway restart 2>/dev/null && RESTARTED=true
+    if [[ "$RESTARTED" == "true" ]]; then
+      echo "  ✓ Gateway restarted via CLI"
+    fi
+  fi
+
+  # Try systemctl
+  if [[ "$RESTARTED" == "false" ]] && command -v systemctl &>/dev/null; then
+    if systemctl is-active --quiet openclaw 2>/dev/null; then
+      sudo systemctl restart openclaw 2>/dev/null && RESTARTED=true
+      if [[ "$RESTARTED" == "true" ]]; then
+        echo "  ✓ Gateway restarted via systemctl"
+      fi
+    fi
+  fi
+
+  if [[ "$RESTARTED" == "false" ]]; then
+    echo "  ⚠ Could not auto-restart. Please restart manually:"
+    echo "    • Docker: docker restart <container>"
+    echo "    • Native: openclaw gateway restart"
+    echo "    • Systemd: sudo systemctl restart openclaw"
+  fi
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 
 echo ""
 echo "╔═══════════════════════════════════════════════╗"
 echo "║   ✓ Ofiere PM Plugin Installed!               ║"
 echo "║                                               ║"
+echo "║   Source:  npm ($PLUGIN_PKG@latest)"
 echo "║   Plugin:  $PLUGIN_DIR"
 echo "║   Env:     $ENV_FILE"
 echo "║                                               ║"
-echo "║   Tools: OFIERE_LIST_TASKS                    ║"
-echo "║          OFIERE_CREATE_TASK                    ║"
-echo "║          OFIERE_UPDATE_TASK                    ║"
-echo "║          OFIERE_DELETE_TASK                    ║"
-echo "║          OFIERE_LIST_AGENTS                    ║"
-echo "║                                               ║"
-echo "║   All agents get these tools automatically.   ║"
-echo "║                                               ║"
-echo "║   Restart your gateway to activate:           ║"
-echo "║   • Docker: docker restart <container>        ║"
-echo "║   • Native: openclaw gateway restart          ║"
+echo "║   Tools available to ALL agents:              ║"
+echo "║     • OFIERE_LIST_TASKS                       ║"
+echo "║     • OFIERE_CREATE_TASK                      ║"
+echo "║     • OFIERE_UPDATE_TASK                      ║"
+echo "║     • OFIERE_DELETE_TASK                      ║"
+echo "║     • OFIERE_LIST_AGENTS                      ║"
 echo "╚═══════════════════════════════════════════════╝"
 echo ""
